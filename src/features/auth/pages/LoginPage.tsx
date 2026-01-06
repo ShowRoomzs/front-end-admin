@@ -3,8 +3,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useCookie } from "@/common/hooks/useCookie";
 import { COOKIE_NAME } from "@/common/constants";
-import toast from "react-hot-toast";
+import { authService } from "@/features/auth/services/authService";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -40,25 +41,21 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const emailError = validateEmail(formData.email);
+    // const emailError = validateEmail(formData.email);
     const passwordError = validatePassword(formData.password);
 
     setErrors({
-      email: emailError,
+      email: "",
       password: passwordError,
     });
 
-    if (!emailError && !passwordError) {
-      // TODO: API 호출 구현 예정
-      // const res = await authService.login({
-      //   email: formData.email,
-      //   password: formData.password,
-      // })
-      // const { accessToken, refreshToken } = res
+    if (!passwordError) {
+      const res = await authService.login(formData.email, formData.password);
+      const { accessToken, refreshToken } = res;
 
-      // 임시 토큰 설정 (개발 모드)
-      setAccessToken("temp-access-token");
-      setRefreshToken("temp-refresh-token");
+      setAccessToken(accessToken);
+      setRefreshToken(refreshToken);
+
       toast.success("로그인 성공");
       navigate("/");
     }
@@ -112,7 +109,6 @@ export default function LoginPage() {
             </label>
             <Input
               id="email"
-              type="email"
               placeholder="이메일"
               value={formData.email}
               onChange={handleEmailChange}
