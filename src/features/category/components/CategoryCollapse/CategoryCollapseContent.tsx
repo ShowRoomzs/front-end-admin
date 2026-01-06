@@ -16,7 +16,7 @@ interface CategoryCollapseContentProps {
   isOpen: boolean;
   hasChildren: boolean;
   onChange: (category: Category) => void;
-  onAddCategory: (category: Category, depth: number) => void;
+  onAddCategory: (category: Category) => void;
   onRemoveCategory: (category: Category) => void;
   api: CollapseAPI;
 }
@@ -31,7 +31,6 @@ export default function CategoryCollapseContent(
     onChange,
     onAddCategory,
     onRemoveCategory,
-    depth,
     api,
   } = props;
   const [category, setCategory] = useState(item.data);
@@ -65,7 +64,7 @@ export default function CategoryCollapseContent(
   };
 
   const handleAddCategory = () => {
-    onAddCategory(category, depth);
+    onAddCategory(category);
     api.toggleItem(item.id);
   };
 
@@ -75,21 +74,23 @@ export default function CategoryCollapseContent(
 
   return (
     <div className="flex flex-row items-center gap-2 w-full">
-      {isEdit ? (
-        <Input
-          value={category.name}
-          onChange={(e) => handleChangeName(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-        />
-      ) : (
-        <span
-          onClick={handleClickText}
-          className="flex-1 text-sm font-medium text-foreground"
-        >
-          {category.name}
-        </span>
-      )}
+      <div className="flex-1">
+        {isEdit ? (
+          <Input
+            value={category.name}
+            onChange={(e) => handleChangeName(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+          />
+        ) : (
+          <span
+            onClick={handleClickText}
+            className="text-sm font-medium text-foreground"
+          >
+            {category.name}
+          </span>
+        )}
+      </div>
 
       <div className="flex flex-row items-center gap-2">
         <Tooltip>

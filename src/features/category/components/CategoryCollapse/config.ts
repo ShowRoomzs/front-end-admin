@@ -6,7 +6,7 @@ export function convertCategoriesToCollapseItems(
 ): Array<CollapseItem<Category>> {
   return categories.map((category) => ({
     id: category.categoryId,
-    parentId: category.parentId || null,
+    parentId: category.parentId ?? null,
     order: category.order,
     data: category,
   }));

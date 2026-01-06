@@ -58,7 +58,7 @@ export default function CategoryManagement() {
       order: getCategoryOrder(localCategories),
       iconUrl: "",
       parentId: undefined,
-      categoryId: nanoid(),
+      categoryId: nanoid() as unknown as number,
     };
     addCategory(newCategory);
   }, [addCategory, localCategories]);
@@ -77,6 +77,21 @@ export default function CategoryManagement() {
     await execute();
     toast.success("정상적으로 저장되었습니다.");
   }, [execute]);
+
+  const handleAddChildCategory = useCallback(
+    (category: Category) => {
+      const newCategory: Category = {
+        name: getNewCategoryName(localCategories, category.categoryId),
+        order: getCategoryOrder(localCategories, category.categoryId),
+        iconUrl: "",
+        parentId: category.categoryId,
+        categoryId: nanoid(),
+      };
+
+      addCategory(newCategory);
+    },
+    [addCategory, localCategories]
+  );
 
   if (!categories) {
     return <div>Loading...</div>;
@@ -105,6 +120,7 @@ export default function CategoryManagement() {
       <CategoryCollapse
         onRemove={handleRemove}
         onChange={handleChange}
+        onAddChild={handleAddChildCategory}
         items={localCategories}
       />
     </div>

@@ -3,7 +3,7 @@ import type { Category } from "@/features/category/services/categoryService";
 
 function countCategoriesWithNewPrefix(
   categories: Array<Category>,
-  parentId?: number
+  parentId?: number | string
 ): number {
   const filteredCategories = parentId
     ? categories.filter((category) => category.parentId === parentId)
@@ -12,7 +12,9 @@ function countCategoriesWithNewPrefix(
   const newCategories = filteredCategories.filter((category) =>
     category.name.startsWith(DEFAULT_CATEGORY_NAME)
   );
-
+  if (newCategories.length === 0) {
+    return 1;
+  }
   const lastNum = newCategories[newCategories.length - 1].name.split(
     DEFAULT_CATEGORY_NAME
   )[1];
@@ -22,7 +24,7 @@ function countCategoriesWithNewPrefix(
 
 export function getNewCategoryName(
   categories: Array<Category>,
-  parentId?: number
+  parentId?: number | string
 ): string {
   const suffixNum = countCategoriesWithNewPrefix(categories, parentId);
   return `${DEFAULT_CATEGORY_NAME} ${suffixNum}`;
@@ -30,7 +32,7 @@ export function getNewCategoryName(
 
 export function getCategoryOrder(
   categories: Array<Category>,
-  parentId?: number
+  parentId?: number | string
 ): number {
   const filteredCategories = parentId
     ? categories.filter((category) => category.parentId === parentId)

@@ -12,10 +12,11 @@ interface CategoryCollapseProps {
     changedItems: Array<Category>
   ) => void;
   onRemove: (category: Category) => void;
+  onAddChild: (category: Category) => void;
 }
 
 export default function CategoryCollapse(props: CategoryCollapseProps) {
-  const { items, onChange, onRemove } = props;
+  const { items, onChange, onRemove, onAddChild } = props;
 
   const collapseItems = useMemo(
     () => convertCategoriesToCollapseItems(items),
@@ -24,75 +25,86 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
 
   const reorderCategories = useCallback(
     (result: DropResult) => {
-      if (!result.destination) return;
+      const { source, destination, draggableId } = result;
+      if (!destination) return;
 
-      const sourceIndex = result.source.index;
-      const destinationIndex = result.destination.index;
-      if (sourceIndex === destinationIndex) return;
+      if (
+        source.droppableId === destination.droppableId &&
+        source.index === destination.index
+      ) {
+        return;
+      }
 
-      // 1. 드래그된 아이템 식별
-      const draggedId = Number(result.draggableId);
-      const draggedItem = items.find((i) => i.categoryId === draggedId);
-      if (!draggedItem) return;
+      // 1. ID 및 ParentID 추출 (prefix 제거)
+      const extractId = (id: string) =>
+        id.replace("draggable-", "").replace("droppable-", "");
+      const draggedId = extractId(draggableId);
+      const sourceParentId =
+        extractId(source.droppableId) === "root"
+          ? null
+          : extractId(source.droppableId);
+      const destParentId =
+        extractId(destination.droppableId) === "root"
+          ? null
+          : extractId(destination.droppableId);
 
-      // 2. 현재 화면에 보이는 것과 동일한 순서의 리스트 생성
-      // (Collapse 컴포넌트의 getVisibleItems 로직과 유사)
-      const itemMap = new Map<number | string, Category>();
-      const childrenMap = new Map<
-        number | string | null,
-        Array<number | string>
-      >();
-      items.forEach((item) => {
-        itemMap.set(item.categoryId, item);
-        const pId = item.parentId || null;
-        if (!childrenMap.has(pId)) childrenMap.set(pId, []);
-        childrenMap.get(pId)!.push(item.categoryId);
-      });
-      childrenMap.forEach((ids) => {
-        ids.sort(
-          (a, b) => (itemMap.get(a)?.order || 0) - (itemMap.get(b)?.order || 0)
+      // 2. 형제 그룹 찾기 및 정렬
+      const siblings = items
+        .filter(
+          (item) =>
+            (item.parentId ?? null)?.toString() ===
+            (destParentId ?? null)?.toString()
+        )
+        .sort((a, b) => a.order - b.order);
+
+      // 3. 순서 변경
+      const newSiblings = Array.from(siblings);
+
+      // 만약 같은 부모 내 이동이라면
+      if (sourceParentId === destParentId) {
+        const [removed] = newSiblings.splice(source.index, 1);
+        newSiblings.splice(destination.index, 0, removed);
+      } else {
+        // 다른 부모로 이동하는 경우 (현재 UI 구조상으로는 지원 안할 수도 있지만 로직은 대비)
+        const draggedItem = items.find(
+          (i) => i.categoryId.toString() === draggedId
         );
-      });
+        if (draggedItem) {
+          const updatedDraggedItem = {
+            ...draggedItem,
+            parentId: destParentId ? Number(destParentId) : undefined,
+          };
+          newSiblings.splice(destination.index, 0, updatedDraggedItem);
+        }
+      }
 
-      const visibleIds: Array<number | string> = [];
-      const traverse = (pId: number | string | null) => {
-        const ids = childrenMap.get(pId) || [];
-        ids.forEach((id) => {
-          visibleIds.push(id);
-          traverse(id);
-        });
-      };
-      traverse(null);
-
-      // 3. visibleIds에서 순서 변경
-      const newVisibleIds = Array.from(visibleIds);
-      const [removedId] = newVisibleIds.splice(sourceIndex, 1);
-      newVisibleIds.splice(destinationIndex, 0, removedId);
-
-      // 4. 새로운 순서를 바탕으로 모든 아이템의 order 재계산 (동일 부모 그룹별로)
+      // 4. 새로운 order 부여 및 전체 리스트 업데이트
       const changedCategories: Array<Category> = [];
-      const newItems = items.map((item) => {
-        // 드래그된 아이템과 같은 부모를 가진 형제들 내에서의 새로운 순서 찾기
-        const parentId = item.parentId || null;
-        const siblingsInNewOrder = newVisibleIds
-          .map((id) => itemMap.get(id)!)
-          .filter((i) => (i.parentId || null) === parentId);
-
-        const newOrder = siblingsInNewOrder.findIndex(
-          (i) => i.categoryId === item.categoryId
-        );
-
-        if (item.order !== newOrder) {
-          const updated = { ...item, order: newOrder };
+      const updatedSiblings = newSiblings.map((item, index) => {
+        if (item.order !== index || item.categoryId.toString() === draggedId) {
+          const updated = {
+            ...item,
+            order: index,
+            parentId: destParentId
+              ? isNaN(Number(destParentId))
+                ? destParentId
+                : Number(destParentId)
+              : undefined,
+          };
           changedCategories.push(updated);
           return updated;
         }
         return item;
       });
 
-      if (changedCategories.length > 0) {
-        onChange(newItems, changedCategories);
-      }
+      const updatedAllItems = items.map((item) => {
+        const updatedSibling = updatedSiblings.find(
+          (s) => s.categoryId === item.categoryId
+        );
+        return updatedSibling || item;
+      });
+
+      onChange(updatedAllItems, changedCategories);
     },
     [items, onChange]
   );
@@ -107,9 +119,12 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
     [items, onChange]
   );
 
-  const handleAddCategory = useCallback((category: Category, depth: number) => {
-    console.log("add category", category, depth);
-  }, []);
+  const handleAddCategory = useCallback(
+    (category: Category) => {
+      onAddChild(category);
+    },
+    [onAddChild]
+  );
 
   const handleRemoveCategory = useCallback(
     (category: Category) => {
