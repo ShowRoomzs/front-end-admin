@@ -59,7 +59,7 @@ export default function CategoryManagement() {
       order: getCategoryOrder(localCategories),
       iconUrl: "",
       parentId: undefined,
-      categoryId: nanoid() as unknown as number,
+      categoryId: nanoid(),
     };
     addCategory(newCategory);
   }, [addCategory, localCategories]);
