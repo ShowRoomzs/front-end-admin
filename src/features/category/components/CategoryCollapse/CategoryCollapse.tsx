@@ -128,9 +128,44 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
 
   const handleRemoveCategory = useCallback(
     (category: Category) => {
+      // 삭제될 카테고리를 제외한 같은 부모의 형제들을 order 순으로 정렬
+      const siblings = items
+        .filter(
+          (item) =>
+            (item.parentId ?? null)?.toString() ===
+              (category.parentId ?? null)?.toString() &&
+            item.categoryId !== category.categoryId
+        )
+        .sort((a, b) => a.order - b.order);
+
+      // 정렬된 순서대로 0부터 order 재부여
+      const changedCategories: Array<Category> = [];
+      const updatedSiblings = siblings.map((item, index) => {
+        if (item.order !== index) {
+          const updated = { ...item, order: index };
+          changedCategories.push(updated);
+          return updated;
+        }
+        return item;
+      });
+
+      // 삭제될 카테고리를 제외한 전체 리스트 업데이트
+      const updatedAllItems = items
+        .filter((item) => item.categoryId !== category.categoryId)
+        .map((item) => {
+          const updatedSibling = updatedSiblings.find(
+            (s) => s.categoryId === item.categoryId
+          );
+          return updatedSibling || item;
+        });
+
+      // 변경사항을 먼저 onChange로 전달
+      onChange(updatedAllItems, changedCategories);
+
+      // 실제 제거 작업
       onRemove(category);
     },
-    [onRemove]
+    [items, onChange, onRemove]
   );
 
   return (

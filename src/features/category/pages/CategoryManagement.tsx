@@ -12,6 +12,7 @@ import {
 } from "@/features/category/utils/category";
 import { nanoid } from "nanoid";
 import toast from "react-hot-toast";
+import { queryClient } from "@/common/lib/queryClient";
 
 export default function CategoryManagement() {
   const { data: categories } = useGetCategory();
@@ -75,6 +76,7 @@ export default function CategoryManagement() {
 
   const handleClickSave = useCallback(async () => {
     await execute();
+    queryClient.invalidateQueries({ queryKey: ["categories"] }); // TODO : 쿼리키 상수로 분리
     toast.success("정상적으로 저장되었습니다.");
   }, [execute]);
 
