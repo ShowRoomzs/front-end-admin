@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router-dom";
 import { MainLayout } from "@/common/components";
 import LoginPage from "@/features/auth/pages/LoginPage";
 import PlaceholderPage from "@/common/components/PlaceholderPage";
+import CategoryManagement from "@/features/category/pages/CategoryManagement";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -29,7 +30,7 @@ export const mainRoutes: Array<RouteObject> = [
       },
       {
         path: "category",
-        element: <PlaceholderPage title="카테고리 관리" />,
+        element: <CategoryManagement />,
       },
       {
         path: "role",
