@@ -2,6 +2,8 @@ import { type ReactNode } from "react";
 
 export interface CollapseAPI {
   toggleItem: (id: number | string) => void;
+  openItem: (id: number | string) => void;
+  closeItem: (id: number | string) => void;
 }
 
 export interface CollapseItem<T = unknown> {

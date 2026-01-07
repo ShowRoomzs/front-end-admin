@@ -3,13 +3,14 @@ import { DragDropContext, type DragDropContextProps } from "@hello-pangea/dnd";
 import { useCallback, useMemo, useState } from "react";
 import { InternalCollapseList } from "./InternalCollapseList";
 import { type CollapseAPI, type CollapseItem } from "./types";
-
 export interface CollapseProps<T = unknown>
   extends Omit<DragDropContextProps, "onDragEnd" | "children"> {
   items: Array<CollapseItem<T>>;
   draggable?: boolean;
   maxDepth?: number;
-  defaultOpenKeys?: (number | string)[];
+  defaultOpenKeys?: Array<number | string>;
+  openKeys?: Set<number | string>;
+  onOpenKeysChange?: (openKeys: Set<number | string>) => void;
   onItemClick?: (item: CollapseItem<T>, depth: number) => void;
   className?: string;
   renderItem?: (
@@ -30,6 +31,8 @@ export function Collapse<T = unknown>(props: CollapseProps<T>) {
     items,
     maxDepth,
     defaultOpenKeys = [],
+    openKeys: controlledOpenKeys,
+    onOpenKeysChange,
     onItemClick,
     className,
     renderItem,
@@ -39,22 +42,63 @@ export function Collapse<T = unknown>(props: CollapseProps<T>) {
     ...rest
   } = props;
 
-  const [openKeys, setOpenKeys] = useState<Set<number | string>>(
-    new Set(defaultOpenKeys)
+  // 비제어 컴포넌트 모드의 내부 state
+  const [internalOpenKeys, setInternalOpenKeys] = useState<
+    Set<number | string>
+  >(new Set(defaultOpenKeys));
+
+  // 제어/비제어 모드 선택
+  const isControlled = controlledOpenKeys !== undefined;
+  const openKeys = isControlled ? controlledOpenKeys : internalOpenKeys;
+
+  const onToggle = useCallback(
+    (id: number | string) => {
+      const nextOpenKeys = new Set(openKeys);
+      if (nextOpenKeys.has(id)) {
+        nextOpenKeys.delete(id);
+      } else {
+        nextOpenKeys.add(id);
+      }
+
+      if (isControlled) {
+        onOpenKeysChange?.(nextOpenKeys);
+      } else {
+        setInternalOpenKeys(nextOpenKeys);
+      }
+    },
+    [isControlled, openKeys, onOpenKeysChange]
   );
 
-  const onToggle = useCallback((id: number | string) => {
-    setOpenKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  const onOpen = useCallback(
+    (id: number | string) => {
+      const nextOpenKeys = new Set(openKeys).add(id);
+
+      if (isControlled) {
+        onOpenKeysChange?.(nextOpenKeys);
+      } else {
+        setInternalOpenKeys(nextOpenKeys);
+      }
+    },
+    [isControlled, openKeys, onOpenKeysChange]
+  );
+
+  const onClose = useCallback(
+    (id: number | string) => {
+      const nextOpenKeys = new Set(openKeys);
+      nextOpenKeys.delete(id);
+
+      if (isControlled) {
+        onOpenKeysChange?.(nextOpenKeys);
+      } else {
+        setInternalOpenKeys(nextOpenKeys);
+      }
+    },
+    [isControlled, openKeys, onOpenKeysChange]
+  );
 
   const api: CollapseAPI = useMemo(
-    () => ({ toggleItem: onToggle }),
-    [onToggle]
+    () => ({ toggleItem: onToggle, openItem: onOpen, closeItem: onClose }),
+    [onClose, onOpen, onToggle]
   );
 
   return (
