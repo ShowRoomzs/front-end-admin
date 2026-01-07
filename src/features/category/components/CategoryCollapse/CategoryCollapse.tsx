@@ -191,6 +191,15 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
       maxDepth={3}
       openKeys={openKeys}
       onOpenKeysChange={setOpenKeys}
+      renderLeafItem={(props, api) => (
+        <CategoryCollapseContent
+          {...props}
+          api={api}
+          onChange={handleChangeName}
+          onRemoveCategory={handleRemoveCategory}
+          isLeaf
+        />
+      )}
       renderItem={(props, api) => (
         <CategoryCollapseContent
           {...props}

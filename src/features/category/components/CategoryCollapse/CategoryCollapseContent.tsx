@@ -13,13 +13,20 @@ import { useState, type KeyboardEvent, type MouseEvent } from "react";
 interface CategoryCollapseContentProps {
   item: CollapseItem<Category>;
   depth: number;
-  isOpen: boolean;
-  hasChildren: boolean;
   onChange: (category: Category) => void;
-  onAddCategory: (category: Category, depth: number) => void;
-  onRemoveCategory: (category: Category) => void;
   api: CollapseAPI;
+
+  isOpen?: boolean;
+  hasChildren?: boolean;
+  onAddCategory?: (category: Category, depth: number) => void;
+  onRemoveCategory: (category: Category) => void;
+  isLeaf?: boolean;
 }
+
+/**
+ *  현재 1, 2, 3 depth 동일하게 해당 컴포넌트 사용 중이지만
+ *  추후 3depth 렌더 전용 컴포넌트 필요해보임
+ */
 
 export default function CategoryCollapseContent(
   props: CategoryCollapseContentProps
@@ -33,6 +40,7 @@ export default function CategoryCollapseContent(
     onRemoveCategory,
     api,
     depth,
+    isLeaf = false,
   } = props;
   const [category, setCategory] = useState(item.data);
   const [isEdit, setIsEdit] = useState(false);
@@ -67,7 +75,7 @@ export default function CategoryCollapseContent(
 
   const handleAddCategory = (e: MouseEvent<SVGSVGElement>) => {
     e.stopPropagation();
-    onAddCategory(category, depth);
+    onAddCategory?.(category, depth);
     api.openItem(item.id);
   };
 
@@ -81,6 +89,7 @@ export default function CategoryCollapseContent(
       <div className="flex-1">
         {isEdit ? (
           <Input
+            autoFocus
             value={category.name}
             onChange={(e) => handleChangeName(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -98,17 +107,19 @@ export default function CategoryCollapseContent(
       </div>
 
       <div className="flex flex-row items-center gap-2">
-        <Tooltip>
-          <TooltipTrigger>
-            <PlusIcon
-              onClick={handleAddCategory}
-              className="w-4 h-4 cursor-pointer"
-            />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>카테고리 추가</p>
-          </TooltipContent>
-        </Tooltip>
+        {!isLeaf && (
+          <Tooltip>
+            <TooltipTrigger>
+              <PlusIcon
+                onClick={handleAddCategory}
+                className="w-4 h-4 cursor-pointer"
+              />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>카테고리 추가</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
         <Tooltip>
           <TooltipTrigger>
             <TrashIcon
@@ -120,7 +131,7 @@ export default function CategoryCollapseContent(
             <p>카테고리 제거</p>
           </TooltipContent>
         </Tooltip>
-        {hasChildren && (
+        {hasChildren && isOpen !== undefined && (
           <span className="ml-2 shrink-0 text-muted-foreground cursor-pointer">
             <ChevronIcon isOpen={isOpen} />
           </span>
