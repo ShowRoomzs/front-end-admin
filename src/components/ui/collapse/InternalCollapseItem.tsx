@@ -130,7 +130,10 @@ export function InternalCollapseItem<T = unknown>(
                                 />
                               )}
                               {renderLeafItem ? (
-                                renderLeafItem(child, depth + 1)
+                                renderLeafItem(
+                                  { item: child, depth: depth + 1 },
+                                  api
+                                )
                               ) : (
                                 <span>{child.label ?? child.id}</span>
                               )}

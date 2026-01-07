@@ -30,5 +30,11 @@ export interface InternalCollapseSharedProps<T = unknown> {
   api: CollapseAPI;
   onItemClick?: (item: CollapseItem<T>, depth: number) => void;
   renderItem?: (props: RenderItemProps<T>, api: CollapseAPI) => ReactNode;
-  renderLeafItem?: (item: CollapseItem<T>, depth: number) => ReactNode;
+  renderLeafItem?: (
+    props: {
+      item: CollapseItem<T>;
+      depth: number;
+    },
+    api: CollapseAPI
+  ) => ReactNode;
 }

@@ -22,7 +22,13 @@ export interface CollapseProps<T = unknown>
     },
     api: CollapseAPI
   ) => React.ReactNode;
-  renderLeafItem?: (item: CollapseItem<T>, depth: number) => React.ReactNode;
+  renderLeafItem?: (
+    props: {
+      item: CollapseItem<T>;
+      depth: number;
+    },
+    api: CollapseAPI
+  ) => React.ReactNode;
   onDragEnd?: DragDropContextProps["onDragEnd"];
 }
 
