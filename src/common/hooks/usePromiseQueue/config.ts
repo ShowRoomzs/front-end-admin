@@ -1,11 +1,8 @@
-import type {
-  Payload,
-  QueueItem,
-} from "@/common/hooks/usePromiseQueue/usePromiseQueue";
+import type { QueueItem } from "@/common/hooks/usePromiseQueue/usePromiseQueue";
 
 export function getExistQueueItem<T>(
   queue: Array<QueueItem<T>>,
-  payLoad: Payload<T>,
+  payLoad: T,
   keyString: keyof T
 ) {
   if (!queue?.length) {
@@ -16,7 +13,7 @@ export function getExistQueueItem<T>(
 
 export function getOriginItem<T>(
   originData: Array<T>,
-  payload: Payload<T>,
+  payload: T,
   keyString: keyof T
 ) {
   if (!originData?.length) {
