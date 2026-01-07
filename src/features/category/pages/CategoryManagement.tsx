@@ -4,7 +4,10 @@ import { useCallback, useState, useEffect } from "react";
 import type { Category } from "@/features/category/services/categoryService";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
-import { usePromiseQueue } from "@/common/hooks/usePromiseQueue/usePromiseQueue";
+import {
+  usePromiseQueue,
+  type ResolvePayload,
+} from "@/common/hooks/usePromiseQueue/usePromiseQueue";
 
 import {
   getCategoryOrder,
@@ -17,6 +20,8 @@ import { queryClient } from "@/common/lib/queryClient";
 export default function CategoryManagement() {
   const { data: categories } = useGetCategory();
   const [localCategories, setLocalCategories] = useState<Array<Category>>([]);
+  const [lastIdMapping, setLastIdMapping] =
+    useState<Map<number | string, number | string>>();
 
   useEffect(() => {
     if (categories) {
@@ -24,15 +29,31 @@ export default function CategoryManagement() {
     }
   }, [categories]);
 
-  const { update, queue, create, execute, remove } = usePromiseQueue<Category>({
-    originData: categories,
-    keyString: "categoryId",
-    methodUrlMap: {
-      POST: "/admin/categories",
-      PUT: "/admin/categories",
-      DELETE: "/admin/categories",
+  // create 시 임시 parentId 를 실제 parentId 로 변경
+  const resolvePayload: ResolvePayload<Category> = useCallback(
+    (payload: Category, idMapping: Map<string | number, string | number>) => {
+      const actualParentId = idMapping.get(
+        payload.parentId as string
+      ) as number;
+
+      if (payload.parentId && actualParentId) {
+        return {
+          ...payload,
+          parentId: actualParentId,
+        };
+      }
+      return payload;
     },
-  });
+    []
+  );
+
+  const { update, queue, create, execute, remove, isLoading } =
+    usePromiseQueue<Category>({
+      originData: categories,
+      keyString: "categoryId",
+      endpoint: "/admin/categories",
+      resolvePayload,
+    });
 
   const handleChange = useCallback(
     (updatedItems: Array<Category>, changedItems: Array<Category>) => {
@@ -55,7 +76,7 @@ export default function CategoryManagement() {
 
   const handleClickAddCategory = useCallback(() => {
     const newCategory: Category = {
-      name: getNewCategoryName(localCategories),
+      name: getNewCategoryName(localCategories, undefined, 1),
       order: getCategoryOrder(localCategories),
       iconUrl: "",
       parentId: undefined,
@@ -69,21 +90,41 @@ export default function CategoryManagement() {
       setLocalCategories((prev) =>
         prev.filter((item) => item.categoryId !== category.categoryId)
       );
-      remove(category);
+      const removeArr: Array<Category> = [];
+
+      // 말단 노드부터 순서대로 쌓이도록
+      const loop = (category: Category) => {
+        const children = localCategories.filter(
+          (c) => c.parentId === category.categoryId
+        );
+
+        children.forEach(loop);
+
+        removeArr.push(category);
+      };
+
+      loop(category);
+      removeArr.forEach(remove);
     },
-    [remove]
+    [localCategories, remove]
   );
 
   const handleClickSave = useCallback(async () => {
-    await execute();
+    const result = await execute();
+
+    // idMapping을 CategoryCollapse에 전달하여 UI 상태 동기화
+    if (result?.idMapping && result.idMapping.size > 0) {
+      setLastIdMapping(result.idMapping);
+    }
+
     queryClient.invalidateQueries({ queryKey: ["categories"] }); // TODO : 쿼리키 상수로 분리
     toast.success("정상적으로 저장되었습니다.");
   }, [execute]);
 
   const handleAddChildCategory = useCallback(
-    (category: Category) => {
+    (category: Category, depth: number) => {
       const newCategory: Category = {
-        name: getNewCategoryName(localCategories, category.categoryId),
+        name: getNewCategoryName(localCategories, category.categoryId, depth),
         order: getCategoryOrder(localCategories, category.categoryId),
         iconUrl: "",
         parentId: category.categoryId,
@@ -115,6 +156,7 @@ export default function CategoryManagement() {
           disabled={queue.length === 0}
           variant="default"
           className="w-fit"
+          isLoading={isLoading}
         >
           저장
         </Button>
@@ -124,6 +166,7 @@ export default function CategoryManagement() {
         onChange={handleChange}
         onAddChild={handleAddChildCategory}
         items={localCategories}
+        idMapping={lastIdMapping}
       />
     </div>
   );

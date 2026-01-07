@@ -3,7 +3,7 @@ import CategoryCollapseContent from "@/features/category/components/CategoryColl
 import { convertCategoriesToCollapseItems } from "@/features/category/components/CategoryCollapse/config";
 import type { Category } from "@/features/category/services/categoryService";
 import type { DropResult } from "@hello-pangea/dnd";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface CategoryCollapseProps {
   items: Array<Category>;
@@ -12,11 +12,26 @@ interface CategoryCollapseProps {
     changedItems: Array<Category>
   ) => void;
   onRemove: (category: Category) => void;
-  onAddChild: (category: Category) => void;
+  onAddChild: (category: Category, depth: number) => void;
+  idMapping?: Map<number | string, number | string>;
 }
 
 export default function CategoryCollapse(props: CategoryCollapseProps) {
-  const { items, onChange, onRemove, onAddChild } = props;
+  const { items, onChange, onRemove, onAddChild, idMapping } = props;
+
+  const [openKeys, setOpenKeys] = useState<Set<number | string>>(new Set());
+
+  useEffect(() => {
+    if (!idMapping || idMapping.size === 0) return;
+
+    setOpenKeys((prev) => {
+      const next = new Set(prev);
+      idMapping.forEach((newId) => {
+        next.add(newId);
+      });
+      return next;
+    });
+  }, [idMapping]);
 
   const collapseItems = useMemo(
     () => convertCategoriesToCollapseItems(items),
@@ -120,8 +135,8 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
   );
 
   const handleAddCategory = useCallback(
-    (category: Category) => {
-      onAddChild(category);
+    (category: Category, depth: number) => {
+      onAddChild(category, depth + 1);
     },
     [onAddChild]
   );
@@ -174,6 +189,8 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
       onDragEnd={reorderCategories}
       items={collapseItems}
       maxDepth={3}
+      openKeys={openKeys}
+      onOpenKeysChange={setOpenKeys}
       renderItem={(props, api) => (
         <CategoryCollapseContent
           {...props}
