@@ -1,7 +1,6 @@
 import {
   getExistQueueItem,
   getOriginItem,
-  stripNewItemId,
 } from "@/common/hooks/usePromiseQueue/config";
 import { useCallback, useState } from "react";
 import { produce } from "immer";
@@ -10,20 +9,23 @@ import { apiInstance } from "@/common/lib/apiInstance";
 import type { AxiosResponse } from "axios";
 
 export type Method = "POST" | "PUT" | "DELETE";
-export type Payload<T> = T;
 export type MethodUrlMap = Record<Method, string>;
 
 export interface QueueItem<T> {
   method: Method;
-  payload: Payload<T>;
+  payload: T;
   isNewItem?: boolean;
 }
-
+export type ResolvePayload<T> = (
+  payload: T,
+  idMapping: Map<string | number, string | number>
+) => T;
 interface UsePromiseQueueProps<T> {
   originData: Array<T> | undefined;
-  methodUrlMap: MethodUrlMap;
+  endpoint: string;
   onPrevExecute?: (queue: Array<QueueItem<T>>) => Array<QueueItem<T>>;
   keyString: keyof T; // id 대신 사용할 문자열 키 예시: "categoryId"
+  resolvePayload?: ResolvePayload<T>;
 }
 
 interface UsePromiseQueueReturn<T> {
@@ -31,14 +33,18 @@ interface UsePromiseQueueReturn<T> {
   create: (data: T) => void; // temp id 훅 외부에서 생성
   update: (data: T) => void;
   remove: (data: T) => void;
-  execute: () => Promise<AxiosResponse | void>;
+  execute: () => Promise<{
+    response: AxiosResponse | undefined;
+    idMapping: Map<string | number, string | number>;
+  } | void>;
+  isLoading: boolean;
 }
 
 /**
  * @description usePromiseQueue 훅 인자 타입
  * @param originData 원본 데이터
  * @param onPrevExecute execute 실행 전 외부에서 정렬 관련 로직 수행 시 사용
- * @param methodUrlMap 메소드별 url 매핑
+ * @param endpoint api endpoint
  */
 
 export function usePromiseQueue<T>(
@@ -46,11 +52,12 @@ export function usePromiseQueue<T>(
 ): UsePromiseQueueReturn<T> {
   const {
     originData,
-    methodUrlMap,
+    endpoint,
     onPrevExecute = (queue) => queue,
     keyString,
+    resolvePayload,
   } = props;
-
+  const [isLoading, setIsLoading] = useState(false);
   const [queue, setQueue] = useState<Array<QueueItem<T>>>([]);
 
   const create = useCallback((data: T) => {
@@ -153,33 +160,47 @@ export function usePromiseQueue<T>(
   );
 
   // queue 실행 메소드
-  const execute = useCallback(async (): Promise<AxiosResponse | undefined> => {
+  const execute = useCallback(async () => {
     if (!queue?.length) {
       return;
     }
-
-    const processedQueue = onPrevExecute(stripNewItemId(queue, keyString));
-
+    setIsLoading(true);
+    const processedQueue = onPrevExecute(queue);
+    const idMapping = new Map<string | number, string | number>();
     try {
       let result: AxiosResponse | undefined;
 
       for (const item of processedQueue) {
         const { method, payload } = item;
-        const url = methodUrlMap[method];
+
+        const resolvedPayload = resolvePayload
+          ? resolvePayload(payload, idMapping)
+          : payload;
 
         switch (method) {
           case "POST":
-            // TODO : 1, 2 뎁스 동시 생성인 경우 parentId 전달 필요
-            result = await apiInstance.post(url, payload);
+            {
+              result = await apiInstance.post(endpoint, resolvedPayload);
+              const createdId = result?.data[keyString];
+
+              // tempId 는 nanoid() 로 생성된 문자열
+              const tempId = payload[keyString] as string;
+              if (tempId && createdId) {
+                idMapping.set(tempId, createdId);
+              }
+            }
+
             break;
           case "PUT":
             result = await apiInstance.patch(
-              `${url}/${payload[keyString]}`,
+              `${endpoint}/${payload[keyString]}`,
               payload
             );
             break;
           case "DELETE":
-            result = await apiInstance.delete(`${url}/${payload[keyString]}`);
+            result = await apiInstance.delete(
+              `${endpoint}/${payload[keyString]}`
+            );
             break;
           default:
             throw new Error(`Unsupported method: ${method}`);
@@ -187,12 +208,14 @@ export function usePromiseQueue<T>(
       }
 
       setQueue([]);
-      return result;
+      return { response: result, idMapping };
     } catch (error) {
       console.error("Queue execution failed", error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
-  }, [queue, onPrevExecute, methodUrlMap, keyString]);
+  }, [queue, onPrevExecute, keyString, resolvePayload, endpoint]);
 
   return {
     queue,
@@ -200,5 +223,6 @@ export function usePromiseQueue<T>(
     update,
     remove,
     execute,
+    isLoading,
   };
 }
