@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { Category } from "@/features/category/services/categoryService";
 import { PlusIcon, TrashIcon } from "lucide-react";
-import { useState, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent, type MouseEvent } from "react";
 
 interface CategoryCollapseContentProps {
   item: CollapseItem<Category>;
@@ -16,7 +16,7 @@ interface CategoryCollapseContentProps {
   isOpen: boolean;
   hasChildren: boolean;
   onChange: (category: Category) => void;
-  onAddCategory: (category: Category) => void;
+  onAddCategory: (category: Category, depth: number) => void;
   onRemoveCategory: (category: Category) => void;
   api: CollapseAPI;
 }
@@ -32,11 +32,13 @@ export default function CategoryCollapseContent(
     onAddCategory,
     onRemoveCategory,
     api,
+    depth,
   } = props;
   const [category, setCategory] = useState(item.data);
   const [isEdit, setIsEdit] = useState(false);
 
-  const handleClickText = () => {
+  const handleClickText = (e: MouseEvent<HTMLSpanElement>) => {
+    e.stopPropagation();
     setIsEdit(true);
   };
 
@@ -63,12 +65,14 @@ export default function CategoryCollapseContent(
     onChange(category);
   };
 
-  const handleAddCategory = () => {
-    onAddCategory(category);
-    api.toggleItem(item.id);
+  const handleAddCategory = (e: MouseEvent<SVGSVGElement>) => {
+    e.stopPropagation();
+    onAddCategory(category, depth);
+    api.openItem(item.id);
   };
 
-  const handleRemoveCategory = () => {
+  const handleRemoveCategory = (e: MouseEvent<SVGSVGElement>) => {
+    e.stopPropagation();
     onRemoveCategory(category);
   };
 
@@ -81,6 +85,7 @@ export default function CategoryCollapseContent(
             onChange={(e) => handleChangeName(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
+            onClick={(e) => e.stopPropagation()}
           />
         ) : (
           <span
