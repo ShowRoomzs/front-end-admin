@@ -6,7 +6,12 @@ import { useParams } from "@/common/hooks/useParams";
 import { SELLER_REGISTRATION_COLUMNS } from "@/features/user/constants/columns";
 import { SELLER_REGISTRATION_FILTER_OPTIONS } from "@/features/user/constants/filter";
 import { useGetSellerRegistrationList } from "@/features/user/hooks/useGetSellerRegistrationList";
-import type { SellerRegistrationParams } from "@/features/user/services/sellerService";
+import type {
+  SellerRegistrationInfo,
+  SellerRegistrationParams,
+} from "@/features/user/services/sellerService";
+import { useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 
 const INITIAL_PARAMS: SellerRegistrationParams = {
   status: null,
@@ -19,6 +24,7 @@ const INITIAL_PARAMS: SellerRegistrationParams = {
 };
 
 export default function SellerRegistrationManagement() {
+  const navigate = useNavigate();
   const { params, localParams, update, updateLocalParam, reset } =
     useParams<SellerRegistrationParams>(INITIAL_PARAMS);
   const { data: sellerRegistrationList, isLoading } =
@@ -29,6 +35,13 @@ export default function SellerRegistrationManagement() {
       updateLocalParam("page", page);
     },
   });
+
+  const handleRowClick = useCallback(
+    (record: SellerRegistrationInfo) => {
+      navigate(`/market/registration/${record.sellerId}`);
+    },
+    [navigate]
+  );
 
   return (
     <ListViewWrapper>
@@ -44,6 +57,7 @@ export default function SellerRegistrationManagement() {
         data={sellerRegistrationList?.content ?? []}
         pageInfo={pageInfo}
         isLoading={isLoading}
+        onRowClick={handleRowClick}
       />
     </ListViewWrapper>
   );
