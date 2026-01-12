@@ -9,14 +9,14 @@ import {
 import { useGetCategory } from "@/features/category/hooks/useGetCategory";
 
 export interface CategoryValue {
-  main: number | null;
-  sub: number | null;
-  detail: number | null;
+  main: number | string | null;
+  sub: number | string | null;
+  detail: number | string | null;
 }
 
 interface FormCategorySelectorProps {
   onChange?: (data: CategoryValue) => void;
-  value?: CategoryValue | number;
+  value?: CategoryValue | number | string; // 단일 카테고리 값 전달 가능
 }
 
 const FormCategorySelector = forwardRef<
@@ -28,9 +28,7 @@ const FormCategorySelector = forwardRef<
   const { categoryMap } = useGetCategory();
 
   const getCategoryHierarchy = useCallback(
-    (
-      categoryId: number
-    ): { main: number | null; sub: number | null; detail: number | null } => {
+    (categoryId: number | string): CategoryValue => {
       if (!categoryMap) {
         return { main: null, sub: null, detail: null };
       }
@@ -67,9 +65,13 @@ const FormCategorySelector = forwardRef<
     [categoryMap]
   );
 
-  const [selectedMain, setSelectedMain] = useState<number | null>(null);
-  const [selectedSub, setSelectedSub] = useState<number | null>(null);
-  const [selectedDetail, setSelectedDetail] = useState<number | null>(null);
+  const [selectedMain, setSelectedMain] = useState<number | string | null>(
+    null
+  );
+  const [selectedSub, setSelectedSub] = useState<number | string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<number | string | null>(
+    null
+  );
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -81,7 +83,9 @@ const FormCategorySelector = forwardRef<
     }
 
     const hierarchy =
-      typeof value === "number" ? getCategoryHierarchy(value) : value;
+      typeof value === "number" || typeof value === "string"
+        ? getCategoryHierarchy(value)
+        : value;
 
     setSelectedMain(hierarchy.main);
     setSelectedSub(hierarchy.sub);
@@ -93,7 +97,9 @@ const FormCategorySelector = forwardRef<
     if (!isInitialized || !categoryMap) return;
 
     const newValue =
-      typeof value === "number" ? getCategoryHierarchy(value) : value;
+      typeof value === "number" || typeof value === "string"
+        ? getCategoryHierarchy(value)
+        : value;
 
     const isChanged =
       newValue?.main !== selectedMain ||

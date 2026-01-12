@@ -6,8 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 export interface CategoryMap {
-  byId: Map<number, Category>;
-  byParentId: Map<number, Array<Category>>;
+  byId: Map<number | string, Category>;
+  byParentId: Map<number | string, Array<Category>>;
   mainCategories: Category[];
 }
 
@@ -16,12 +16,11 @@ export function useGetCategory() {
     queryKey: ["categories"],
     queryFn: categoryService.getCategories,
   });
-
   const categoryMap = useMemo<CategoryMap | null>(() => {
     if (!query.data) return null;
 
-    const byId = new Map<number, Category>();
-    const byParentId = new Map<number, Array<Category>>();
+    const byId = new Map<number | string, Category>();
+    const byParentId = new Map<number | string, Array<Category>>();
     const mainCategories: Category[] = [];
 
     query.data.forEach((category) => {
