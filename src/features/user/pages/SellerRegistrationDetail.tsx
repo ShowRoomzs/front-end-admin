@@ -1,21 +1,55 @@
-import { useParams } from "react-router-dom";
+import { useCallback, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import Section from "@/common/components/Section/Section";
 import { Button } from "@/components/ui/button";
+import { useGetSellerRegistrationDetail } from "@/features/user/hooks/useGetSellerRegistrationDetail";
+import { formatDate } from "@/common/utils/formatDate";
+import ApprovalModal from "@/features/user/components/ApprovalModal";
+import RejectionModal from "@/features/user/components/RejectionModal";
+import {
+  sellerService,
+  type UpdateSellerRegistrationStatusData,
+} from "@/features/user/services/sellerService";
+import toast from "react-hot-toast";
 
 export default function SellerRegistrationDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { data: sellerRegistrationDetail } = useGetSellerRegistrationDetail(
+    Number(id)
+  );
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
+  const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
+
+  const handleCancel = () => {
+    navigate(-1);
+  };
+
+  const handleReject = useCallback(
+    async (data: UpdateSellerRegistrationStatusData) => {
+      await sellerService.updateSellerRegistrationStatus(Number(id), data);
+      setIsRejectionModalOpen(false);
+      toast.success("마켓 가입 신청이 반려되었습니다.");
+    },
+    [id]
+  );
+
+  const handleApproval = useCallback(
+    async (data: UpdateSellerRegistrationStatusData) => {
+      await sellerService.updateSellerRegistrationStatus(Number(id), data);
+      setIsApprovalModalOpen(false);
+      toast.success("마켓 가입 신청이 승인되었습니다.");
+    },
+    [id]
+  );
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">마켓 가입 신청 상세</h1>
-        <div className="flex gap-2">
-          <Button variant="outline">반려</Button>
-          <Button>승인</Button>
-        </div>
       </div>
 
-      <Section title="신청자 정보">
+      <Section title="계정 정보">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium text-gray-700">신청 ID</label>
@@ -23,74 +57,82 @@ export default function SellerRegistrationDetail() {
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">신청일</label>
-            <p className="mt-1 text-sm">2024.01.01</p>
+            <p className="mt-1 text-sm">
+              {formatDate(sellerRegistrationDetail?.createdAt as string)}
+            </p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">이메일</label>
-            <p className="mt-1 text-sm">seller@example.com</p>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">연락처</label>
-            <p className="mt-1 text-sm">010-1234-5678</p>
+            <p className="mt-1 text-sm">{sellerRegistrationDetail?.email}</p>
           </div>
         </div>
       </Section>
 
-      <Section title="사업자 정보">
+      <Section title="셀러 정보">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-sm font-medium text-gray-700">
-              사업자명
+              판매 담당자 이름
             </label>
-            <p className="mt-1 text-sm">주식회사 예시</p>
+            <p className="mt-1 text-sm">{sellerRegistrationDetail?.name}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">
-              사업자등록번호
+              판매 담당자 전화번호
             </label>
-            <p className="mt-1 text-sm">123-45-67890</p>
+            <p className="mt-1 text-sm">
+              {sellerRegistrationDetail?.phoneNumber}
+            </p>
+          </div>
+        </div>
+      </Section>
+      <Section title="마켓 정보">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700">마켓명</label>
+            <p className="mt-1 text-sm">
+              {sellerRegistrationDetail?.marketName}
+            </p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">대표자명</label>
-            <p className="mt-1 text-sm">홍길동</p>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">업종</label>
-            <p className="mt-1 text-sm">소매업</p>
+            <label className="text-sm font-medium text-gray-700">
+              고객센터 전화번호
+            </label>
+            <p className="mt-1 text-sm">{/* {sellerRegistrationDetail?.} */}</p>
           </div>
         </div>
       </Section>
+      <div className="flex gap-2 justify-end w-full">
+        <Button onClick={handleCancel} variant="outline">
+          취소
+        </Button>
+        <Button
+          disabled={sellerRegistrationDetail?.status !== "PENDING"}
+          variant="outline"
+          onClick={() => setIsRejectionModalOpen(true)}
+        >
+          반려
+        </Button>
+        <Button
+          disabled={sellerRegistrationDetail?.status !== "PENDING"}
+          onClick={() => setIsApprovalModalOpen(true)}
+        >
+          승인
+        </Button>
+      </div>
 
-      <Section title="첨부서류">
-        <div className="space-y-2">
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <span className="text-sm">사업자등록증.pdf</span>
-            <Button variant="outline" size="sm">
-              다운로드
-            </Button>
-          </div>
-          <div className="flex items-center justify-between p-3 border rounded-lg">
-            <span className="text-sm">통장사본.pdf</span>
-            <Button variant="outline" size="sm">
-              다운로드
-            </Button>
-          </div>
-        </div>
-      </Section>
-
-      <Section title="처리 이력">
-        <div className="space-y-3">
-          <div className="flex gap-3 text-sm">
-            <span className="text-gray-500">2024.01.01 10:00</span>
-            <span>신청 접수</span>
-          </div>
-          <div className="flex gap-3 text-sm">
-            <span className="text-gray-500">2024.01.02 14:30</span>
-            <span>검토 중</span>
-          </div>
-        </div>
-      </Section>
+      <ApprovalModal
+        open={isApprovalModalOpen}
+        onOpenChange={setIsApprovalModalOpen}
+        recipientEmail={sellerRegistrationDetail?.email || ""}
+        onApproval={handleApproval}
+      />
+      <RejectionModal
+        onReject={handleReject}
+        open={isRejectionModalOpen}
+        onOpenChange={setIsRejectionModalOpen}
+        recipientEmail={sellerRegistrationDetail?.email || ""}
+      />
     </div>
   );
 }
-

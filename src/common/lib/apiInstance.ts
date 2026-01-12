@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@/common/constants";
 import { cookie } from "@/common/lib/cookie";
 import { authService } from "@/features/auth/services/authService";
 import axios from "axios";
+import toast from "react-hot-toast";
 
 export const apiInstance = axios.create({
   baseURL: `${import.meta.env.VITE_API_URL}/v1`,
@@ -28,6 +29,7 @@ apiInstance.interceptors.response.use(
         return apiInstance(error.config);
       }
     }
+    toast.error(error.response.data.message);
     return Promise.reject(error);
   }
 );

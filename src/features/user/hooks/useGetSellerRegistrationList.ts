@@ -8,6 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 export function useGetSellerRegistrationList(params: SellerRegistrationParams) {
   return useQuery({
     queryKey: [SELLER_REGISTRATION_LIST_QUERY_KEY, params],
-    queryFn: sellerService.getSellerRegistrationList,
+    queryFn: () => sellerService.getSellerRegistrationList(params),
   });
 }

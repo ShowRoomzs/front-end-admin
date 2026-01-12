@@ -30,14 +30,46 @@ export interface SellerRegistrationInfo {
   status: SellerRegistrationStatus;
 }
 
+export type RejectionReason =
+  | "BUSINESS_INFO_UNVERIFIED"
+  | "CRITERIA_NOT_MET"
+  | "INAPPROPRIATE_MARKET_NAME"
+  | "OTHER";
 type SellerRegistrationResponse = PageResponse<SellerRegistrationInfo>;
 
+export interface UpdateSellerRegistrationStatusData {
+  status: Exclude<SellerRegistrationStatus, "PENDING" | null>;
+  rejectionReasonType?: RejectionReason;
+  rejectionReasonDetail?: string;
+}
+
 export const sellerService = {
-  getSellerRegistrationList: async () => {
+  getSellerRegistrationList: async (params: SellerRegistrationParams) => {
     const { data: response } =
       await apiInstance.get<SellerRegistrationResponse>(
-        "/admin/sellers/applications"
+        "/admin/sellers/applications",
+        {
+          params,
+        }
       );
+
+    return response;
+  },
+  getSellerRegistrationDetail: async (sellerId: number) => {
+    const { data: response } = await apiInstance.get<SellerRegistrationInfo>(
+      `/admin/sellers/${sellerId}`
+    );
+
+    return response;
+  },
+  updateSellerRegistrationStatus: async (
+    sellerId: number,
+    data: UpdateSellerRegistrationStatusData
+  ) => {
+    const { data: response } = await apiInstance.patch(
+      `/admin/sellers/${sellerId}/status`,
+      data
+    );
 
     return response;
   },
