@@ -4,9 +4,7 @@ import type { Option } from "@/common/types/option";
 import type { BaseParams } from "@/common/types/page";
 import { Button } from "@/components/ui/button";
 import { useCallback, useMemo } from "react";
-import { FilterItem } from "./FilterItem";
-
-type FilterType = "radio" | "category" | "input" | "select";
+import { FilterItem, type FilterType } from "./FilterItem";
 
 export type FilterOption<P> = {
   [K in keyof P]: {
@@ -16,6 +14,7 @@ export type FilterOption<P> = {
 
     options?: Array<Option<string | null>>;
     placeholder?: string;
+    endKey?: keyof P;
   };
 }[keyof P];
 export type FilterOptionGroup<P> = Record<string, Array<FilterOption<P>>>;
@@ -47,6 +46,14 @@ export default function FilterCard<P extends BaseParams>(
               };
               const { detail, main, sub } = categoryValue;
               onChange(option.key, (detail ?? sub ?? main) as P[keyof P]);
+            }
+            if (option.type === "dateRange") {
+              const dateRangeValue = value as Array<string>;
+              onChange(option.key, dateRangeValue[0] as P[keyof P]);
+              onChange(
+                option.endKey as keyof P,
+                dateRangeValue[1] as P[keyof P]
+              );
             } else {
               onChange(option.key, value);
             }
@@ -60,14 +67,19 @@ export default function FilterCard<P extends BaseParams>(
     (option: FilterOption<P>) => {
       const handleChange = handleChangeMap.get(option.key);
       if (!handleChange) return null;
-
+      const value =
+        option.type === "dateRange"
+          ? [params[option.key as keyof P], params[option.endKey as keyof P]]
+          : params[option.key];
       return (
         <FilterItem
           key={String(option.key)}
           type={option.type}
           fieldKey={String(option.key)}
-          value={params[option.key]}
-          onChange={handleChange}
+          value={value}
+          onChange={
+            handleChange as (value: P[keyof P] | Array<P[keyof P]>) => void
+          }
           options={option.options}
           placeholder={option.placeholder}
           onSubmit={onSubmit}
@@ -81,7 +93,7 @@ export default function FilterCard<P extends BaseParams>(
     (label: string, options: Array<FilterOption<P>>) => {
       return (
         <FormField key={label} label={label}>
-          <div className="flex flex-row gap-2 items-center">
+          <div className="flex flex-row gap-2 items-center min-h-9">
             {options.map(renderContent)}
           </div>
         </FormField>
@@ -92,7 +104,7 @@ export default function FilterCard<P extends BaseParams>(
 
   return (
     <Section className="shrink-0">
-      <div className="space-y-4">
+      <div className="space-y-3">
         {Object.entries(options).map(([label, options]) =>
           renderField(label, options)
         )}

@@ -8,14 +8,20 @@ import type { Option } from "@/common/types/option";
 import { Label } from "@/components/ui/label";
 import { RadioGroupItem } from "@/components/ui/radio-group";
 import { RadioGroup } from "@radix-ui/react-radio-group";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 
-type FilterType = "radio" | "category" | "input" | "select";
+export type FilterType =
+  | "radio"
+  | "category"
+  | "input"
+  | "select"
+  | "dateRange";
 
 interface FilterItemProps<T> {
   type: FilterType;
   fieldKey: string;
-  value: T;
-  onChange: (value: T) => void;
+  value: T | Array<T>;
+  onChange: (value: T | Array<T>) => void;
   options?: Array<Option<string | null>>;
   placeholder?: string;
   onSubmit?: () => void;
@@ -77,6 +83,18 @@ function FilterItemComponent<T>(props: FilterItemProps<T>) {
           placeholder={placeholder}
           onChange={onChange as (value: string) => void}
           value={value as string}
+        />
+      );
+    case "dateRange":
+      return (
+        <DateRangePicker
+          startDate={(value as Array<string>)[0]}
+          endDate={(value as Array<string>)[1]}
+          startPlaceholder="시작일"
+          endPlaceholder="종료일"
+          onChange={(startDate, endDate) => {
+            onChange([startDate, endDate] as unknown as Array<T>);
+          }}
         />
       );
   }

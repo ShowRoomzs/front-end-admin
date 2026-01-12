@@ -11,7 +11,7 @@ import { Loader2Icon } from "lucide-react";
 import { useSyncHorizontalScroll } from "@/common/hooks/useSyncHorizontalScroll";
 import { getColumnKeyWithLabel } from "@/common/components/Table/config";
 
-const MAX_TABLE_WIDTH = 1760;
+const MAX_TABLE_WIDTH = 1880; // 최대 테이블 너비
 
 export default function Table<T, K extends keyof T = keyof T>(
   props: TableProps<T, K>
@@ -188,7 +188,8 @@ export default function Table<T, K extends keyof T = keyof T>(
     if (
       !headerTableRef.current ||
       !bodyTableRef.current ||
-      Object.values(colWidths).length > 0
+      Object.values(colWidths).length > 0 ||
+      isLoading
     ) {
       return;
     }
@@ -203,20 +204,26 @@ export default function Table<T, K extends keyof T = keyof T>(
       const headerWidth = headerWidths[colKey];
       const bodyWidth = bodyWidths[colKey];
 
+      // 우선순위
+      // 1. columns 상수에서 지정한 col.width
+      // 2. bodyWidth와 headerWidth 중 큰 값
       const maxWidth = Math.max(bodyWidth, headerWidth);
       measuredWidths[colKey] = col.width ?? maxWidth;
     });
 
+    // 너비 조정되기 전 초기 전체 width
     const totalWidth = Object.values(measuredWidths).reduce(
       (sum, w) => sum + w,
       0
     );
 
+    // col.width가 있는 컬럼 너비의 합
     const absoluteWidths = columns.reduce(
       (abs, col) => (col.width ? abs + col.width : abs),
       0
     );
 
+    // 전부 width가 있는 경우 뒷부분 채워주는 가상 컬럼 너비 계산
     if (totalWidth === absoluteWidths) {
       const virtualColWidth = MAX_TABLE_WIDTH - absoluteWidths;
       setColWidths((prev) => ({ ...prev, virtual: virtualColWidth }));
@@ -229,13 +236,15 @@ export default function Table<T, K extends keyof T = keyof T>(
           return;
         }
         const colKey = getColumnKeyWithLabel(col);
+        // 비율 = 현재 컬럼 너비 / 조정되어야하는 전체 width(절대값을 갖는 컬럼 제외한 나머지 컬럼의 너비)
         const ratio = measuredWidths[colKey] / (totalWidth - absoluteWidths);
 
+        // 조정된 컬럼 너비 = 비율 * 분배되어야할 전체 width(절대값을 갖는 컬럼 제외한 나머지 컬럼의 너비)
         measuredWidths[colKey] = ratio * (MAX_TABLE_WIDTH - absoluteWidths);
       });
     }
     setColWidths(measuredWidths);
-  }, [colWidths, columns, getRowWidths]);
+  }, [colWidths, columns, getRowWidths, isLoading]);
 
   useEffect(() => {
     handleMeasureWidths();
@@ -264,6 +273,7 @@ export default function Table<T, K extends keyof T = keyof T>(
 
   const renderContent = useCallback(() => {
     if (!hasData) {
+      // 데이터 없음 and 로딩 중 : Spinner
       if (isLoading) {
         return (
           <div
@@ -276,6 +286,7 @@ export default function Table<T, K extends keyof T = keyof T>(
           </div>
         );
       }
+      // 데이터 없음 and 로딩 완료 : EmptyView
       return (
         <div className="absolute flex items-center justify-center h-full w-full">
           <div className="text-sm text-gray-500">데이터가 없습니다</div>

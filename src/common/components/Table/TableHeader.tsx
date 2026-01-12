@@ -35,6 +35,7 @@ export default function TableHeader<T>(props: TableHeaderProps<T>) {
       if (currentOrder === "desc") {
         onSortChange(key, "asc");
       } else if (currentOrder === "asc") {
+        // 초기화
         onSortChange(defaultSortKey, defaultSortOrder);
       } else {
         onSortChange(key, "desc");
