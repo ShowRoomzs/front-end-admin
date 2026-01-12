@@ -11,7 +11,7 @@ interface LoginResponse {
 export const authService = {
   login: async (email: string, password: string) => {
     const { data: response } = await authInstance.post<LoginResponse>(
-      "/seller/auth/login", // TODO : endpoint 수정 필요
+      "/admin/auth/login",
       {
         email,
         password,
@@ -22,7 +22,7 @@ export const authService = {
   },
   refresh: async (refreshToken: string) => {
     const { data: response } = await authInstance.post<LoginResponse>(
-      "/seller/auth/refresh",
+      "/admin/auth/refresh",
       {
         refreshToken,
       }
