@@ -10,7 +10,6 @@ export type FilterOption<P> = {
   [K in keyof P]: {
     type: FilterType;
     key: K;
-    subFilterOption?: FilterOption<P>;
 
     options?: Array<Option<string | null>>;
     placeholder?: string;

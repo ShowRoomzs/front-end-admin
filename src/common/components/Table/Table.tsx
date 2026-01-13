@@ -114,6 +114,7 @@ export default function Table<T, K extends keyof T = keyof T>(
         {
           key: "virtual" as TableKey,
           label: "",
+          render: () => null,
         },
       ];
     }

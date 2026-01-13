@@ -1,31 +1,17 @@
 import type { Columns } from "@/common/components/Table/types";
 import { formatDate } from "@/common/utils/formatDate";
-import { SELLER_REGISTRATION_STATUS } from "@/features/user/constants/params";
-import type { SellerRegistrationInfo } from "@/features/user/services/sellerService";
-import type { ReactElement } from "react";
-
-const getStatusBadge = (status: string): ReactElement => {
-  const statusText =
-    SELLER_REGISTRATION_STATUS[
-      status as keyof typeof SELLER_REGISTRATION_STATUS
-    ];
-
-  const statusStyles = {
-    PENDING: "bg-yellow-100 text-yellow-800 border-yellow-300",
-    APPROVED: "bg-emerald-100 text-emerald-800 border-emerald-300",
-    REJECTED: "bg-red-100 text-red-800 border-red-300",
-  };
-
-  const style = statusStyles[status as keyof typeof statusStyles];
-
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${style}`}
-    >
-      {statusText}
-    </span>
-  );
-};
+import type {
+  CommonUserInfo,
+  ProviderType,
+  UserStatusType,
+} from "@/features/user/services/commonUserService";
+import type {
+  SellerRegistrationInfo,
+  SellerRegistrationStatus,
+} from "@/features/user/services/sellerService";
+import SocialBadge from "@/features/user/components/SocialBadge/SocialBadge";
+import RegistrationStatusBadge from "@/features/user/components/RegistrationStatusBadge/RegistrationStatusBadge";
+import UserStatusBadge from "@/features/user/components/UserStatusBadge/UserStatusBadge";
 
 export const SELLER_REGISTRATION_COLUMNS: Columns<SellerRegistrationInfo> = [
   {
@@ -51,6 +37,52 @@ export const SELLER_REGISTRATION_COLUMNS: Columns<SellerRegistrationInfo> = [
     key: "status",
     label: "상태",
     align: "center",
-    render: (v) => getStatusBadge(v as string),
+    render: (v) => (
+      <RegistrationStatusBadge
+        status={v as Exclude<SellerRegistrationStatus, null>}
+      />
+    ),
+  },
+];
+
+export const COMMON_USER_COLUMNS: Columns<CommonUserInfo> = [
+  {
+    key: "userId",
+    label: "UID",
+    width: 100,
+    align: "center",
+  },
+  {
+    key: "email",
+    label: "이메일",
+    width: 400,
+  },
+  {
+    key: "providerType",
+    label: "가입 채널",
+    render: (v) => <SocialBadge social={v as Exclude<ProviderType, null>} />,
+    align: "center",
+    width: 100,
+  },
+  {
+    key: "createdAt",
+    label: "가입일",
+    render: (v) => formatDate(v as string),
+    width: 200,
+  },
+  {
+    key: "lastLoginAt",
+    label: "최근 접속일",
+    render: (v) => formatDate(v as string),
+    width: 200,
+  },
+  {
+    key: "status",
+    label: "활동상태",
+    render: (v) => (
+      <UserStatusBadge status={v as Exclude<UserStatusType, null>} />
+    ),
+    align: "center",
+    width: 100,
   },
 ];
