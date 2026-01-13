@@ -4,8 +4,8 @@ import Section from "@/common/components/Section/Section";
 import { Button } from "@/components/ui/button";
 import { useGetSellerRegistrationDetail } from "@/features/user/hooks/useGetSellerRegistrationDetail";
 import { formatDate } from "@/common/utils/formatDate";
-import ApprovalModal from "@/features/user/components/ApprovalModal";
-import RejectionModal from "@/features/user/components/RejectionModal";
+import ApprovalModal from "@/features/user/components/ApprovalModal/ApprovalModal";
+import RejectionModal from "@/features/user/components/RejectionModal/RejectionModal";
 import {
   sellerService,
   type UpdateSellerRegistrationStatusData,
