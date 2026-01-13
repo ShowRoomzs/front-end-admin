@@ -11,6 +11,8 @@ import {
   type UpdateSellerRegistrationStatusData,
 } from "@/features/user/services/sellerService";
 import toast from "react-hot-toast";
+import { queryClient } from "@/common/lib/queryClient";
+import { SELLER_REGISTRATION_DETAIL_QUERY_KEY } from "@/features/user/constants/queryKey";
 
 export default function SellerRegistrationDetail() {
   const { id } = useParams<{ id: string }>();
@@ -25,22 +27,30 @@ export default function SellerRegistrationDetail() {
     navigate(-1);
   };
 
+  const cleanUp = useCallback(() => {
+    queryClient.invalidateQueries({
+      queryKey: [SELLER_REGISTRATION_DETAIL_QUERY_KEY, Number(id)],
+    });
+  }, [id]);
+
   const handleReject = useCallback(
     async (data: UpdateSellerRegistrationStatusData) => {
       await sellerService.updateSellerRegistrationStatus(Number(id), data);
+      cleanUp();
       setIsRejectionModalOpen(false);
       toast.success("마켓 가입 신청이 반려되었습니다.");
     },
-    [id]
+    [cleanUp, id]
   );
 
   const handleApproval = useCallback(
     async (data: UpdateSellerRegistrationStatusData) => {
       await sellerService.updateSellerRegistrationStatus(Number(id), data);
+      cleanUp();
       setIsApprovalModalOpen(false);
       toast.success("마켓 가입 신청이 승인되었습니다.");
     },
-    [id]
+    [cleanUp, id]
   );
 
   return (
