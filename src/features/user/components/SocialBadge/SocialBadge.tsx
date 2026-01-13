@@ -22,14 +22,12 @@ export default function SocialBadge(props: SocialBadgeProps) {
         return <img src={appleIcon} alt="apple" className="w-4 h-4" />;
       case "GOOGLE":
         return <img src={googleIcon} alt="google" className="w-4 h-4" />;
-      default:
-        return "-";
     }
   };
   return (
     <div className="flex flex-row gap-2 items-center">
       {getIcon(social)}
-      <span>{SOCIAL_PROVIDER_TYPE[social]}</span>
+      <span>{SOCIAL_PROVIDER_TYPE[social] || "-"}</span>
     </div>
   );
 }
