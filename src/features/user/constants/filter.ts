@@ -11,7 +11,7 @@ export const COMMON_USER_FILTER_OPTIONS: FilterOptionGroup<CommonUserListParams>
     "가입 채널": [
       {
         key: "providerType",
-        type: "radio",
+        type: "select",
         options: parseMapToOptions(SOCIAL_PROVIDER_TYPE, true),
       },
     ],
