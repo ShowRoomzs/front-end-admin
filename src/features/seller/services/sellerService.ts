@@ -3,7 +3,7 @@ import type { BaseParams, PageResponse } from "@/common/types";
 import type {
   SELLER_REGISTRATION_KEYWORD_TYPE,
   SELLER_REGISTRATION_STATUS,
-} from "@/features/user/constants/params";
+} from "@/features/seller/constants/params";
 
 export type SellerRegistrationStatus =
   | keyof typeof SELLER_REGISTRATION_STATUS

@@ -2,17 +2,17 @@ import { useCallback, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Section from "@/common/components/Section/Section";
 import { Button } from "@/components/ui/button";
-import { useGetSellerRegistrationDetail } from "@/features/user/hooks/useGetSellerRegistrationDetail";
+import { useGetSellerRegistrationDetail } from "@/features/seller/hooks/useGetSellerRegistrationDetail";
 import { formatDate } from "@/common/utils/formatDate";
 import ApprovalModal from "@/features/user/components/ApprovalModal/ApprovalModal";
 import RejectionModal from "@/features/user/components/RejectionModal/RejectionModal";
 import {
   sellerService,
   type UpdateSellerRegistrationStatusData,
-} from "@/features/user/services/sellerService";
+} from "@/features/seller/services/sellerService";
 import toast from "react-hot-toast";
 import { queryClient } from "@/common/lib/queryClient";
-import { SELLER_REGISTRATION_DETAIL_QUERY_KEY } from "@/features/user/constants/queryKey";
+import { SELLER_REGISTRATION_DETAIL_QUERY_KEY } from "@/features/seller/constants/queryKey";
 
 export default function SellerRegistrationDetail() {
   const { id } = useParams<{ id: string }>();

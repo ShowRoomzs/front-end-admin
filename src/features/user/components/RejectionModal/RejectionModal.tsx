@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type {
   RejectionReason,
   UpdateSellerRegistrationStatusData,
-} from "@/features/user/services/sellerService";
+} from "@/features/seller/services/sellerService";
 
 interface RejectionModalProps {
   open: boolean;

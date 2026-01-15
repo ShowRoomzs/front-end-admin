@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { UpdateSellerRegistrationStatusData } from "@/features/user/services/sellerService";
+import type { UpdateSellerRegistrationStatusData } from "@/features/seller/services/sellerService";
 
 interface ApprovalModalProps {
   open: boolean;

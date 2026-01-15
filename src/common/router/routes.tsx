@@ -4,8 +4,8 @@ import LoginPage from "@/features/auth/pages/LoginPage";
 import PlaceholderPage from "@/common/components/PlaceholderPage";
 import CategoryManagement from "@/features/category/pages/CategoryManagement";
 import CommonUserManagement from "@/features/user/pages/CommonUserManagement";
-import SellerRegistrationManagement from "@/features/user/pages/SellerRegistrationManagement";
-import SellerRegistrationDetail from "@/features/user/pages/SellerRegistrationDetail";
+import SellerRegistrationManagement from "@/features/seller/pages/SellerRegistrationManagement";
+import SellerRegistrationDetail from "@/features/seller/pages/SellerRegistrationDetail";
 
 export const authRoutes: Array<RouteObject> = [
   {

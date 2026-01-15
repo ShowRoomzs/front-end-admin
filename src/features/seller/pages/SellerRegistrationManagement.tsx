@@ -3,13 +3,13 @@ import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper
 import Table from "@/common/components/Table/Table";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
-import { SELLER_REGISTRATION_COLUMNS } from "@/features/user/constants/columns";
-import { SELLER_REGISTRATION_FILTER_OPTIONS } from "@/features/user/constants/filter";
-import { useGetSellerRegistrationList } from "@/features/user/hooks/useGetSellerRegistrationList";
+import { SELLER_REGISTRATION_COLUMNS } from "@/features/seller/constants/columns";
+import { SELLER_REGISTRATION_FILTER_OPTIONS } from "@/features/seller/constants/filter";
+import { useGetSellerRegistrationList } from "@/features/seller/hooks/useGetSellerRegistrationList";
 import type {
   SellerRegistrationInfo,
   SellerRegistrationParams,
-} from "@/features/user/services/sellerService";
+} from "@/features/seller/services/sellerService";
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 

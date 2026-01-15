@@ -1,5 +1,5 @@
-import { SELLER_REGISTRATION_STATUS } from "@/features/user/constants/params";
-import type { SellerRegistrationStatus } from "@/features/user/services/sellerService";
+import { SELLER_REGISTRATION_STATUS } from "@/features/seller/constants/params";
+import type { SellerRegistrationStatus } from "@/features/seller/services/sellerService";
 
 interface StatusBadgeProps {
   status: Exclude<SellerRegistrationStatus, null>;
