@@ -6,6 +6,7 @@ import CategoryManagement from "@/features/category/pages/CategoryManagement";
 import CommonUserManagement from "@/features/user/pages/CommonUserManagement";
 import SellerRegistrationManagement from "@/features/seller/pages/SellerRegistrationManagement";
 import SellerRegistrationDetail from "@/features/seller/pages/SellerRegistrationDetail";
+import SellerUserManagement from "@/features/seller/pages/SellerUserManagement";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -59,7 +60,7 @@ export const mainRoutes: Array<RouteObject> = [
           },
           {
             path: "account",
-            element: <PlaceholderPage title="마켓 계정 관리" />,
+            element: <SellerUserManagement />,
           },
           {
             path: "product",

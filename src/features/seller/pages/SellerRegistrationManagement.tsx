@@ -18,7 +18,7 @@ const INITIAL_PARAMS: SellerRegistrationParams = {
   startDate: "",
   endDate: "",
   page: 1,
-  size: 10,
+  size: 20,
   keyword: "",
   keywordType: "SELLER_ID",
 };

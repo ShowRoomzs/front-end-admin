@@ -43,6 +43,22 @@ export interface UpdateSellerRegistrationStatusData {
   rejectionReasonDetail?: string;
 }
 
+export interface SellerUserListParams extends BaseParams {
+  mainCategory: string;
+  marketName: string;
+}
+
+export interface SellerUserInfo {
+  marketId: number;
+  marketName: string;
+  mainCategory: string;
+  sellerName: string;
+  phoneNumber: string;
+  productCount: number;
+  createdAt: string;
+}
+export type SellerUserListResponse = PageResponse<SellerUserInfo>;
+
 export const sellerService = {
   getSellerRegistrationList: async (params: SellerRegistrationParams) => {
     const { data: response } =
@@ -69,6 +85,16 @@ export const sellerService = {
     const { data: response } = await apiInstance.patch(
       `/admin/sellers/${sellerId}/status`,
       data
+    );
+
+    return response;
+  },
+  getSellerUserList: async (params: SellerUserListParams) => {
+    const { data: response } = await apiInstance.get<SellerUserListResponse>(
+      "/admin/markets",
+      {
+        params,
+      }
     );
 
     return response;

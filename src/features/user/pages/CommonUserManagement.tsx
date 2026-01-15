@@ -10,7 +10,7 @@ import type { CommonUserListParams } from "@/features/user/services/commonUserSe
 
 const INITIAL_PARAMS: CommonUserListParams = {
   page: 1,
-  size: 10,
+  size: 20,
   providerType: null,
   status: null,
   startDate: "",
