@@ -18,6 +18,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { NO_VALUE_FILTERS } from "@/features/filter/components/FilterCollapse/config";
 
 interface FilterCollapseContentProps {
   item: CollapseItem<FilterItem>;
@@ -59,6 +60,7 @@ export default function FilterCollapseContent(
   };
 
   const handleChangeType = (value: FilterUIType | null) => {
+    // TODO : NO_VALUE_FILTERS 포함된 아이템이라면 자식 노드 제거
     if (value !== null) {
       onChange({ ...item.data, type: value } as FilterItem);
     }
@@ -133,22 +135,25 @@ export default function FilterCollapseContent(
           className="min-w-[100px]"
         />
       </div>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PlusIcon
-            width={16}
-            height={16}
-            className="cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAddValue();
-            }}
-          />
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>필터 항목 추가</p>
-        </TooltipContent>
-      </Tooltip>
+      {!NO_VALUE_FILTERS.includes(item.data.type) && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PlusIcon
+              width={16}
+              height={16}
+              className="cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddValue();
+              }}
+            />
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>필터 항목 추가</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
+
       <Tooltip>
         <TooltipTrigger asChild>
           <Trash
