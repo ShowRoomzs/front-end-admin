@@ -12,6 +12,12 @@ import type {
   FilterUIType,
 } from "@/features/filter/types/filter";
 import { useEffect, useState } from "react";
+import { PlusIcon, Trash } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface FilterCollapseContentProps {
   item: CollapseItem<FilterItem>;
@@ -24,7 +30,7 @@ interface FilterCollapseContentProps {
 export default function FilterCollapseContent(
   props: FilterCollapseContentProps
 ) {
-  const { item, isOpen, hasChildren, onChange } = props;
+  const { item, isOpen, hasChildren, onChange, api } = props;
 
   const [label, setLabel] = useState(item.data?.label ?? "");
   const [key, setKey] = useState(item.data?.key ?? "");
@@ -65,6 +71,21 @@ export default function FilterCollapseContent(
   const handleChangeIsActive = (checked: boolean) => {
     setIsActive(checked);
     onChange({ ...item.data, isActive: checked } as FilterItem);
+  };
+
+  const handleAddValue = () => {
+    const currentValues = item.data?.values ?? [];
+    const newValueId = Math.max(0, ...currentValues.map((v) => v.value), 0) + 1;
+    const newValue = {
+      value: newValueId,
+      label: `새로운 필터#${newValueId}`,
+      extra: null,
+    };
+    onChange({
+      ...item.data,
+      values: [...currentValues, newValue],
+    } as FilterItem);
+    api.openItem(item.id);
   };
 
   return (
@@ -112,6 +133,35 @@ export default function FilterCollapseContent(
           className="min-w-[100px]"
         />
       </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PlusIcon
+            width={16}
+            height={16}
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAddValue();
+            }}
+          />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>필터 항목 추가</p>
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Trash
+            width={16}
+            height={16}
+            className="cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>필터 항목 삭제</p>
+        </TooltipContent>
+      </Tooltip>
       {hasChildren && isOpen !== undefined && <ChevronIcon isOpen={isOpen} />}
     </div>
   );

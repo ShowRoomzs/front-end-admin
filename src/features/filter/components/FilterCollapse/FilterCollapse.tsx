@@ -5,14 +5,13 @@ import type {
   FilterCondition,
   FilterUIType,
 } from "@/features/filter/types/filter";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export interface FilterItem {
   id: number;
   key: string;
   label: string;
   type: FilterUIType;
-  source: string;
   isActive: boolean;
   condition: FilterCondition;
   values?: Array<{
@@ -62,7 +61,13 @@ export default function FilterCollapse(props: FilterCollapseProps) {
     return result;
   }, [items]);
 
-  console.log("collapseItems", collapseItems);
+  const handleChange = useCallback(
+    (item: FilterItem) => {
+      onChange?.(item);
+    },
+    [onChange]
+  );
+
   return (
     <Collapse
       draggable
@@ -71,7 +76,7 @@ export default function FilterCollapse(props: FilterCollapseProps) {
       maxDepth={2}
       onOpenKeysChange={setOpenKeys}
       renderItem={(props, api) => (
-        <FilterCollapseContent {...props} api={api} onChange={onChange} />
+        <FilterCollapseContent {...props} api={api} onChange={handleChange} />
       )}
       renderLeafItem={(props, api) => (
         <FilterCollapseLeaf {...props} api={api} />
