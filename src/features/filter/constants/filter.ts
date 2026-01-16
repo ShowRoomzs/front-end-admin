@@ -45,3 +45,14 @@ export const FILTER_CONDITION_OPTIONS: Array<Option<FilterCondition>> = [
     label: "NULL",
   },
 ];
+
+export const FILTER_SOURCE_OPTIONS: Array<Option<string>> = [
+  {
+    value: "CATEGORY",
+    label: "CATEGORY",
+  },
+  {
+    value: "SYSTEM",
+    label: "SYSTEM",
+  },
+];
