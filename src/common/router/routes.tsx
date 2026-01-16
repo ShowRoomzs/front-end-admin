@@ -7,6 +7,7 @@ import CommonUserManagement from "@/features/user/pages/CommonUserManagement";
 import SellerRegistrationManagement from "@/features/seller/pages/SellerRegistrationManagement";
 import SellerRegistrationDetail from "@/features/seller/pages/SellerRegistrationDetail";
 import SellerUserManagement from "@/features/seller/pages/SellerUserManagement";
+import FilterManagement from "@/features/filter/pages/FilterManagement";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -74,12 +75,12 @@ export const mainRoutes: Array<RouteObject> = [
         element: <CategoryManagement />,
       },
       {
-        path: "role",
-        element: <PlaceholderPage title="role 관리" />,
+        path: "filter",
+        element: <FilterManagement />,
       },
       {
-        path: "filter",
-        element: <PlaceholderPage title="필터 관리" />,
+        path: "role",
+        element: <PlaceholderPage title="role 관리" />,
       },
     ],
   },

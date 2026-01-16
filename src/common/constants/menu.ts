@@ -51,14 +51,14 @@ export const ADMIN_MENU: MenuConfig = {
       path: "/category",
     },
     {
-      id: "role",
-      label: "role 관리",
-      path: "/role",
-    },
-    {
       id: "filter",
       label: "필터 관리",
       path: "/filter",
+    },
+    {
+      id: "role",
+      label: "role 관리",
+      path: "/role",
     },
   ],
 };
