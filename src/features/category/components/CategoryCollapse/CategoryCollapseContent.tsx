@@ -6,8 +6,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import AddFilterModal from "@/features/category/components/AddFilterModal/AddFilterModal";
 import type { Category } from "@/features/category/services/categoryService";
-import { PlusIcon, TrashIcon } from "lucide-react";
+import type { FilterItem } from "@/features/filter/components/FilterCollapse/FilterCollapse";
+import { FunnelPlus, PlusIcon, TrashIcon } from "lucide-react";
 import { useState, type KeyboardEvent, type MouseEvent } from "react";
 
 interface CategoryCollapseContentProps {
@@ -42,6 +44,7 @@ export default function CategoryCollapseContent(
     depth,
     isLeaf = false,
   } = props;
+  const [isAddFilterModalOpen, setIsAddFilterModalOpen] = useState(false);
   const [category, setCategory] = useState(item.data);
   const [isEdit, setIsEdit] = useState(false);
 
@@ -84,8 +87,22 @@ export default function CategoryCollapseContent(
     onRemoveCategory(category);
   };
 
+  const handleClickAddFilter = (e: MouseEvent<SVGSVGElement>) => {
+    e.stopPropagation();
+    setIsAddFilterModalOpen(true);
+  };
+
+  const handleAddFilter = (filters: Array<FilterItem>) => {
+    console.log(filters);
+  };
+
   return (
     <div className="flex flex-row items-center gap-2 w-full">
+      <AddFilterModal
+        open={isAddFilterModalOpen}
+        onOpenChange={setIsAddFilterModalOpen}
+        onAddFilter={handleAddFilter}
+      />
       <div className="flex-1">
         {isEdit ? (
           <Input
@@ -107,6 +124,20 @@ export default function CategoryCollapseContent(
       </div>
 
       <div className="flex flex-row items-center gap-2">
+        {depth > 1 && (
+          <Tooltip>
+            <TooltipTrigger>
+              <FunnelPlus
+                onClick={handleClickAddFilter}
+                className="w-4 h-4 cursor-pointer"
+              />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>필터 연결</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         {!isLeaf && (
           <Tooltip>
             <TooltipTrigger>

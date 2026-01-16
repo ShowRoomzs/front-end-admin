@@ -20,6 +20,7 @@ import { queryClient } from "@/common/lib/queryClient";
 export default function CategoryManagement() {
   const { data: categories } = useGetCategory();
   const [localCategories, setLocalCategories] = useState<Array<Category>>([]);
+
   const [lastIdMapping, setLastIdMapping] =
     useState<Map<number | string, number | string>>();
 
