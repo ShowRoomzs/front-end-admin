@@ -12,7 +12,7 @@ type CategoryResponse = Array<Category>;
 export const categoryService = {
   getCategories: async () => {
     const { data: response } = await apiInstance.get<CategoryResponse>(
-      "/admin/categories"
+      "/common/categories"
     );
 
     return response;
