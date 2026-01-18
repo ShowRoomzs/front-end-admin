@@ -148,7 +148,7 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
         .filter(
           (item) =>
             (item.parentId ?? null)?.toString() ===
-              (category.parentId ?? null)?.toString() &&
+            (category.parentId ?? null)?.toString() &&
             item.categoryId !== category.categoryId
         )
         .sort((a, b) => a.order - b.order);
