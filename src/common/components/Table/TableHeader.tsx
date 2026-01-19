@@ -55,8 +55,8 @@ export default function TableHeader<T>(props: TableHeaderProps<T>) {
             col.align === "center"
               ? "justify-center"
               : col.align === "right"
-              ? "justify-end"
-              : "justify-start";
+                ? "justify-end"
+                : "justify-start";
 
           const isSortable = col.sortable && onSortChange;
           const justify = col.justify || (isSortable && "between");
@@ -74,6 +74,7 @@ export default function TableHeader<T>(props: TableHeaderProps<T>) {
                 return "";
             }
           };
+          console.log("col");
           const key = getColumnKey(col, true);
           return (
             <th

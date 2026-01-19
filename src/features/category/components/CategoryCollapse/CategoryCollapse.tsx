@@ -148,7 +148,7 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
         .filter(
           (item) =>
             (item.parentId ?? null)?.toString() ===
-            (category.parentId ?? null)?.toString() &&
+              (category.parentId ?? null)?.toString() &&
             item.categoryId !== category.categoryId
         )
         .sort((a, b) => a.order - b.order);
@@ -173,9 +173,15 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
           );
           return updatedSibling || item;
         });
+      console.log('ㅁㄴㅇㄹ');
 
+      
       // 변경사항을 먼저 onChange로 전달
-      onChange(updatedAllItems, changedCategories);
+      onChange(
+        updatedAllItems,
+
+        changedCategories
+      );
 
       // 실제 제거 작업
       onRemove(category);

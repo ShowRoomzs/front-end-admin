@@ -3,8 +3,10 @@ import { DragDropContext, type DragDropContextProps } from "@hello-pangea/dnd";
 import { useCallback, useMemo, useState } from "react";
 import { InternalCollapseList } from "./InternalCollapseList";
 import { type CollapseAPI, type CollapseItem } from "./types";
-export interface CollapseProps<T = unknown>
-  extends Omit<DragDropContextProps, "onDragEnd" | "children"> {
+export interface CollapseProps<T = unknown> extends Omit<
+  DragDropContextProps,
+  "onDragEnd" | "children"
+> {
   items: Array<CollapseItem<T>>;
   draggable?: boolean;
   maxDepth?: number;

@@ -59,6 +59,7 @@ export default function Table<T, K extends keyof T = keyof T>(
       ) {
         return prev;
       }
+      console.log('asdf')
 
       return originCheckedKeys as Array<T[K]>;
     });
@@ -174,11 +175,14 @@ export default function Table<T, K extends keyof T = keyof T>(
 
       const cells = row.querySelectorAll(targetTag);
 
-      const widths = columns.reduce((acc, col, colIndex) => {
-        const width = cells[colIndex]?.getBoundingClientRect().width || 0;
-        acc[getColumnKeyWithLabel(col)] = width;
-        return acc;
-      }, {} as Record<string, number>);
+      const widths = columns.reduce(
+        (acc, col, colIndex) => {
+          const width = cells[colIndex]?.getBoundingClientRect().width || 0;
+          acc[getColumnKeyWithLabel(col)] = width;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       return widths;
     },

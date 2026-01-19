@@ -4,8 +4,9 @@ import { useMemo } from "react";
 import { InternalCollapseItem } from "./InternalCollapseItem";
 import { type InternalCollapseSharedProps } from "./types";
 
-interface InternalCollapseListProps<T = unknown>
-  extends InternalCollapseSharedProps<T> {
+interface InternalCollapseListProps<
+  T = unknown,
+> extends InternalCollapseSharedProps<T> {
   parentId: number | string | null;
   depth: number;
 }

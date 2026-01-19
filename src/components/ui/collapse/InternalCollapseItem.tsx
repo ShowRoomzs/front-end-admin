@@ -5,8 +5,9 @@ import { InternalCollapseList } from "./InternalCollapseList";
 import { type CollapseItem, type InternalCollapseSharedProps } from "./types";
 import DragHandle from "@/components/ui/collapse/DragHandle";
 
-interface InternalCollapseItemProps<T = unknown>
-  extends InternalCollapseSharedProps<T> {
+interface InternalCollapseItemProps<
+  T = unknown,
+> extends InternalCollapseSharedProps<T> {
   item: CollapseItem<T>;
   index: number;
   depth: number;
