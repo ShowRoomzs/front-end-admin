@@ -1,32 +1,24 @@
 import type { Option } from "@/common/types";
 import type {
   FilterCondition,
-  FilterUIType,
-} from "@/features/filter/types/filter";
+  FilterType,
+} from "@/features/filter/services/filterService";
 
-export const FILTER_TYPE_OPTIONS: Array<Option<FilterUIType>> = [
+export const FILTER_TYPE_OPTIONS: Array<Option<FilterType>> = [
   {
-    value: "select",
-    label: "Select",
-  },
-  {
-    value: "radio",
-    label: "Radio",
-  },
-  {
-    value: "color",
+    value: "COLOR",
     label: "Color",
   },
   {
-    value: "brand",
-    label: "Brand",
-  },
-  {
-    value: "range",
+    value: "RANGE",
     label: "Range",
   },
   {
-    value: "checkbox",
+    value: "BRAND",
+    label: "Brand",
+  },
+  {
+    value: "CHECKBOX",
     label: "Checkbox",
   },
 ];
@@ -43,16 +35,5 @@ export const FILTER_CONDITION_OPTIONS: Array<Option<FilterCondition>> = [
   {
     value: null,
     label: "NULL",
-  },
-];
-
-export const FILTER_SOURCE_OPTIONS: Array<Option<string>> = [
-  {
-    value: "CATEGORY",
-    label: "CATEGORY",
-  },
-  {
-    value: "SYSTEM",
-    label: "SYSTEM",
   },
 ];

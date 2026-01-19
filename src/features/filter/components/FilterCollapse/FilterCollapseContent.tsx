@@ -1,16 +1,12 @@
 import Toggle from "@/common/components/Toggle/Toggle";
 import ChevronIcon from "@/common/components/Sidebar/ChevronIcon";
 import type { CollapseAPI, CollapseItem } from "@/components/ui/collapse";
-import type { FilterItem } from "@/features/filter/components/FilterCollapse/FilterCollapse";
 import EditableField from "@/features/filter/components/EditableField/EditableField";
 import {
   FILTER_CONDITION_OPTIONS,
   FILTER_TYPE_OPTIONS,
 } from "@/features/filter/constants/filter";
-import type {
-  FilterCondition,
-  FilterUIType,
-} from "@/features/filter/types/filter";
+
 import { useEffect, useState } from "react";
 import { PlusIcon, Trash } from "lucide-react";
 import {
@@ -19,28 +15,36 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { NO_VALUE_FILTERS } from "@/features/filter/components/FilterCollapse/config";
+import type {
+  Filter,
+  FilterCondition,
+  FilterType,
+} from "@/features/filter/services/filterService";
 
 interface FilterCollapseContentProps {
-  item: CollapseItem<FilterItem>;
+  item: CollapseItem<Filter>;
   isOpen?: boolean;
   hasChildren?: boolean;
   api: CollapseAPI;
-  onChange: (item: FilterItem) => void;
+  onChange: (filter: Filter) => void;
+  onAddValues: (filter: Filter) => void;
+  onRemove: (filter: Filter) => void;
 }
 
 export default function FilterCollapseContent(
   props: FilterCollapseContentProps
 ) {
-  const { item, isOpen, hasChildren, onChange, api } = props;
+  const { item, isOpen, hasChildren, onChange, onAddValues, api, onRemove } =
+    props;
 
   const [label, setLabel] = useState(item.data?.label ?? "");
-  const [key, setKey] = useState(item.data?.key ?? "");
+  const [key, setKey] = useState(item.data?.filterKey ?? "");
   const [isActive, setIsActive] = useState(item.data?.isActive ?? false);
 
   useEffect(() => {
     if (item.data) {
       setLabel(item.data.label ?? "");
-      setKey(item.data.key ?? "");
+      setKey(item.data.filterKey ?? "");
       setIsActive(item.data.isActive ?? false);
     }
   }, [item.data]);
@@ -51,42 +55,35 @@ export default function FilterCollapseContent(
 
   const handleChangeKey = (value: string) => {
     setKey(value);
-    onChange({ ...item.data, key: value } as FilterItem);
+    onChange({ ...item.data, filterKey: value } as Filter);
   };
 
   const handleChangeLabel = (value: string) => {
     setLabel(value);
-    onChange({ ...item.data, label: value } as FilterItem);
+    onChange({ ...item.data, label: value } as Filter);
   };
 
-  const handleChangeType = (value: FilterUIType | null) => {
+  const handleChangeType = (value: FilterType | null) => {
     // TODO : NO_VALUE_FILTERS 포함된 아이템이라면 자식 노드 제거
     if (value !== null) {
-      onChange({ ...item.data, type: value } as FilterItem);
+      onChange({ ...item.data, filterType: value } as Filter);
     }
   };
 
-  const handleChangeCondition = (value: FilterCondition) => {
-    onChange({ ...item.data, condition: value } as FilterItem);
+  const handleChangeCondition = (value: FilterCondition | null) => {
+    onChange({ ...item.data, condition: value } as Filter);
   };
 
   const handleChangeIsActive = (checked: boolean) => {
     setIsActive(checked);
-    onChange({ ...item.data, isActive: checked } as FilterItem);
+    onChange({ ...item.data, isActive: checked } as Filter);
   };
 
   const handleAddValue = () => {
-    const currentValues = item.data?.values ?? [];
-    const newValueId = Math.max(0, ...currentValues.map((v) => v.value), 0) + 1;
-    const newValue = {
-      value: newValueId,
-      label: `새로운 필터#${newValueId}`,
-      extra: null,
-    };
-    onChange({
-      ...item.data,
-      values: [...currentValues, newValue],
-    } as FilterItem);
+    if (!item.data) {
+      return;
+    }
+    onAddValues(item.data);
     api.openItem(item.id);
   };
 
@@ -109,11 +106,11 @@ export default function FilterCollapseContent(
           onChange={handleChangeLabel}
           className="min-w-[100px]"
         />
-        <EditableField<FilterUIType | null>
+        <EditableField<FilterType | null>
           type="select"
           label="Type"
           isEdit={true}
-          value={item.data.type}
+          value={item.data.filterType}
           onChange={handleChangeType}
           options={FILTER_TYPE_OPTIONS}
           className="min-w-[140px]"
@@ -135,7 +132,7 @@ export default function FilterCollapseContent(
           className="min-w-[100px]"
         />
       </div>
-      {!NO_VALUE_FILTERS.includes(item.data.type) && (
+      {!NO_VALUE_FILTERS.includes(item.data.filterType) && (
         <Tooltip>
           <TooltipTrigger asChild>
             <PlusIcon
@@ -160,7 +157,10 @@ export default function FilterCollapseContent(
             width={16}
             height={16}
             className="cursor-pointer"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(item.data as Filter);
+            }}
           />
         </TooltipTrigger>
         <TooltipContent>

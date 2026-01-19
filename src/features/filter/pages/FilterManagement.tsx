@@ -1,91 +1,120 @@
+import { usePromiseQueue } from "@/common/hooks/usePromiseQueue/usePromiseQueue";
+import { queryClient } from "@/common/lib/queryClient";
 import { Button } from "@/components/ui/button";
-import FilterCollapse, {
-  type FilterItem,
-} from "@/features/filter/components/FilterCollapse/FilterCollapse";
-import { produce } from "immer";
+import FilterCollapse from "@/features/filter/components/FilterCollapse/FilterCollapse";
+import { FILTERS_QUERY_KEY } from "@/features/filter/constants/queryKey";
+import { useGetFilters } from "@/features/filter/hooks/useGetFilters";
+import type {
+  Filter,
+  FilterValue,
+} from "@/features/filter/services/filterService";
 import { PlusIcon } from "lucide-react";
-import { useState } from "react";
+import { nanoid } from "nanoid";
+import { useCallback, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
-export const DUMMY_FILTER_ITEMS: Array<FilterItem> = [
-  {
-    id: 1,
-    key: "gender",
-    label: "성별",
-    type: "checkbox",
-    isActive: true,
-    condition: "OR",
-    values: [
-      { value: 101, label: "남성", extra: null },
-      { value: 102, label: "여성", extra: null },
-    ],
-  },
-  {
-    id: 2,
-    key: "color",
-    label: "색상",
-    type: "color",
-    condition: "OR",
-    isActive: true,
-    values: [
-      {
-        value: 201,
-        label: "블랙",
-        extra: "#000000",
-      },
-      {
-        value: 202,
-        label: "화이트",
-        extra: "#FFFFFF",
-      },
-    ],
-  },
-  {
-    id: 3,
-    key: "price",
-    label: "가격",
-    condition: null,
-    isActive: true,
-    type: "range", // 가격 범위(min, max)는 프론트 상수로 관리
-  },
-  {
-    id: 4,
-    key: "brand",
-    label: "브랜드",
-    condition: null,
-    isActive: true,
-    type: "brand", // 프론트단에서 brand관련 api 호출 후 자체적으로 항목 처리
-  },
-];
+const DEFAULT_FILTER_ITEM: Omit<Filter, "id" | "sortOrder"> = {
+  filterKey: "",
+  label: "",
+  filterType: "CHECKBOX",
+  condition: "OR",
+  isActive: true,
+  values: [],
+};
 
 export default function FilterManagement() {
-  const [localFilterItems, setLocalFilterItems] =
-    useState<Array<FilterItem>>(DUMMY_FILTER_ITEMS);
+  const { data: filters } = useGetFilters();
 
-  const handleChange = (item: FilterItem) => {
-    setLocalFilterItems(
-      produce((draft) => {
-        const index = draft.findIndex((v) => v.id === item.id);
-        if (index !== -1) {
-          draft[index] = { ...item };
-        }
-      })
-    );
+  const { create, remove, update, execute, isLoading } = usePromiseQueue({
+    originData: filters,
+    endpoint: "/admin/filters",
+    keyString: "id",
+  });
+  const [localFilterItems, setLocalFilterItems] = useState<Array<Filter>>([]);
+
+  useEffect(() => {
+    if (filters) {
+      setLocalFilterItems(filters);
+    }
+  }, [filters]);
+
+  const handleChange = (
+    updatedItems: Array<Filter>,
+    changedItems: Array<Filter>
+  ) => {
+    setLocalFilterItems(updatedItems);
+    changedItems.forEach(update);
   };
 
-  console.log(localFilterItems);
+  const handleAddFilter = useCallback(() => {
+    const newFilter: Filter = {
+      ...DEFAULT_FILTER_ITEM,
+      id: nanoid(),
+      sortOrder: filters?.length ?? 0,
+    };
+    create(newFilter);
+    setLocalFilterItems((prev) => [...prev, newFilter]);
+  }, [create, filters?.length]);
 
+  const handleAddValues = useCallback(
+    (filter: Filter) => {
+      const newValue: FilterValue = {
+        id: nanoid(),
+        value: "",
+        label: "",
+        extra: null,
+        isActive: true,
+        sortOrder: filter.values?.length ?? 0,
+      };
+      const newFilter: Filter = {
+        ...filter,
+        values: [...filter.values, newValue],
+      };
+      update(newFilter);
+      setLocalFilterItems((prev) =>
+        prev.map((item) => (item.id === filter.id ? newFilter : item))
+      );
+    },
+    [update]
+  );
+  const handleClickSave = useCallback(async () => {
+    await execute();
+
+    queryClient.invalidateQueries({ queryKey: [FILTERS_QUERY_KEY] });
+    toast.success("정상적으로 저장되었습니다.");
+  }, [execute]);
+
+  const handleRemoveFilter = useCallback(
+    (filter: Filter) => {
+      setLocalFilterItems((prev) =>
+        prev.filter((item) => item.id !== filter.id)
+      );
+      remove(filter);
+    },
+    [remove]
+  );
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-row justify-end gap-2 items-center">
-        <Button variant={"outline"} className="w-fit">
+        <Button onClick={handleAddFilter} variant={"outline"} className="w-fit">
           필터 추가
           <PlusIcon className="w-fit" />
         </Button>
-        <Button variant="default" className="w-fit">
+        <Button
+          onClick={handleClickSave}
+          isLoading={isLoading}
+          variant="default"
+          className="w-fit"
+        >
           저장
         </Button>
       </div>
-      <FilterCollapse items={localFilterItems} onChange={handleChange} />
+      <FilterCollapse
+        items={localFilterItems || []}
+        onChange={handleChange}
+        onAddValues={handleAddValues}
+        onRemove={handleRemoveFilter}
+      />
     </div>
   );
 }
