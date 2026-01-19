@@ -6,11 +6,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import AddFilterModal from "@/features/category/components/AddFilterModal/AddFilterModal";
 import type { Category } from "@/features/category/services/categoryService";
-import type { FilterItem } from "@/features/filter/components/FilterCollapse/FilterCollapse";
 import { FunnelPlus, PlusIcon, TrashIcon } from "lucide-react";
 import { useState, type KeyboardEvent, type MouseEvent } from "react";
+import toast from "react-hot-toast";
 
 interface CategoryCollapseContentProps {
   item: CollapseItem<Category>;
@@ -22,6 +21,7 @@ interface CategoryCollapseContentProps {
   hasChildren?: boolean;
   onAddCategory?: (category: Category, depth: number) => void;
   onRemoveCategory: (category: Category) => void;
+  onClickAddFilter: (categoryId: number | string) => void;
   isLeaf?: boolean;
 }
 
@@ -42,9 +42,9 @@ export default function CategoryCollapseContent(
     onRemoveCategory,
     api,
     depth,
+    onClickAddFilter,
     isLeaf = false,
   } = props;
-  const [isAddFilterModalOpen, setIsAddFilterModalOpen] = useState(false);
   const [category, setCategory] = useState(item.data);
   const [isEdit, setIsEdit] = useState(false);
 
@@ -87,22 +87,20 @@ export default function CategoryCollapseContent(
     onRemoveCategory(category);
   };
 
+  // 아직db에 저장되지 않은 데이터는 id 타입이 string임(nanoid로 생성)
+  const isNotCreatedValue = typeof item.id === "string";
+
   const handleClickAddFilter = (e: MouseEvent<SVGSVGElement>) => {
     e.stopPropagation();
-    setIsAddFilterModalOpen(true);
-  };
-
-  const handleAddFilter = (filters: Array<FilterItem>) => {
-    console.log(filters);
+    if (isNotCreatedValue) {
+      toast.error("카테고리 저장 후 필터 연결 가능합니다.");
+      return;
+    }
+    onClickAddFilter(item.id);
   };
 
   return (
     <div className="flex flex-row items-center gap-2 w-full">
-      <AddFilterModal
-        open={isAddFilterModalOpen}
-        onOpenChange={setIsAddFilterModalOpen}
-        onAddFilter={handleAddFilter}
-      />
       <div className="flex-1">
         {isEdit ? (
           <Input
@@ -130,6 +128,7 @@ export default function CategoryCollapseContent(
               <FunnelPlus
                 onClick={handleClickAddFilter}
                 className="w-4 h-4 cursor-pointer"
+                color={isNotCreatedValue ? "gray" : "black"}
               />
             </TooltipTrigger>
             <TooltipContent>

@@ -1,11 +1,14 @@
 import { Checkbox } from "@/components/ui/checkbox";
-import type { FilterItem } from "@/features/filter/components/FilterCollapse/FilterCollapse";
+import type {
+  Filter,
+  FilterValue,
+} from "@/features/filter/services/filterService";
 import { ChevronRight } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import type React from "react";
 
 interface FilterTreeProps {
-  items: Array<FilterItem>;
+  items: Array<Filter>;
   selectedFilterIds?: Array<number | string>;
   onChange?: (selectedIds: Array<number | string>) => void;
 }
@@ -22,7 +25,7 @@ export default function FilterTree(props: FilterTreeProps) {
   );
 
   const getLeafNodeIds = useMemo(() => {
-    const fn = (filterItem: FilterItem): Array<number | string> => {
+    const fn = (filterItem: Filter): Array<number | string> => {
       if (filterItem.values && filterItem.values.length > 0) {
         return filterItem.values.map((v) => `${filterItem.id}-${v.value}`);
       }
@@ -33,7 +36,11 @@ export default function FilterTree(props: FilterTreeProps) {
   }, []);
 
   const isChecked = useCallback(
-    (filterItem: FilterItem, isValue?: boolean, valueId?: number): boolean => {
+    (
+      filterItem: Filter,
+      isValue?: boolean,
+      valueId?: number | string
+    ): boolean => {
       if (isValue && valueId !== undefined) {
         return selectedIdsSet.has(`${filterItem.id}-${valueId}`);
       }
@@ -58,10 +65,10 @@ export default function FilterTree(props: FilterTreeProps) {
 
   const handleCheckChange = useCallback(
     (
-      filterItem: FilterItem,
+      filterItem: Filter,
       checked: boolean,
       isValue?: boolean,
-      valueId?: number
+      valueId?: number | string
     ) => {
       if (!onChange) return;
 
@@ -89,7 +96,7 @@ export default function FilterTree(props: FilterTreeProps) {
   );
 
   const renderFilterItem = useMemo(() => {
-    const fn = (filterItem: FilterItem, depth: number = 0): React.ReactNode => {
+    const fn = (filterItem: Filter, depth: number = 0): React.ReactNode => {
       const hasValues = filterItem.values && filterItem.values.length > 0;
       const isExpanded = expandedIds.has(filterItem.id);
       const checked = isChecked(filterItem);
@@ -138,7 +145,7 @@ export default function FilterTree(props: FilterTreeProps) {
           </div>
           {hasValues && isExpanded && filterItem.values && (
             <div>
-              {filterItem.values.map((value) => {
+              {filterItem.values.map((value: FilterValue) => {
                 const valueChecked = isChecked(filterItem, true, value.value);
                 return (
                   <div

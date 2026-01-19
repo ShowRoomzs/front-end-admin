@@ -1,7 +1,9 @@
 import { Collapse } from "@/components/ui/collapse";
+import AddFilterModal from "@/features/category/components/AddFilterModal/AddFilterModal";
 import CategoryCollapseContent from "@/features/category/components/CategoryCollapse/CategoryCollapseContent";
 import { convertCategoriesToCollapseItems } from "@/features/category/components/CategoryCollapse/config";
 import type { Category } from "@/features/category/services/categoryService";
+import type { Filter } from "@/features/filter/services/filterService";
 import type { DropResult } from "@hello-pangea/dnd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -18,7 +20,13 @@ interface CategoryCollapseProps {
 
 export default function CategoryCollapse(props: CategoryCollapseProps) {
   const { items, onChange, onRemove, onAddChild, idMapping } = props;
-
+  const [filterModalConfig, setFilterModalConfig] = useState<{
+    isOpen: boolean;
+    categoryId: number | string | null;
+  }>({
+    isOpen: false,
+    categoryId: null,
+  });
   const [openKeys, setOpenKeys] = useState<Set<number | string>>(new Set());
 
   useEffect(() => {
@@ -38,7 +46,7 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
     [items]
   );
 
-  const reorderCategories = useCallback(
+  const handleDragEnd = useCallback(
     (result: DropResult) => {
       const { source, destination, draggableId } = result;
       if (!destination) return;
@@ -49,19 +57,27 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
       ) {
         return;
       }
+      // 1. id 추출
+      const extractDraggableItemId = (id: string) => {
+        const depthMatch = id.match(/^draggable-\d+-(.+)$/);
+        if (depthMatch) return depthMatch[1];
 
-      // 1. ID 및 ParentID 추출 (prefix 제거)
-      const extractId = (id: string) =>
-        id.replace("draggable-", "").replace("droppable-", "");
-      const draggedId = extractId(draggableId);
+        const match = id.match(/^draggable-(.+)$/);
+        return match ? match[1] : id;
+      };
+
+      const extractDroppableParentId = (id: string) => {
+        const match = id.match(/^droppable-(.+)$/);
+        return match ? match[1] : id;
+      };
+
+      const draggedId = extractDraggableItemId(draggableId);
+      const sourceParentIdRaw = extractDroppableParentId(source.droppableId);
+      const destParentIdRaw = extractDroppableParentId(destination.droppableId);
+
       const sourceParentId =
-        extractId(source.droppableId) === "root"
-          ? null
-          : extractId(source.droppableId);
-      const destParentId =
-        extractId(destination.droppableId) === "root"
-          ? null
-          : extractId(destination.droppableId);
+        sourceParentIdRaw === "root" ? null : sourceParentIdRaw;
+      const destParentId = destParentIdRaw === "root" ? null : destParentIdRaw;
 
       // 2. 형제 그룹 찾기 및 정렬
       const siblings = items
@@ -173,15 +189,9 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
           );
           return updatedSibling || item;
         });
-      console.log('ㅁㄴㅇㄹ');
 
-      
       // 변경사항을 먼저 onChange로 전달
-      onChange(
-        updatedAllItems,
-
-        changedCategories
-      );
+      onChange(updatedAllItems, changedCategories);
 
       // 실제 제거 작업
       onRemove(category);
@@ -189,33 +199,58 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
     [items, onChange, onRemove]
   );
 
+  const handleClickAddFilter = useCallback((categoryId: number | string) => {
+    setFilterModalConfig({
+      isOpen: true,
+      categoryId: categoryId as number | string,
+    });
+  }, []);
+
+  const handleAddFilter = useCallback((filters: Array<Filter>) => {
+    void filters;
+  }, []);
+
   return (
-    <Collapse
-      draggable
-      onDragEnd={reorderCategories}
-      items={collapseItems}
-      maxDepth={3}
-      openKeys={openKeys}
-      onOpenKeysChange={setOpenKeys}
-      renderLeafItem={(props, api) => (
-        <CategoryCollapseContent
-          {...props}
-          api={api}
-          onChange={handleChangeName}
-          onRemoveCategory={handleRemoveCategory}
-          isLeaf
-        />
-      )}
-      renderItem={(props, api) => (
-        <CategoryCollapseContent
-          {...props}
-          api={api}
-          onChange={handleChangeName}
-          onAddCategory={handleAddCategory}
-          onRemoveCategory={handleRemoveCategory}
-        />
-      )}
-    />
+    <>
+      <AddFilterModal
+        open={filterModalConfig.isOpen}
+        onOpenChange={(isOpen) =>
+          setFilterModalConfig({
+            ...filterModalConfig,
+            isOpen,
+          })
+        }
+        onAddFilter={handleAddFilter}
+      />
+      <Collapse
+        draggable
+        onDragEnd={handleDragEnd}
+        items={collapseItems}
+        maxDepth={3}
+        openKeys={openKeys}
+        onOpenKeysChange={setOpenKeys}
+        renderLeafItem={(props, api) => (
+          <CategoryCollapseContent
+            {...props}
+            api={api}
+            onChange={handleChangeName}
+            onRemoveCategory={handleRemoveCategory}
+            onClickAddFilter={handleClickAddFilter}
+            isLeaf
+          />
+        )}
+        renderItem={(props, api) => (
+          <CategoryCollapseContent
+            {...props}
+            api={api}
+            onChange={handleChangeName}
+            onAddCategory={handleAddCategory}
+            onRemoveCategory={handleRemoveCategory}
+            onClickAddFilter={handleClickAddFilter}
+          />
+        )}
+      />
+    </>
   );
 }
 

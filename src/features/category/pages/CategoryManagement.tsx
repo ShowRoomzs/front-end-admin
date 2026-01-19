@@ -60,9 +60,7 @@ export default function CategoryManagement() {
     (updatedItems: Array<Category>, changedItems: Array<Category>) => {
       setLocalCategories(updatedItems);
 
-      changedItems.forEach((item) => {
-        update(item);
-      });
+      changedItems.forEach(update);
     },
     [update]
   );
