@@ -54,7 +54,7 @@ export function InternalCollapseList<T = unknown>(
         >
           {siblings.map((item, index) => (
             <InternalCollapseItem
-              key={item.id}
+              key={`${depth}-${item.id}`}
               item={item}
               index={index}
               items={items}

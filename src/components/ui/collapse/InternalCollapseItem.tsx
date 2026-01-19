@@ -56,8 +56,12 @@ export function InternalCollapseItem<T = unknown>(
     }
   };
 
+  // 부모, 자식이 같은 id를 가지는 경우가 종종 존재하므로 depth를 추가하여 구분
   return (
-    <Draggable draggableId={`draggable-${item.id.toString()}`} index={index}>
+    <Draggable
+      draggableId={`draggable-${depth}-${item.id.toString()}`}
+      index={index}
+    >
       {(provided) => (
         <div
           ref={provided.innerRef}
