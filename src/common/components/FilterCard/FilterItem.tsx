@@ -9,13 +9,15 @@ import { Label } from "@/components/ui/label";
 import { RadioGroupItem } from "@/components/ui/radio-group";
 import { RadioGroup } from "@radix-ui/react-radio-group";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import RegionSelector from "@/common/components/RegionSelector/RegionSelector";
 
 export type FilterType =
   | "radio"
   | "category"
   | "input"
   | "select"
-  | "dateRange";
+  | "dateRange"
+  | "region";
 
 interface FilterItemProps<T> {
   type: FilterType;
@@ -94,6 +96,16 @@ function FilterItemComponent<T>(props: FilterItemProps<T>) {
           endPlaceholder="종료일"
           onChange={(startDate, endDate) => {
             onChange([startDate, endDate] as unknown as Array<T>);
+          }}
+        />
+      );
+    case "region":
+      return (
+        <RegionSelector
+          country={(value as Array<string>)[0]}
+          city={(value as Array<string>)[1]}
+          onChange={(country, city) => {
+            onChange([country, city] as unknown as Array<T>);
           }}
         />
       );

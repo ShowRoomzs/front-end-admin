@@ -9,6 +9,7 @@ import SellerRegistrationDetail from "@/features/seller/pages/SellerRegistration
 import SellerUserManagement from "@/features/seller/pages/SellerUserManagement";
 import FilterManagement from "@/features/filter/pages/FilterManagement";
 import SocialLoginManagement from "@/features/user/pages/SocialLoginManagement";
+import LoginHistoryManagement from "@/features/user/pages/LoginHistoryManagement";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -40,7 +41,7 @@ export const mainRoutes: Array<RouteObject> = [
           },
           {
             path: "login-history",
-            element: <PlaceholderPage title="로그인 이력" />,
+            element: <LoginHistoryManagement />,
           },
           {
             path: "social-login",

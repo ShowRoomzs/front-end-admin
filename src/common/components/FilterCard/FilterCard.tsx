@@ -45,6 +45,7 @@ export default function FilterCard<P extends BaseParams>(
               };
               const { detail, main, sub } = categoryValue;
               onChange(option.key, (detail ?? sub ?? main) as P[keyof P]);
+              return;
             }
             if (option.type === "dateRange") {
               const dateRangeValue = value as Array<string>;
@@ -53,9 +54,15 @@ export default function FilterCard<P extends BaseParams>(
                 option.endKey as keyof P,
                 dateRangeValue[1] as P[keyof P]
               );
-            } else {
-              onChange(option.key, value);
+              return;
             }
+            if (option.type === "region") {
+              const regionValue = value as Array<string>;
+              onChange(option.key, regionValue[0] as P[keyof P]);
+              onChange(option.endKey as keyof P, regionValue[1] as P[keyof P]);
+              return;
+            }
+            onChange(option.key, value);
           });
         }
       });
@@ -67,7 +74,7 @@ export default function FilterCard<P extends BaseParams>(
       const handleChange = handleChangeMap.get(option.key);
       if (!handleChange) return null;
       const value =
-        option.type === "dateRange"
+        option.type === "dateRange" || option.type === "region"
           ? [params[option.key as keyof P], params[option.endKey as keyof P]]
           : params[option.key];
       return (
