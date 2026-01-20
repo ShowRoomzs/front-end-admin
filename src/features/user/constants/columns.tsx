@@ -54,6 +54,16 @@ export const COMMON_USER_COLUMNS: Columns<CommonUserInfo> = [
 
 export const LOGIN_HISTORY_COLUMNS: Columns<LoginHistoryInfo> = [
   {
+    key: "userId",
+    label: "ID",
+    width: 100,
+  },
+  {
+    key: "email",
+    label: "이메일",
+    width: 200,
+  },
+  {
     key: "loginAt",
     label: "로그인 일시",
     render: (v) => formatDate(v as string),
