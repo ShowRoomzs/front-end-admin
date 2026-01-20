@@ -31,7 +31,7 @@ export interface SortOption {
 export interface TableProps<T, K extends keyof T = keyof T> {
   columns: Columns<T>;
   data: Array<T>;
-  pageInfo: PaginationProps;
+  pageInfo?: PaginationProps;
   isLoading?: boolean;
   showCheckbox?: boolean;
   rowKey?: K;
