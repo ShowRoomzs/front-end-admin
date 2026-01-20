@@ -8,6 +8,7 @@ import SellerRegistrationManagement from "@/features/seller/pages/SellerRegistra
 import SellerRegistrationDetail from "@/features/seller/pages/SellerRegistrationDetail";
 import SellerUserManagement from "@/features/seller/pages/SellerUserManagement";
 import FilterManagement from "@/features/filter/pages/FilterManagement";
+import SocialLoginManagement from "@/features/user/pages/SocialLoginManagement";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -43,7 +44,7 @@ export const mainRoutes: Array<RouteObject> = [
           },
           {
             path: "social-login",
-            element: <PlaceholderPage title="간편 로그인 설정" />,
+            element: <SocialLoginManagement />,
           },
         ],
       },

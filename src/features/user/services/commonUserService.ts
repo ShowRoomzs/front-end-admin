@@ -25,6 +25,11 @@ export interface CommonUserInfo {
 }
 export type CommonUserListResponse = PageResponse<CommonUserInfo>;
 
+export type SocialLoginStatusResponse = Record<
+  Exclude<ProviderType, null>,
+  boolean
+>;
+
 export const commonUserService = {
   getCommonUserList: async (params: CommonUserListParams) => {
     const { data: response } = await apiInstance.get<CommonUserListResponse>(
@@ -32,6 +37,23 @@ export const commonUserService = {
       {
         params,
       }
+    );
+
+    return response;
+  },
+  getSocialLoginStatus: async () => {
+    const { data: response } = await apiInstance.get<SocialLoginStatusResponse>(
+      "/admin/social/status"
+    );
+
+    return response;
+  },
+  updateSocialLoginStatus: async (
+    providerType: ProviderType,
+    status: boolean
+  ) => {
+    const { data: response } = await apiInstance.patch(
+      `/admin/social/${providerType}/status?active=${status}`
     );
 
     return response;
