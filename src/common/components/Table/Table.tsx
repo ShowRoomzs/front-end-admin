@@ -59,7 +59,6 @@ export default function Table<T, K extends keyof T = keyof T>(
       ) {
         return prev;
       }
-      console.log('asdf')
 
       return originCheckedKeys as Array<T[K]>;
     });

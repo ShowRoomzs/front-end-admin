@@ -98,7 +98,7 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
       } else {
         // 다른 부모로 이동하는 경우 (현재 UI 구조상으로는 지원 안할 수도 있지만 로직은 대비)
         const draggedItem = items.find(
-          (i) => i.categoryId.toString() === draggedId
+          (i) => i.categoryId.toString(30) === draggedId
         );
         if (draggedItem) {
           const updatedDraggedItem = {

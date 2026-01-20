@@ -74,7 +74,6 @@ export default function TableHeader<T>(props: TableHeaderProps<T>) {
                 return "";
             }
           };
-          console.log("col");
           const key = getColumnKey(col, true);
           return (
             <th
