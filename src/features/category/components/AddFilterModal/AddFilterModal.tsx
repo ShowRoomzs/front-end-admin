@@ -7,23 +7,37 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import FilterTree from "@/features/category/components/FilterTree/FilterTree";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGetFilters } from "@/features/filter/hooks/useGetFilters";
 import type { Filter } from "@/features/filter/services/filterService";
+import type {
+  Category,
+  CategoryFilter,
+} from "@/features/category/services/categoryService";
+import { extractFilterIds } from "@/features/category/utils/extractFilterIds";
 
 interface AddFilterModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialFilters: Array<CategoryFilter | Category>;
   onAddFilter: (filters: Array<Filter>) => void;
 }
 
 export default function AddFilterModal(props: AddFilterModalProps) {
-  const { onAddFilter, onOpenChange, open } = props;
+  const { onAddFilter, onOpenChange, open, initialFilters } = props;
   const { data: filters } = useGetFilters();
   const [selectedFilterIds, setSelectedFilterIds] = useState<
     Array<number | string>
   >([]);
 
+  useEffect(() => {
+    if (initialFilters.length > 0) {
+      const flattenFilterIds = extractFilterIds(
+        initialFilters as Array<CategoryFilter | Filter>
+      );
+      setSelectedFilterIds(flattenFilterIds);
+    }
+  }, [initialFilters]);
   if (!filters) {
     return null;
   }
@@ -34,7 +48,7 @@ export default function AddFilterModal(props: AddFilterModalProps) {
         const isItemSelected = selectedFilterIds.includes(item.id);
         const selectedValues =
           item.values?.filter((value) =>
-            selectedFilterIds.includes(`${item.id}-${value.value}`)
+            selectedFilterIds.includes(`${item.id}-${value.id}`)
           ) ?? [];
 
         if (isItemSelected) {

@@ -3,7 +3,10 @@ import { Collapse } from "@/components/ui/collapse";
 import AddFilterModal from "@/features/category/components/AddFilterModal/AddFilterModal";
 import CategoryCollapseContent from "@/features/category/components/CategoryCollapse/CategoryCollapseContent";
 import { convertCategoriesToCollapseItems } from "@/features/category/components/CategoryCollapse/config";
-import type { Category } from "@/features/category/services/categoryService";
+import type {
+  Category,
+  CategoryFilter,
+} from "@/features/category/services/categoryService";
 import type { Filter } from "@/features/filter/services/filterService";
 import type { DropResult } from "@hello-pangea/dnd";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -24,9 +27,11 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
   const [filterModalConfig, setFilterModalConfig] = useState<{
     isOpen: boolean;
     categoryId: number | string | null;
+    initialFilters: Array<CategoryFilter | Category>;
   }>({
     isOpen: false,
     categoryId: null,
+    initialFilters: [],
   });
   const [openKeys, setOpenKeys] = useState<Set<number | string>>(new Set());
 
@@ -200,16 +205,46 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
     [items, onChange, onRemove]
   );
 
-  const handleClickAddFilter = useCallback((categoryId: number | string) => {
-    setFilterModalConfig({
-      isOpen: true,
-      categoryId: categoryId as number | string,
-    });
-  }, []);
+  const handleClickAddFilter = useCallback(
+    (categoryId: number | string) => {
+      const targetCategory = items.find((v) => v.categoryId === categoryId);
+      if (!targetCategory) {
+        return;
+      }
 
-  const handleAddFilter = useCallback((filters: Array<Filter>) => {
-    void filters;
-  }, []);
+      setFilterModalConfig({
+        isOpen: true,
+        categoryId: categoryId as number | string,
+        initialFilters:
+          (targetCategory?.filters as unknown as Array<Category>) ?? [],
+      });
+    },
+    [items]
+  );
+
+  const handleAddFilter = useCallback(
+    (newFilters: Array<Filter>) => {
+      const filters: Array<CategoryFilter> = newFilters.map((filter) => ({
+        filterId: Number(filter.id),
+        selectedValueIds: filter.values.map((v) => Number(v.id)),
+      }));
+
+      const updatedCategories = items.map((item) =>
+        item.categoryId === filterModalConfig.categoryId
+          ? { ...item, filters }
+          : item
+      );
+      const changedCategory = updatedCategories.find(
+        (v) => v.categoryId === filterModalConfig.categoryId
+      );
+      if (!changedCategory) {
+        return;
+      }
+
+      onChange(updatedCategories, [changedCategory]);
+    },
+    [filterModalConfig.categoryId, items, onChange]
+  );
 
   const handleClickAddImage = useCallback(
     async (category: Category, file: File): Promise<string> => {
@@ -230,7 +265,6 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
     },
     [items, onChange]
   );
-
   return (
     <>
       <AddFilterModal
@@ -238,8 +272,12 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
         onOpenChange={(isOpen) =>
           setFilterModalConfig({
             ...filterModalConfig,
+            initialFilters: [],
             isOpen,
           })
+        }
+        initialFilters={
+          filterModalConfig.initialFilters as Array<CategoryFilter>
         }
         onAddFilter={handleAddFilter}
       />

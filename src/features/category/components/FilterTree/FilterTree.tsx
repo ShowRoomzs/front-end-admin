@@ -27,7 +27,7 @@ export default function FilterTree(props: FilterTreeProps) {
   const getLeafNodeIds = useMemo(() => {
     const fn = (filterItem: Filter): Array<number | string> => {
       if (filterItem.values && filterItem.values.length > 0) {
-        return filterItem.values.map((v) => `${filterItem.id}-${v.value}`);
+        return filterItem.values.map((v) => `${filterItem.id}-${v.id}`);
       }
       return [filterItem.id];
     };
@@ -146,10 +146,10 @@ export default function FilterTree(props: FilterTreeProps) {
           {hasValues && isExpanded && filterItem.values && (
             <div>
               {filterItem.values.map((value: FilterValue) => {
-                const valueChecked = isChecked(filterItem, true, value.value);
+                const valueChecked = isChecked(filterItem, true, value.id);
                 return (
                   <div
-                    key={`${filterItem.id}-${value.value}`}
+                    key={`${filterItem.id}-${value.id}`}
                     className="flex items-center gap-2 py-1 hover:bg-accent cursor-pointer"
                     style={{ paddingLeft: `${(depth + 1) * 20 + 24}px` }}
                   >
@@ -161,7 +161,7 @@ export default function FilterTree(props: FilterTreeProps) {
                           filterItem,
                           checked === true,
                           true,
-                          value.value
+                          value.id
                         );
                       }}
                       onClick={(e) => e.stopPropagation()}

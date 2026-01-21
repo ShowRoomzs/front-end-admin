@@ -1,7 +1,10 @@
 import { useGetCategory } from "@/features/category/hooks/useGetCategory";
 import CategoryCollapse from "@/features/category/components/CategoryCollapse/CategoryCollapse";
 import { useCallback, useState, useEffect } from "react";
-import type { Category } from "@/features/category/services/categoryService";
+import type {
+  Category,
+  CategoryFilter,
+} from "@/features/category/services/categoryService";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import {
@@ -16,6 +19,7 @@ import {
 import { nanoid } from "nanoid";
 import toast from "react-hot-toast";
 import { queryClient } from "@/common/lib/queryClient";
+import type { Filter } from "@/features/filter/services/filterService";
 
 export default function CategoryManagement() {
   const { data: categories } = useGetCategory();
@@ -59,12 +63,29 @@ export default function CategoryManagement() {
   const handleChange = useCallback(
     (updatedItems: Array<Category>, changedItems: Array<Category>) => {
       setLocalCategories(updatedItems);
+      const processedChangedItem = changedItems.map((item) => ({
+        ...item,
+        filters: item.filters?.map((filter: Filter | CategoryFilter) => {
+          if ("filterId" in filter) {
+            return {
+              filterId: filter.filterId,
+              selectedValueIds: filter.selectedValueIds,
+            };
+          }
+          if ("id" in filter) {
+            return {
+              filterId: filter.id,
+              selectedValueIds: filter.values.map((value) => value.id),
+            };
+          }
+        }),
+      })) as Array<Category>;
 
-      changedItems.forEach(update);
+      processedChangedItem.forEach(update);
     },
     [update]
   );
-
+  console.log(queue);
   const addCategory = useCallback(
     (category: Category) => {
       setLocalCategories((prev) => [...prev, category]);
