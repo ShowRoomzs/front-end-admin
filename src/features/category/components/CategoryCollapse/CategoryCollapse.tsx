@@ -1,3 +1,4 @@
+import { fileService } from "@/common/services/fileService";
 import { Collapse } from "@/components/ui/collapse";
 import AddFilterModal from "@/features/category/components/AddFilterModal/AddFilterModal";
 import CategoryCollapseContent from "@/features/category/components/CategoryCollapse/CategoryCollapseContent";
@@ -210,10 +211,25 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
     void filters;
   }, []);
 
-  const handleClickAddImage = useCallback((file: File) => {
-    // TODO : 이미지 업로드 후 iconUrl 업데이트
-    console.log("file", file);
-  }, []);
+  const handleClickAddImage = useCallback(
+    async (category: Category, file: File): Promise<string> => {
+      const response = await fileService.upload(file, "CATEGORY");
+      const updatedCategories = items.map((item) =>
+        item.categoryId === category.categoryId
+          ? { ...item, iconUrl: response.imageUrl }
+          : item
+      );
+      const changedCategory = updatedCategories.find(
+        (v) => v.categoryId === category.categoryId
+      );
+      if (!changedCategory) {
+        return "";
+      }
+      onChange(updatedCategories, [changedCategory]);
+      return changedCategory.iconUrl;
+    },
+    [items, onChange]
+  );
 
   return (
     <>

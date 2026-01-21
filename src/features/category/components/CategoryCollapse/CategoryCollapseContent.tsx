@@ -35,7 +35,7 @@ interface CategoryCollapseContentProps {
   onAddCategory?: (category: Category, depth: number) => void;
   onRemoveCategory: (category: Category) => void;
   onClickAddFilter: (categoryId: number | string) => void;
-  onClickAddImage?: (file: File) => void;
+  onClickAddImage?: (category: Category, file: File) => Promise<string>; // file url 반환
   isLeaf?: boolean;
 }
 
@@ -115,10 +115,13 @@ export default function CategoryCollapseContent(
     fileInputRef.current?.click();
   };
 
-  const handleChangeFile = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleChangeFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && onClickAddImage) {
-      onClickAddImage(file);
+      const iconUrl = await onClickAddImage(category, file);
+      if (iconUrl) {
+        setCategory({ ...category, iconUrl });
+      }
     }
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -127,7 +130,6 @@ export default function CategoryCollapseContent(
 
   const hasImageDepth = depth === 2;
   const hasFilterDepth = depth > 1;
-
   return (
     <div className="flex flex-row items-center gap-2 w-full">
       <input
@@ -141,11 +143,7 @@ export default function CategoryCollapseContent(
       {hasImageDepth && (
         <div>
           {category.iconUrl ? (
-            <Image
-              showPreview
-              className="w-4 h-4 rounded-sm"
-              src={category.iconUrl}
-            />
+            <Image showPreview className="w-4 h-4" src={category.iconUrl} />
           ) : (
             <ImageOff className="w-4 h-4" color="gray" />
           )}
