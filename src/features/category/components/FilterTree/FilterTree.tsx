@@ -11,10 +11,16 @@ interface FilterTreeProps {
   items: Array<Filter>;
   selectedFilterIds?: Array<number | string>;
   onChange?: (selectedIds: Array<number | string>) => void;
+  disabledFilterIds?: Array<number | string>;
 }
 
 export default function FilterTree(props: FilterTreeProps) {
-  const { items, selectedFilterIds = [], onChange } = props;
+  const {
+    items,
+    selectedFilterIds = [],
+    onChange,
+    disabledFilterIds = [],
+  } = props;
   const [expandedIds, setExpandedIds] = useState<Set<number | string>>(
     new Set()
   );
@@ -22,6 +28,11 @@ export default function FilterTree(props: FilterTreeProps) {
   const selectedIdsSet = useMemo(
     () => new Set(selectedFilterIds),
     [selectedFilterIds]
+  );
+
+  const disabledIdsSet = useMemo(
+    () => new Set(disabledFilterIds),
+    [disabledFilterIds]
   );
 
   const getLeafNodeIds = useMemo(() => {
@@ -49,6 +60,22 @@ export default function FilterTree(props: FilterTreeProps) {
       return leafIds.every((id) => selectedIdsSet.has(id));
     },
     [getLeafNodeIds, selectedIdsSet]
+  );
+
+  const isDisabled = useCallback(
+    (
+      filterItem: Filter,
+      isValue?: boolean,
+      valueId?: number | string
+    ): boolean => {
+      if (isValue && valueId !== undefined) {
+        return disabledIdsSet.has(`${filterItem.id}-${valueId}`);
+      }
+
+      const leafIds = getLeafNodeIds(filterItem);
+      return leafIds.some((id) => disabledIdsSet.has(id));
+    },
+    [getLeafNodeIds, disabledIdsSet]
   );
 
   const toggleExpand = useCallback((filterId: number | string) => {
@@ -100,6 +127,7 @@ export default function FilterTree(props: FilterTreeProps) {
       const hasValues = filterItem.values && filterItem.values.length > 0;
       const isExpanded = expandedIds.has(filterItem.id);
       const checked = isChecked(filterItem);
+      const disabled = isDisabled(filterItem);
 
       return (
         <div key={filterItem.id}>
@@ -136,17 +164,23 @@ export default function FilterTree(props: FilterTreeProps) {
             {!hasValues && <div className="w-4" />}
             <Checkbox
               checked={checked}
+              disabled={disabled}
               onCheckedChange={(checked) => {
                 handleCheckChange(filterItem, checked === true);
               }}
               onClick={(e) => e.stopPropagation()}
             />
-            <span className="text-sm">{filterItem.label}</span>
+            <span
+              className={`text-sm ${disabled ? "text-muted-foreground" : ""}`}
+            >
+              {filterItem.label}
+            </span>
           </div>
           {hasValues && isExpanded && filterItem.values && (
             <div>
               {filterItem.values.map((value: FilterValue) => {
                 const valueChecked = isChecked(filterItem, true, value.id);
+                const valueDisabled = isDisabled(filterItem, true, value.id);
                 return (
                   <div
                     key={`${filterItem.id}-${value.id}`}
@@ -156,6 +190,7 @@ export default function FilterTree(props: FilterTreeProps) {
                     <div className="w-4" />
                     <Checkbox
                       checked={valueChecked}
+                      disabled={valueDisabled}
                       onCheckedChange={(checked) => {
                         handleCheckChange(
                           filterItem,
@@ -168,9 +203,11 @@ export default function FilterTree(props: FilterTreeProps) {
                     />
                     <span
                       className={`text-sm ${
-                        valueChecked
-                          ? "text-foreground font-medium"
-                          : "text-muted-foreground"
+                        valueDisabled
+                          ? "text-muted-foreground"
+                          : valueChecked
+                            ? "text-foreground font-medium"
+                            : "text-muted-foreground"
                       }`}
                     >
                       {value.label}
@@ -185,7 +222,7 @@ export default function FilterTree(props: FilterTreeProps) {
     };
 
     return fn;
-  }, [expandedIds, isChecked, toggleExpand, handleCheckChange]);
+  }, [expandedIds, isChecked, isDisabled, toggleExpand, handleCheckChange]);
 
   return (
     <div className="max-h-[400px] overflow-y-auto">

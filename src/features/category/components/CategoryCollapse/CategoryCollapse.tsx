@@ -7,6 +7,7 @@ import type {
   Category,
   CategoryFilter,
 } from "@/features/category/services/categoryService";
+import { extractFilterIds } from "@/features/category/utils/extractFilterIds";
 import type { Filter } from "@/features/filter/services/filterService";
 import type { DropResult } from "@hello-pangea/dnd";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -28,10 +29,12 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
     isOpen: boolean;
     categoryId: number | string | null;
     initialFilters: Array<CategoryFilter | Category>;
+    disabledFilterIds: Array<number | string>;
   }>({
     isOpen: false,
     categoryId: null,
     initialFilters: [],
+    disabledFilterIds: [],
   });
   const [openKeys, setOpenKeys] = useState<Set<number | string>>(new Set());
 
@@ -212,11 +215,30 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
         return;
       }
 
+      // 부모들의 필터 ID 추출
+      const parentFilterIds: Array<number | string> = [];
+      let currentParentId = targetCategory.parentId;
+
+      while (currentParentId) {
+        const parent = items.find((v) => v.categoryId === currentParentId);
+        if (!parent) break;
+
+        if (parent.filters && parent.filters.length > 0) {
+          const filterIds = extractFilterIds(
+            parent.filters as Array<CategoryFilter | Filter>
+          );
+          parentFilterIds.push(...filterIds);
+        }
+
+        currentParentId = parent.parentId;
+      }
+
       setFilterModalConfig({
         isOpen: true,
         categoryId: categoryId as number | string,
         initialFilters:
           (targetCategory?.filters as unknown as Array<Category>) ?? [],
+        disabledFilterIds: parentFilterIds,
       });
     },
     [items]
@@ -224,24 +246,96 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
 
   const handleAddFilter = useCallback(
     (newFilters: Array<Filter>) => {
-      const filters: Array<CategoryFilter> = newFilters.map((filter) => ({
-        filterId: Number(filter.id),
-        selectedValueIds: filter.values.map((v) => Number(v.id)),
-      }));
+      // 현재 카테고리에 추가된 필터 ID 추출
+      const newFilterIds = extractFilterIds(newFilters);
+      const newFilterIdsSet = new Set(newFilterIds);
 
-      const updatedCategories = items.map((item) =>
-        item.categoryId === filterModalConfig.categoryId
-          ? { ...item, filters }
-          : item
-      );
+      // 하위 자식들 찾기 (재귀적으로)
+      const findChildren = (parentId: number | string): Array<Category> => {
+        const children = items.filter(
+          (item) => item.parentId?.toString() === parentId.toString()
+        );
+        return [
+          ...children,
+          ...children.flatMap((child) => findChildren(child.categoryId)),
+        ];
+      };
+
+      const children = filterModalConfig.categoryId
+        ? findChildren(filterModalConfig.categoryId)
+        : [];
+
+      const updatedCategories = items.map((item) => {
+        // 현재 카테고리: 새 필터 적용
+        if (item.categoryId === filterModalConfig.categoryId) {
+          return { ...item, filters: newFilters };
+        }
+
+        // 하위 자식: 부모와 겹치는 필터 제거
+        const isChild = children.some(
+          (child) => child.categoryId === item.categoryId
+        );
+        if (isChild && item.filters && item.filters.length > 0) {
+          const updatedFilters = (item.filters as Array<Filter>)
+            .map((filter) => {
+              // 필터 전체가 부모에 있는지 확인
+              if (newFilterIdsSet.has(filter.id)) {
+                return null;
+              }
+
+              // values가 있는 경우, 겹치지 않는 값들만 남김
+              if (filter.values && filter.values.length > 0) {
+                const remainingValues = filter.values.filter(
+                  (value) => !newFilterIdsSet.has(`${filter.id}-${value.id}`)
+                );
+
+                if (remainingValues.length === 0) {
+                  return null;
+                }
+
+                return {
+                  ...filter,
+                  values: remainingValues,
+                };
+              }
+
+              return filter;
+            })
+            .filter((f): f is Filter => f !== null);
+
+          return { ...item, filters: updatedFilters };
+        }
+
+        return item;
+      });
+
+      const changedCategories: Array<Category> = [];
+
+      // 현재 카테고리 추가
       const changedCategory = updatedCategories.find(
         (v) => v.categoryId === filterModalConfig.categoryId
       );
-      if (!changedCategory) {
-        return;
+      if (changedCategory) {
+        changedCategories.push(changedCategory);
       }
 
-      onChange(updatedCategories, [changedCategory]);
+      // 필터가 변경된 하위 자식들 추가
+      children.forEach((child) => {
+        const updated = updatedCategories.find(
+          (v) => v.categoryId === child.categoryId
+        );
+        const original = items.find((v) => v.categoryId === child.categoryId);
+
+        if (
+          updated &&
+          original &&
+          JSON.stringify(updated.filters) !== JSON.stringify(original.filters)
+        ) {
+          changedCategories.push(updated);
+        }
+      });
+
+      onChange(updatedCategories, changedCategories);
     },
     [filterModalConfig.categoryId, items, onChange]
   );
@@ -279,6 +373,7 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
         initialFilters={
           filterModalConfig.initialFilters as Array<CategoryFilter>
         }
+        disabledFilterIds={filterModalConfig.disabledFilterIds}
         onAddFilter={handleAddFilter}
       />
       <Collapse

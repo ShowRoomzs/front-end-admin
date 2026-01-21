@@ -21,10 +21,17 @@ interface AddFilterModalProps {
   onOpenChange: (open: boolean) => void;
   initialFilters: Array<CategoryFilter | Category>;
   onAddFilter: (filters: Array<Filter>) => void;
+  disabledFilterIds?: Array<number | string>;
 }
 
 export default function AddFilterModal(props: AddFilterModalProps) {
-  const { onAddFilter, onOpenChange, open, initialFilters } = props;
+  const {
+    onAddFilter,
+    onOpenChange,
+    open,
+    initialFilters,
+    disabledFilterIds = [],
+  } = props;
   const { data: filters } = useGetFilters();
   const [selectedFilterIds, setSelectedFilterIds] = useState<
     Array<number | string>
@@ -91,6 +98,7 @@ export default function AddFilterModal(props: AddFilterModalProps) {
           items={filters}
           selectedFilterIds={selectedFilterIds}
           onChange={setSelectedFilterIds}
+          disabledFilterIds={disabledFilterIds}
         />
         <DialogFooter>
           <Button variant="outline" onClick={() => handleClose(false)}>

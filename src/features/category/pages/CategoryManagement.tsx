@@ -85,7 +85,7 @@ export default function CategoryManagement() {
     },
     [update]
   );
-  console.log(queue);
+
   const addCategory = useCallback(
     (category: Category) => {
       setLocalCategories((prev) => [...prev, category]);

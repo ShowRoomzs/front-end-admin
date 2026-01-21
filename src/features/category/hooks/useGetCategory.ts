@@ -1,7 +1,9 @@
 import {
   categoryService,
   type Category,
+  type CategoryFilter,
 } from "@/features/category/services/categoryService";
+import type { Filter } from "@/features/filter/services/filterService";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -16,6 +18,12 @@ export function useGetCategory() {
     queryKey: ["categories"],
     queryFn: categoryService.getCategories,
   });
+  const parseFilters = (filters: Array<Filter>): Array<CategoryFilter> => {
+    return filters.map((filter) => ({
+      filterId: Number(filter.id),
+      selectedValueIds: filter.values.map((value) => Number(value.id)),
+    }));
+  };
   const categoryMap = useMemo<CategoryMap | null>(() => {
     if (!query.data) return null;
 
@@ -23,7 +31,11 @@ export function useGetCategory() {
     const byParentId = new Map<number | string, Array<Category>>();
     const mainCategories: Category[] = [];
 
-    query.data.forEach((category) => {
+    query.data.forEach((originCategory) => {
+      const category = {
+        ...originCategory,
+        filter: parseFilters((originCategory.filters as Array<Filter>) || []),
+      };
       byId.set(category.categoryId, category);
 
       if (!category.parentId) {
