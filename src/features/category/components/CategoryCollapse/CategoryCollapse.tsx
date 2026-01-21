@@ -210,6 +210,11 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
     void filters;
   }, []);
 
+  const handleClickAddImage = useCallback((file: File) => {
+    // TODO : 이미지 업로드 후 iconUrl 업데이트
+    console.log("file", file);
+  }, []);
+
   return (
     <>
       <AddFilterModal
@@ -247,6 +252,7 @@ export default function CategoryCollapse(props: CategoryCollapseProps) {
             onAddCategory={handleAddCategory}
             onRemoveCategory={handleRemoveCategory}
             onClickAddFilter={handleClickAddFilter}
+            onClickAddImage={handleClickAddImage}
           />
         )}
       />

@@ -1,3 +1,4 @@
+import Image from "@/common/components/Image/Image";
 import ChevronIcon from "@/common/components/Sidebar/ChevronIcon";
 import type { CollapseAPI, CollapseItem } from "@/components/ui/collapse";
 import { Input } from "@/components/ui/input";
@@ -7,8 +8,20 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Category } from "@/features/category/services/categoryService";
-import { FunnelPlus, PlusIcon, TrashIcon } from "lucide-react";
-import { useState, type KeyboardEvent, type MouseEvent } from "react";
+import {
+  FunnelPlus,
+  ImageOff,
+  ImagePlus,
+  PlusIcon,
+  TrashIcon,
+} from "lucide-react";
+import {
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+} from "react";
 import toast from "react-hot-toast";
 
 interface CategoryCollapseContentProps {
@@ -22,13 +35,9 @@ interface CategoryCollapseContentProps {
   onAddCategory?: (category: Category, depth: number) => void;
   onRemoveCategory: (category: Category) => void;
   onClickAddFilter: (categoryId: number | string) => void;
+  onClickAddImage?: (file: File) => void;
   isLeaf?: boolean;
 }
-
-/**
- *  현재 1, 2, 3 depth 동일하게 해당 컴포넌트 사용 중이지만
- *  추후 3depth 렌더 전용 컴포넌트 필요해보임
- */
 
 export default function CategoryCollapseContent(
   props: CategoryCollapseContentProps
@@ -44,9 +53,11 @@ export default function CategoryCollapseContent(
     depth,
     onClickAddFilter,
     isLeaf = false,
+    onClickAddImage,
   } = props;
   const [category, setCategory] = useState(item.data);
   const [isEdit, setIsEdit] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClickText = (e: MouseEvent<HTMLSpanElement>) => {
     e.stopPropagation();
@@ -99,8 +110,47 @@ export default function CategoryCollapseContent(
     onClickAddFilter(item.id);
   };
 
+  const handleClickAddImage = (e: MouseEvent<SVGSVGElement>) => {
+    e.stopPropagation();
+    fileInputRef.current?.click();
+  };
+
+  const handleChangeFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onClickAddImage) {
+      onClickAddImage(file);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const hasImageDepth = depth === 2;
+  const hasFilterDepth = depth > 1;
+
   return (
     <div className="flex flex-row items-center gap-2 w-full">
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={fileInputRef}
+        onClickCapture={(e) => e.stopPropagation()}
+        onChange={handleChangeFile}
+      />
+      {hasImageDepth && (
+        <div>
+          {category.iconUrl ? (
+            <Image
+              showPreview
+              className="w-4 h-4 rounded-sm"
+              src={category.iconUrl}
+            />
+          ) : (
+            <ImageOff className="w-4 h-4" color="gray" />
+          )}
+        </div>
+      )}
       <div className="flex-1">
         {isEdit ? (
           <Input
@@ -120,9 +170,22 @@ export default function CategoryCollapseContent(
           </span>
         )}
       </div>
-
       <div className="flex flex-row items-center gap-2">
-        {depth > 1 && (
+        {/* 2depth 카테고리에만 이미지 추가 버튼 표시 */}
+        {hasImageDepth && (
+          <Tooltip>
+            <TooltipTrigger>
+              <ImagePlus
+                onClick={handleClickAddImage}
+                className="w-4 h-4 cursor-pointer"
+              />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>이미지 추가</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {hasFilterDepth && (
           <Tooltip>
             <TooltipTrigger>
               <FunnelPlus
