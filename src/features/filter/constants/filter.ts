@@ -10,8 +10,8 @@ export const FILTER_TYPE_OPTIONS: Array<Option<FilterType>> = [
     label: "Color",
   },
   {
-    value: "RANGE",
-    label: "Range",
+    value: "PRICE_RANGE",
+    label: "Price Range",
   },
   {
     value: "BRAND",
@@ -20,6 +20,14 @@ export const FILTER_TYPE_OPTIONS: Array<Option<FilterType>> = [
   {
     value: "CHECKBOX",
     label: "Checkbox",
+  },
+  {
+    value: "RADIO",
+    label: "Radio",
+  },
+  {
+    value: "SELECT",
+    label: "Select",
   },
 ];
 

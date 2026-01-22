@@ -1,5 +1,11 @@
 import { apiInstance } from "@/common/lib/apiInstance";
-export type FilterType = "CHECKBOX" | "COLOR" | "RANGE" | "BRAND"; // TODO : 타입 추가
+export type FilterType =
+  | "SELECT"
+  | "RADIO"
+  | "COLOR"
+  | "BRAND"
+  | "PRICE_RANGE"
+  | "CHECKBOX";
 export type FilterCondition = "OR" | "AND" | null;
 export interface FilterValue {
   id: number | string;
