@@ -9,11 +9,6 @@ import RegistrationStatusBadge from "@/features/user/components/RegistrationStat
 
 export const SELLER_REGISTRATION_COLUMNS: Columns<SellerRegistrationInfo> = [
   {
-    key: "sellerId",
-    label: "신청 ID",
-    align: "center",
-  },
-  {
     key: "marketName",
     label: "마켓명",
   },
