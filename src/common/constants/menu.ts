@@ -46,6 +46,11 @@ export const ADMIN_MENU: MenuConfig = {
       ],
     },
     {
+      id: "coupon",
+      label: "쿠폰 관리",
+      path: "/coupon",
+    },
+    {
       id: "category",
       label: "카테고리 관리",
       path: "/category",

@@ -10,6 +10,7 @@ import SellerUserManagement from "@/features/seller/pages/SellerUserManagement";
 import FilterManagement from "@/features/filter/pages/FilterManagement";
 import SocialLoginManagement from "@/features/user/pages/SocialLoginManagement";
 import LoginHistoryManagement from "@/features/user/pages/LoginHistoryManagement";
+import CouponManagement from "@/features/coupon/pages/CouponManagement";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -72,6 +73,10 @@ export const mainRoutes: Array<RouteObject> = [
         ],
       },
       // 시스템 관리
+      {
+        path: "coupon",
+        element: <CouponManagement />,
+      },
       {
         path: "category",
         element: <CategoryManagement />,
