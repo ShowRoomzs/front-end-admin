@@ -1,0 +1,1 @@
+export const NOTICES_QUERY_KEY = "notices";
