@@ -11,6 +11,8 @@ import FilterManagement from "@/features/filter/pages/FilterManagement";
 import SocialLoginManagement from "@/features/user/pages/SocialLoginManagement";
 import LoginHistoryManagement from "@/features/user/pages/LoginHistoryManagement";
 import CouponManagement from "@/features/coupon/pages/CouponManagement";
+import NoticeManagement from "@/features/notice/pages/NoticeManagement";
+import NoticeRegister from "@/features/notice/pages/NoticeRegister";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -76,6 +78,14 @@ export const mainRoutes: Array<RouteObject> = [
       {
         path: "coupon",
         element: <CouponManagement />,
+      },
+      {
+        path: "notice",
+        element: <NoticeManagement />,
+      },
+      {
+        path: "notice/register",
+        element: <NoticeRegister />,
       },
       {
         path: "category",
