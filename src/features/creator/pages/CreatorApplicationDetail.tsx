@@ -4,7 +4,6 @@ import Section from "@/common/components/Section/Section";
 import { Button } from "@/components/ui/button";
 import { useGetCreatorApplicationDetail } from "@/features/creator/hooks/useGetCreatorApplicationDetail";
 import { creatorService } from "@/features/creator/services/creatorService";
-import { formatDate } from "@/common/utils/formatDate";
 import ApprovalModal from "@/features/user/components/ApprovalModal/ApprovalModal";
 import RejectionModal from "@/features/user/components/RejectionModal/RejectionModal";
 import type { UpdateSellerRegistrationStatusData } from "@/features/seller/services/sellerService";
@@ -51,7 +50,7 @@ export default function CreatorApplicationDetail() {
     },
     [cleanUp, id]
   );
-
+  console.log(detail);
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -60,12 +59,6 @@ export default function CreatorApplicationDetail() {
 
       <Section title="계정 정보">
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium text-gray-700">신청일</label>
-            <p className="mt-1 text-sm">
-              {formatDate(detail?.createdAt as string)}
-            </p>
-          </div>
           <div>
             <label className="text-sm font-medium text-gray-700">이메일</label>
             <p className="mt-1 text-sm">{detail?.email}</p>
@@ -76,44 +69,30 @@ export default function CreatorApplicationDetail() {
       <Section title="크리에이터 정보">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium text-gray-700">이름</label>
+            <label className="text-sm font-medium text-gray-700">
+              활동명 및 아이디
+            </label>
+            <p className="mt-1 text-sm">{detail?.activityName}</p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">
+              플랫폼/URL
+            </label>
+            <p className="mt-1 text-sm">
+              {detail?.platformType}/{detail?.platformUrl}
+            </p>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">
+              크리에이터 이름(닉네임)
+            </label>
             <p className="mt-1 text-sm">{detail?.name}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">
-              전화번호
+              크리에이터 전화번호
             </label>
             <p className="mt-1 text-sm">{detail?.phoneNumber}</p>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">활동명</label>
-            <p className="mt-1 text-sm">{detail?.activityName}</p>
-          </div>
-        </div>
-      </Section>
-
-      <Section title="플랫폼 정보">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium text-gray-700">
-              플랫폼 유형
-            </label>
-            <p className="mt-1 text-sm">{detail?.platformType}</p>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">
-              플랫폼 URL
-            </label>
-            <p className="mt-1 text-sm">{detail?.platformUrl}</p>
-          </div>
-        </div>
-      </Section>
-
-      <Section title="쇼룸 정보">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium text-gray-700">쇼룸명</label>
-            <p className="mt-1 text-sm">{detail?.showroomName}</p>
           </div>
         </div>
       </Section>
