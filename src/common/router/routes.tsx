@@ -13,6 +13,8 @@ import LoginHistoryManagement from "@/features/user/pages/LoginHistoryManagement
 import CouponManagement from "@/features/coupon/pages/CouponManagement";
 import NoticeManagement from "@/features/notice/pages/NoticeManagement";
 import NoticeRegister from "@/features/notice/pages/NoticeRegister";
+import CreatorApplicationManagement from "@/features/creator/pages/CreatorApplicationManagement";
+import CreatorApplicationDetail from "@/features/creator/pages/CreatorApplicationDetail";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -63,6 +65,14 @@ export const mainRoutes: Array<RouteObject> = [
           {
             path: "registration/:id",
             element: <SellerRegistrationDetail />,
+          },
+          {
+            path: "creator-registration",
+            element: <CreatorApplicationManagement />,
+          },
+          {
+            path: "creator-registration/:id",
+            element: <CreatorApplicationDetail />,
           },
           {
             path: "account",

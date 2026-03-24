@@ -34,6 +34,11 @@ export const ADMIN_MENU: MenuConfig = {
           path: "/market/registration",
         },
         {
+          id: "creator-registration",
+          label: "크리에이터 가입 신청 관리",
+          path: "/market/creator-registration",
+        },
+        {
           id: "market-account",
           label: "마켓 계정 관리",
           path: "/market/account",
