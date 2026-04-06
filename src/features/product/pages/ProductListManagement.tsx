@@ -6,7 +6,8 @@ import { useParams } from "@/common/hooks/useParams";
 import { PRODUCT_LIST_COLUMNS } from "@/features/product/constants/columns";
 import { PRODUCT_LIST_FILTER_OPTIONS } from "@/features/product/constants/filter";
 import { useGetProductList } from "@/features/product/hooks/useGetProductList";
-import type { ProductListParams } from "@/features/product/services/productService";
+import type { Product, ProductListParams } from "@/features/product/services/productService";
+import { useNavigate } from "react-router-dom";
 
 const INITIAL_PARAMS: ProductListParams = {
   q: "",
@@ -15,6 +16,7 @@ const INITIAL_PARAMS: ProductListParams = {
 };
 
 export default function ProductListManagement() {
+  const navigate = useNavigate();
   const { params, updateLocalParam, localParams, reset, update, updateParam } =
     useParams<ProductListParams>(INITIAL_PARAMS);
   const { data: productList, isLoading } = useGetProductList(params);
@@ -24,6 +26,10 @@ export default function ProductListManagement() {
       updateParam("page", page);
     },
   });
+
+  const handleRowClick = (record: Product) => {
+    navigate(`/product/list/${record.id}`);
+  };
 
   return (
     <ListViewWrapper>
@@ -39,6 +45,7 @@ export default function ProductListManagement() {
         data={productList?.content ?? []}
         pageInfo={pageInfo}
         isLoading={isLoading}
+        onRowClick={handleRowClick}
       />
     </ListViewWrapper>
   );

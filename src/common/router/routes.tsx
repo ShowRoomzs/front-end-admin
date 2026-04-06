@@ -16,6 +16,7 @@ import NoticeRegister from "@/features/notice/pages/NoticeRegister";
 import CreatorApplicationManagement from "@/features/creator/pages/CreatorApplicationManagement";
 import CreatorApplicationDetail from "@/features/creator/pages/CreatorApplicationDetail";
 import ProductListManagement from "@/features/product/pages/ProductListManagement";
+import ProductDetailPage from "@/features/product/pages/ProductDetailPage";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -66,6 +67,10 @@ export const mainRoutes: Array<RouteObject> = [
           {
             path: "list",
             element: <ProductListManagement />,
+          },
+          {
+            path: "list/:productId",
+            element: <ProductDetailPage />,
           },
           {
             path: "category",
