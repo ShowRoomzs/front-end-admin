@@ -12,6 +12,7 @@ export const PRODUCT_LIST_COLUMNS: Columns<Product> = [
   {
     key: "thumbnailUrl",
     label: "대표이미지",
+    align: "center",
     width: 100,
     render: (value) => (
       <Image
@@ -41,7 +42,7 @@ export const PRODUCT_LIST_COLUMNS: Columns<Product> = [
   {
     key: "price",
     label: "판매가",
-    align: "right",
+    align: "left",
     width: 120,
     render: (value) => {
       const price = value as Product["price"];
@@ -58,7 +59,7 @@ export const PRODUCT_LIST_COLUMNS: Columns<Product> = [
   {
     key: "createdAt",
     label: "등록일",
-    align: "center",
+    align: "left",
     width: 160,
     render: (value) => formatDate(value as string),
   },
