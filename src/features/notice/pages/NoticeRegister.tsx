@@ -25,7 +25,7 @@ export default function NoticeRegister() {
     try {
       await createNotice(data);
       toast.success("공지사항이 등록되었습니다.");
-      navigate("/notice");
+      navigate("/support/notice");
     } catch {
       toast.error("공지 등록에 실패했습니다.");
     }
@@ -74,7 +74,7 @@ export default function NoticeRegister() {
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-6 mt-4 border-t border-slate-200">
-            <Button type="button" variant="outline" onClick={() => navigate("/notice")}>
+            <Button type="button" variant="outline" onClick={() => navigate("/support/notice")}>
               취소
             </Button>
             <Button type="submit" isLoading={isPending}>

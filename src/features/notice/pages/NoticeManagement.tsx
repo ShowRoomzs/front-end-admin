@@ -10,7 +10,7 @@ export default function NoticeManagement() {
     <ListViewWrapper>
       <div className="flex flex-row items-center justify-end gap-2 mb-4">
         <Button
-          onClick={() => navigate("/notice/register")}
+          onClick={() => navigate("/support/notice/register")}
           variant="default"
           className="w-fit"
         >

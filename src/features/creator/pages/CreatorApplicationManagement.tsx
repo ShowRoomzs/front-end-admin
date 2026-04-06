@@ -37,7 +37,7 @@ export default function CreatorApplicationManagement() {
 
   const handleRowClick = useCallback(
     (record: CreatorApplicationInfo) => {
-      navigate(`/market/creator-registration/${record.creatorId}`);
+      navigate(`/showroom/registration/${record.creatorId}`);
     },
     [navigate]
   );
