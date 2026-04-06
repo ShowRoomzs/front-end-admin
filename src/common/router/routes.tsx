@@ -15,6 +15,7 @@ import NoticeManagement from "@/features/notice/pages/NoticeManagement";
 import NoticeRegister from "@/features/notice/pages/NoticeRegister";
 import CreatorApplicationManagement from "@/features/creator/pages/CreatorApplicationManagement";
 import CreatorApplicationDetail from "@/features/creator/pages/CreatorApplicationDetail";
+import ProductListManagement from "@/features/product/pages/ProductListManagement";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -36,24 +37,6 @@ export const mainRoutes: Array<RouteObject> = [
         index: true,
         element: <PlaceholderPage title="대시보드" />,
       },
-      // 일반 유저 관리
-      {
-        path: "user",
-        children: [
-          {
-            path: "account",
-            element: <CommonUserManagement />,
-          },
-          {
-            path: "login-history",
-            element: <LoginHistoryManagement />,
-          },
-          {
-            path: "social-login",
-            element: <SocialLoginManagement />,
-          },
-        ],
-      },
       // 마켓 관리
       {
         path: "market",
@@ -67,47 +50,200 @@ export const mainRoutes: Array<RouteObject> = [
             element: <SellerRegistrationDetail />,
           },
           {
-            path: "creator-registration",
-            element: <CreatorApplicationManagement />,
-          },
-          {
-            path: "creator-registration/:id",
-            element: <CreatorApplicationDetail />,
-          },
-          {
-            path: "account",
+            path: "list",
             element: <SellerUserManagement />,
-          },
-          {
-            path: "product",
-            element: <PlaceholderPage title="상품 관리" />,
           },
         ],
       },
-      // 시스템 관리
+      // 상품 관리
+      {
+        path: "product",
+        children: [
+          {
+            path: "inspection",
+            element: <PlaceholderPage title="상품 검수" />,
+          },
+          {
+            path: "list",
+            element: <ProductListManagement />,
+          },
+          {
+            path: "category",
+            element: <CategoryManagement />,
+          },
+          {
+            path: "filter",
+            element: <FilterManagement />,
+          },
+          {
+            path: "review",
+            element: <PlaceholderPage title="리뷰 관리" />,
+          },
+        ],
+      },
+      // 쇼룸 관리
+      {
+        path: "showroom",
+        children: [
+          {
+            path: "registration",
+            element: <CreatorApplicationManagement />,
+          },
+          {
+            path: "registration/:id",
+            element: <CreatorApplicationDetail />,
+          },
+          {
+            path: "list",
+            element: <PlaceholderPage title="쇼룸 목록" />,
+          },
+        ],
+      },
+      // 배너/프로모션 관리
+      {
+        path: "banner",
+        children: [
+          {
+            path: "list",
+            element: <PlaceholderPage title="배너 목록" />,
+          },
+          {
+            path: "register",
+            element: <PlaceholderPage title="배너 등록" />,
+          },
+        ],
+      },
+      // 회원 관리
+      {
+        path: "member",
+        children: [
+          {
+            path: "list",
+            element: <CommonUserManagement />,
+          },
+          {
+            path: "sanction",
+            element: <PlaceholderPage title="제재 관리" />,
+          },
+          {
+            path: "social-login",
+            element: <SocialLoginManagement />,
+          },
+          {
+            path: "login-history",
+            element: <LoginHistoryManagement />,
+          },
+        ],
+      },
+      // 주문 관리
+      {
+        path: "order",
+        children: [
+          {
+            path: "list",
+            element: <PlaceholderPage title="전체 주문 조회" />,
+          },
+          {
+            path: "claim",
+            element: <PlaceholderPage title="클레임 현황" />,
+          },
+        ],
+      },
+      // 정산 관리
+      {
+        path: "settlement",
+        children: [
+          {
+            path: "status",
+            element: <PlaceholderPage title="정산 현황" />,
+          },
+          {
+            path: "process",
+            element: <PlaceholderPage title="정산 처리" />,
+          },
+        ],
+      },
+      // 수수료 정책 관리
+      {
+        path: "fee",
+        children: [
+          {
+            path: "rate",
+            element: <PlaceholderPage title="수수료율 설정" />,
+          },
+          {
+            path: "exposure",
+            element: <PlaceholderPage title="노출 옵션 요금 설정" />,
+          },
+        ],
+      },
+      // 쿠폰 관리
       {
         path: "coupon",
-        element: <CouponManagement />,
+        children: [
+          {
+            path: "register",
+            element: <PlaceholderPage title="쿠폰 등록" />,
+          },
+          {
+            path: "list",
+            element: <CouponManagement />,
+          },
+        ],
       },
+      // 고객지원 관리
       {
-        path: "notice",
-        element: <NoticeManagement />,
+        path: "support",
+        children: [
+          {
+            path: "inquiry",
+            element: <PlaceholderPage title="문의 관리" />,
+          },
+          {
+            path: "faq",
+            element: <PlaceholderPage title="자주 묻는 질문 관리" />,
+          },
+          {
+            path: "notice",
+            element: <NoticeManagement />,
+          },
+          {
+            path: "notice/register",
+            element: <NoticeRegister />,
+          },
+          {
+            path: "push",
+            element: <PlaceholderPage title="푸시 알림" />,
+          },
+        ],
       },
+      // 정책/약관 관리
       {
-        path: "notice/register",
-        element: <NoticeRegister />,
+        path: "policy",
+        children: [
+          {
+            path: "terms",
+            element: <PlaceholderPage title="이용약관" />,
+          },
+          {
+            path: "privacy",
+            element: <PlaceholderPage title="개인정보처리방침" />,
+          },
+          {
+            path: "seller-terms",
+            element: <PlaceholderPage title="판매자 이용약관" />,
+          },
+        ],
       },
+      // 운영자 계정 관리
       {
-        path: "category",
-        element: <CategoryManagement />,
-      },
-      {
-        path: "filter",
-        element: <FilterManagement />,
-      },
-      {
-        path: "role",
-        element: <PlaceholderPage title="role 관리" />,
+        path: "admin",
+        children: [
+          {
+            path: "list",
+            element: <PlaceholderPage title="운영자 계정 목록" />,
+          },
+        ],
       },
     ],
   },
