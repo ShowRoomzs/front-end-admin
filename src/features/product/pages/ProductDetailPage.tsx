@@ -32,7 +32,11 @@ export interface ProductDetailFormData {
   isDiscount: boolean;
   regularPrice: number;
   discountRate: number;
-  optionGroups: Array<{ id: string | number; name: string; items: Array<OptionItem> }>;
+  optionGroups: Array<{
+    id: string | number;
+    name: string;
+    items: Array<OptionItem>;
+  }>;
   optionCombinations: Array<OptionCombination>;
   titleImage: string;
   coverImages: Array<string>;
@@ -167,12 +171,12 @@ export default function ProductDetailPage() {
         <CoverImagesForm control={control} />
       </Section>
 
-      <Section title="상품정보고시">
-        <ProductNoticeForm control={control} />
-      </Section>
-
       <Section title="에디터">
         <DescriptionForm control={control} />
+      </Section>
+
+      <Section title="상품정보고시">
+        <ProductNoticeForm control={control} />
       </Section>
 
       <div className="flex gap-3 justify-end mt-6">
