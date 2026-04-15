@@ -187,10 +187,6 @@ export const mainRoutes: Array<RouteObject> = [
         path: "coupon",
         children: [
           {
-            path: "register",
-            element: <PlaceholderPage title="쿠폰 등록" />,
-          },
-          {
             path: "list",
             element: <CouponManagement />,
           },

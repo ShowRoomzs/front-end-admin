@@ -166,11 +166,6 @@ export const ADMIN_MENU: MenuConfig = {
       label: "쿠폰 관리",
       children: [
         {
-          id: "coupon-register",
-          label: "쿠폰 등록",
-          path: "/coupon/register",
-        },
-        {
           id: "coupon-list",
           label: "쿠폰 목록",
           path: "/coupon/list",
