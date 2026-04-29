@@ -13,6 +13,7 @@ export interface Faq {
   answer: string;
   createdAt: string;
   modifiedAt: string;
+  displayOrder: number;
 }
 
 export interface FaqListParams extends BaseParams {
@@ -26,8 +27,10 @@ export interface FaqRequest {
   answer: string;
 }
 
-export interface FaqReorderRequest {
-  faqIds: Array<number>;
+export interface FaqReorderItem {
+  faqId: number;
+  displayOrder: number;
 }
+export type FaqReorderRequest = Array<FaqReorderItem>;
 
 export type FaqListResponse = PageResponse<Faq>;

@@ -1,24 +1,27 @@
 import type { Columns } from "@/common/components/Table/types";
 import type { Faq } from "@/features/faq/types/faq";
 import dayjs from "dayjs";
-
-interface CreateFaqListColumnsParams {
-  page: number;
-  size: number;
-}
+import { GripVertical } from "lucide-react";
 
 const formatTableDate = (date: string) => dayjs(date).format("YYYY.MM.DD");
 
-export const createFaqListColumns = (
-  params: CreateFaqListColumnsParams
-): Columns<Faq> => [
+export const createFaqListColumns = (): Columns<Faq> => [
   {
     key: "number",
     label: "순서",
     width: 80,
     align: "center",
-    render: (_value, _record, index) =>
-      (Number(params.page) - 1) * Number(params.size) + index + 1,
+    preventRowClick: true,
+    render: (_value, _record, _index, options) => (
+      <button
+        type="button"
+        aria-label="FAQ 순서 변경"
+        className="flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-grab active:cursor-grabbing"
+        {...options?.dragHandleProps}
+      >
+        <GripVertical className="size-4" />
+      </button>
+    ),
   },
   {
     key: "categoryDisplayName",

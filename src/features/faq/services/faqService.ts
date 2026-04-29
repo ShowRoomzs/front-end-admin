@@ -10,8 +10,9 @@ import type {
 
 export const faqService = {
   getFaqCategories: async () => {
-    const { data: response } =
-      await apiInstance.get<Array<FaqCategory>>("/common/faqs/categories");
+    const { data: response } = await apiInstance.get<Array<FaqCategory>>(
+      "/common/faqs/categories"
+    );
     return response;
   },
   getFaqList: async (params: FaqListParams) => {
@@ -40,7 +41,9 @@ export const faqService = {
     return response.data;
   },
   reorderFaqs: async (data: FaqReorderRequest) => {
-    const response = await apiInstance.patch("/admin/faqs/reorder", data);
+    const response = await apiInstance.patch("/admin/faqs/reorder", {
+      reorderList: data,
+    });
     return response.data;
   },
 };

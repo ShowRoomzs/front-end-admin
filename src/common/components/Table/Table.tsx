@@ -10,6 +10,7 @@ import type { TableKey, TableProps } from "@/common/components/Table/types";
 import { Loader2Icon } from "lucide-react";
 import { useSyncHorizontalScroll } from "@/common/hooks/useSyncHorizontalScroll";
 import { getColumnKeyWithLabel } from "@/common/components/Table/config";
+import { DragDropContext } from "@hello-pangea/dnd";
 
 const MAX_TABLE_WIDTH = 1880; // 최대 테이블 너비
 
@@ -31,6 +32,7 @@ export default function Table<T, K extends keyof T = keyof T>(
     bodyClassName = "",
     headerClassName = "",
     onSortChange,
+    rowDrag,
   } = props;
   const [checkedKeys, setCheckedKeys] = useState<Array<T[K]>>(
     originCheckedKeys as Array<T[K]>
@@ -298,7 +300,7 @@ export default function Table<T, K extends keyof T = keyof T>(
       );
     }
 
-    return (
+    const tableContent = (
       <div style={{ minWidth: totalTableWidth }}>
         <table ref={bodyTableRef} className="border-separate border-spacing-0">
           {renderColGroup()}
@@ -307,10 +309,21 @@ export default function Table<T, K extends keyof T = keyof T>(
             data={data}
             onRowClick={onRowClick}
             bodyClassName={bodyClassName}
+            rowDrag={rowDrag}
           />
         </table>
       </div>
     );
+
+    if (rowDrag?.enabled) {
+      return (
+        <DragDropContext onDragEnd={rowDrag.onDragEnd}>
+          {tableContent}
+        </DragDropContext>
+      );
+    }
+
+    return tableContent;
   }, [
     columns,
     data,
@@ -320,6 +333,7 @@ export default function Table<T, K extends keyof T = keyof T>(
     renderColGroup,
     totalTableWidth,
     bodyClassName,
+    rowDrag,
   ]);
 
   return (
