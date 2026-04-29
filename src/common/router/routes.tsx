@@ -13,6 +13,9 @@ import LoginHistoryManagement from "@/features/user/pages/LoginHistoryManagement
 import CouponManagement from "@/features/coupon/pages/CouponManagement";
 import NoticeManagement from "@/features/notice/pages/NoticeManagement";
 import NoticeRegister from "@/features/notice/pages/NoticeRegister";
+import FaqManagement from "@/features/faq/pages/FaqManagement";
+import FaqRegister from "@/features/faq/pages/FaqRegister";
+import FaqDetailPage from "@/features/faq/pages/FaqDetailPage";
 import CreatorApplicationManagement from "@/features/creator/pages/CreatorApplicationManagement";
 import CreatorApplicationDetail from "@/features/creator/pages/CreatorApplicationDetail";
 import ProductListManagement from "@/features/product/pages/ProductListManagement";
@@ -202,7 +205,15 @@ export const mainRoutes: Array<RouteObject> = [
           },
           {
             path: "faq",
-            element: <PlaceholderPage title="자주 묻는 질문 관리" />,
+            element: <FaqManagement />,
+          },
+          {
+            path: "faq/register",
+            element: <FaqRegister />,
+          },
+          {
+            path: "faq/:faqId",
+            element: <FaqDetailPage />,
           },
           {
             path: "notice",
