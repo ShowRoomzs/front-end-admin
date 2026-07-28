@@ -22,7 +22,7 @@ export default function TableBody<T>(props: TableBodyProps<T>) {
   const { columns, data, onRowClick, bodyClassName = "", rowDrag } = props;
   const { getColumnFixedStyle } = useTableFixed<T>(columns, false);
   const isRowClickClass = onRowClick ? "cursor-pointer" : "";
-  const rowClickClassName = cn("group hover:bg-[#FFFBF0]", isRowClickClass);
+  const rowClickClassName = cn("group hover:bg-sz-accent-50", isRowClickClass);
   const cellRef = useRef<Record<string, HTMLTableCellElement>>({});
   const handleRowClick = useCallback(
     (record: T) => {
@@ -63,7 +63,7 @@ export default function TableBody<T>(props: TableBodyProps<T>) {
 
       const key = getColumnKey(col, false);
       const tableBodyClassName = cn(
-        `flex text-[#00000099] text-[12px]`,
+        `flex text-sz-n-900 text-[12px]`,
         alignClass,
         bodyClassName
       );
@@ -77,9 +77,12 @@ export default function TableBody<T>(props: TableBodyProps<T>) {
             }
           }}
           onClick={(e) => handleCellClick(e, col, index)}
-          className={`px-4 py-[8px] border-b border-gray-200 ${
-            col.fixed ? "bg-white group-hover:bg-[#FFFBF0]" : ""
-          }`}
+          // 구분선 위계: 본문 행 사이는 --n-100. 첫 행은 헤더 경계선과 이중선이 되지 않도록 생략
+          className={cn(
+            "px-4 py-[14px] align-middle",
+            index !== 0 && "border-t border-sz-n-100",
+            col.fixed && "bg-white group-hover:bg-sz-accent-50"
+          )}
           style={{
             width: width ? `${width}px` : undefined,
             minWidth: width ? `${width}px` : undefined,

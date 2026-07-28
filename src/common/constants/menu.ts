@@ -1,231 +1,156 @@
 import type { MenuConfig } from "@/common/types";
 
+/**
+ * 어드민 GNB 정본 (ui-admin-02-onboarding-brand rev.6 사이드바 기준, 10개 대분류)
+ * 배열 순서가 곧 사이드바 번호이며, children이 있으면 아코디언으로 렌더링된다.
+ * badge/count는 집계 API가 없어 아직 비워둔다(값이 들어오면 사이드바가 자동 노출).
+ */
 export const ADMIN_MENU: MenuConfig = {
   menuType: "ADMIN",
   groups: [
     {
-      id: "dashboard",
-      label: "대시보드",
+      id: "home",
+      label: "홈",
       path: "/",
     },
     {
-      id: "market-management",
-      label: "마켓 관리",
+      id: "onboarding",
+      label: "입점 관리",
       children: [
         {
-          id: "market-registration",
-          label: "입점 신청 관리",
+          id: "onboarding-brand",
+          label: "브랜드",
+          pageTitle: "브랜드 입점 신청",
           path: "/market/registration",
         },
         {
-          id: "market-list",
-          label: "마켓 목록",
-          path: "/market/list",
-        },
-      ],
-    },
-    {
-      id: "product-management",
-      label: "상품 관리",
-      children: [
-        {
-          id: "product-inspection",
-          label: "상품 검수",
-          path: "/product/inspection",
-        },
-        {
-          id: "product-list",
-          label: "전체 상품 목록",
-          path: "/product/list",
-        },
-        {
-          id: "product-category",
-          label: "카테고리 관리",
-          path: "/product/category",
-        },
-        {
-          id: "product-filter",
-          label: "필터 관리",
-          path: "/product/filter",
-        },
-        {
-          id: "product-review",
-          label: "리뷰 관리",
-          path: "/product/review",
-        },
-      ],
-    },
-    {
-      id: "showroom-management",
-      label: "쇼룸 관리",
-      children: [
-        {
-          id: "showroom-registration",
-          label: "쇼룸 신청 관리",
+          id: "onboarding-influencer",
+          label: "인플루언서",
+          pageTitle: "인플루언서 입점 신청",
           path: "/showroom/registration",
         },
-        {
-          id: "showroom-list",
-          label: "쇼룸 목록",
-          path: "/showroom/list",
-        },
       ],
     },
     {
-      id: "banner-management",
-      label: "배너/프로모션 관리",
-      children: [
-        {
-          id: "banner-list",
-          label: "배너 목록",
-          path: "/banner/list",
-        },
-        {
-          id: "banner-register",
-          label: "배너 등록",
-          path: "/banner/register",
-        },
-      ],
-    },
-    {
-      id: "member-management",
+      id: "member",
       label: "회원 관리",
       children: [
         {
-          id: "member-list",
-          label: "회원 목록",
+          id: "member-brand",
+          label: "브랜드",
+          pageTitle: "브랜드 회원 관리",
+          path: "/market/list",
+        },
+        {
+          id: "member-influencer",
+          label: "인플루언서",
+          pageTitle: "인플루언서 회원 관리",
+          path: "/showroom/list",
+        },
+        {
+          id: "member-consumer",
+          label: "소비자",
+          pageTitle: "소비자 회원 관리",
           path: "/member/list",
         },
-        {
-          id: "member-sanction",
-          label: "제재 관리",
-          path: "/member/sanction",
-        },
-        {
-          id: "member-social-login",
-          label: "간편 로그인 설정",
-          path: "/member/social-login",
-        },
-        {
-          id: "member-login-history",
-          label: "로그인 이력 관리",
-          path: "/member/login-history",
-        },
       ],
     },
     {
-      id: "order-management",
-      label: "주문 관리",
-      children: [
-        {
-          id: "order-list",
-          label: "전체 주문 조회",
-          path: "/order/list",
-        },
-        {
-          id: "order-claim",
-          label: "클레임 현황",
-          path: "/order/claim",
-        },
-      ],
+      id: "product",
+      label: "상품 관리",
+      path: "/product/list",
     },
     {
-      id: "settlement-management",
+      id: "group-buy",
+      label: "공구 관리",
+      path: "/group-buy",
+    },
+    {
+      id: "transaction",
+      label: "거래 관리",
+      path: "/order/list",
+      pageTitle: "거래 관리",
+    },
+    {
+      id: "settlement",
       label: "정산 관리",
       children: [
         {
-          id: "settlement-status",
-          label: "정산 현황",
-          path: "/settlement/status",
+          id: "settlement-group-buy",
+          label: "공구 정산",
+          path: "/settlement/group-buy",
         },
         {
-          id: "settlement-process",
-          label: "정산 처리",
-          path: "/settlement/process",
-        },
-      ],
-    },
-    {
-      id: "fee-management",
-      label: "수수료 정책 관리",
-      children: [
-        {
-          id: "fee-rate",
-          label: "수수료율 설정",
-          path: "/fee/rate",
-        },
-        {
-          id: "fee-exposure",
-          label: "노출 옵션 요금 설정",
-          path: "/fee/exposure",
+          id: "settlement-fixed-payout",
+          label: "고정 지급비 정산",
+          path: "/settlement/fixed-payout",
         },
       ],
     },
     {
-      id: "coupon-management",
-      label: "쿠폰 관리",
+      id: "cs-content",
+      label: "CS·콘텐츠 관리",
       children: [
         {
-          id: "coupon-list",
-          label: "쿠폰 목록",
-          path: "/coupon/list",
-        },
-      ],
-    },
-    {
-      id: "support-management",
-      label: "고객지원 관리",
-      children: [
-        {
-          id: "support-inquiry",
-          label: "문의 관리",
+          id: "cs-inquiry",
+          label: "1:1 문의",
           path: "/support/inquiry",
         },
         {
-          id: "support-faq",
-          label: "자주 묻는 질문 관리",
+          id: "cs-product-inquiry",
+          label: "상품 문의 모니터링",
+          path: "/support/product-inquiry",
+        },
+        {
+          id: "cs-faq",
+          label: "FAQ 관리",
           path: "/support/faq",
         },
         {
-          id: "support-notice",
-          label: "공지사항 관리",
+          id: "cs-notice",
+          label: "공지 관리",
           path: "/support/notice",
         },
         {
-          id: "support-push",
-          label: "푸시 알림",
-          path: "/support/push",
+          id: "cs-terms",
+          label: "약관 관리",
+          path: "/support/terms",
         },
       ],
     },
     {
-      id: "policy-management",
-      label: "정책/약관 관리",
+      id: "monitoring",
+      label: "게시물·소통 모니터링",
       children: [
         {
-          id: "policy-terms",
-          label: "이용약관",
-          path: "/policy/terms",
+          id: "monitoring-group-buy-post",
+          label: "공구 게시물",
+          path: "/monitoring/group-buy-posts",
         },
         {
-          id: "policy-privacy",
-          label: "개인정보처리방침",
-          path: "/policy/privacy",
+          id: "monitoring-post",
+          label: "일반 게시물",
+          path: "/monitoring/posts",
         },
         {
-          id: "policy-seller-terms",
-          label: "판매자 이용약관",
-          path: "/policy/seller-terms",
+          id: "monitoring-thread",
+          label: "소통 스레드",
+          path: "/monitoring/threads",
         },
       ],
     },
     {
-      id: "admin-management",
-      label: "운영자 계정 관리",
+      id: "settings",
+      label: "설정",
       children: [
         {
-          id: "admin-list",
-          label: "운영자 계정 목록",
+          id: "settings-social-login",
+          label: "소셜 로그인 설정",
+          path: "/member/social-login",
+        },
+        {
+          id: "settings-admin-account",
+          label: "운영자 계정 관리",
           path: "/admin/list",
         },
       ],

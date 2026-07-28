@@ -21,26 +21,19 @@ interface RejectionModalProps {
   onReject: (data: UpdateSellerRegistrationStatusData) => Promise<void>;
 }
 
-const REJECTION_REASONS = [
-  {
-    value: "BUSINESS_INFO_UNVERIFIED" as RejectionReason,
-    label: "사업자정보 확인 불가",
-  },
-  {
-    value: "CRITERIA_NOT_MET" as RejectionReason,
-    label: "입점 기준 미달성",
-  },
-  {
-    value: "INAPPROPRIATE_MARKET_NAME" as RejectionReason,
-    label: "마켓명 부적절",
-  },
-  { value: "OTHER" as RejectionReason, label: "기타" },
+// 백엔드 RejectionReasonType enum과 일치하는 값만 사용한다.
+// (브랜드 입점 심사 전용 모달은 features/seller/components 쪽으로 분리됨)
+const REJECTION_REASONS: Array<{ value: RejectionReason; label: string }> = [
+  { value: "BUSINESS_REG_NUMBER_MISMATCH", label: "사업자등록번호 불일치" },
+  { value: "MAIL_ORDER_REPORT_INCOMPLETE", label: "통신판매업 신고 미완료" },
+  { value: "INSUFFICIENT_DOCUMENTS", label: "첨부 서류 부실·누락" },
+  { value: "OTHER", label: "기타" },
 ];
 
 export default function RejectionModal(props: RejectionModalProps) {
   const { open, onOpenChange, recipientEmail, onReject } = props;
   const [selectedReason, setSelectedReason] = useState<RejectionReason>(
-    "BUSINESS_INFO_UNVERIFIED"
+    "BUSINESS_REG_NUMBER_MISMATCH"
   );
   const [otherReason, setOtherReason] = useState("");
 
@@ -56,7 +49,7 @@ export default function RejectionModal(props: RejectionModalProps) {
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       // 모달이 닫힐 때 상태 초기화
-      setSelectedReason("BUSINESS_INFO_UNVERIFIED");
+      setSelectedReason("BUSINESS_REG_NUMBER_MISMATCH");
       setOtherReason("");
     }
     onOpenChange(open);

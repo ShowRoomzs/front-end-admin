@@ -62,4 +62,21 @@ export interface TableProps<T, K extends keyof T = keyof T> {
   bodyClassName?: string;
   headerClassName?: string;
   rowDrag?: RowDragOptions<T>;
+  /** 데이터가 없을 때 표시할 내용. 미지정 시 기본 문구를 쓴다(툴바·카드 프레임은 유지). */
+  emptyState?: ReactNode;
+  /**
+   * 고정 폭(1880px) 대신 컨테이너 폭에 맞춰 컬럼을 분배해 가로 스크롤을 없앤다.
+   * 컬럼 수가 적어 한 화면에 다 들어가는 목록에 쓴다.
+   */
+  fitWidth?: boolean;
+  /**
+   * 남은 높이를 채우지 않고 내용 높이에 맞춘다(마지막 행 바로 아래에 페이지네이션이 붙는다).
+   * 내부 세로 스크롤 대신 페이지 전체가 스크롤된다.
+   */
+  autoHeight?: boolean;
+  /**
+   * autoHeight 모드에서 스크롤 없이 보여줄 최대 행 수.
+   * 이 수를 넘으면 본문만 내부 스크롤되고 페이지네이션은 그 아래에 고정된다.
+   */
+  maxRows?: number;
 }

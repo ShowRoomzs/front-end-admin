@@ -46,7 +46,7 @@ export default function TableHeader<T>(props: TableHeaderProps<T>) {
   };
 
   return (
-    <thead className="bg-[#0A2B84] h-[44px]">
+    <thead className="border-b border-sz-n-200 bg-sz-n-100">
       <tr>
         {columns.map((col, index) => {
           const sortKey = col.key.toString();
@@ -80,10 +80,10 @@ export default function TableHeader<T>(props: TableHeaderProps<T>) {
               key={key}
               id={key}
               className={cn(
-                "px-4 py-3",
+                "px-4 py-2.5",
                 index === 0 && "rounded-tl-[0px]",
                 index === columns.length - 1 && "rounded-tr-[0px]",
-                col.fixed && "bg-[#0A2B84]"
+                col.fixed && "bg-sz-n-100"
               )}
               style={{
                 width: width ? `${width}px` : undefined,
@@ -104,7 +104,7 @@ export default function TableHeader<T>(props: TableHeaderProps<T>) {
               >
                 <span
                   className={cn(
-                    "text-white text-[11px] font-[700]",
+                    "text-[11px] font-medium text-sz-n-600",
                     headerClassName
                   )}
                 >

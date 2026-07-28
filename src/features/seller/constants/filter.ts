@@ -1,43 +1,8 @@
 import type { FilterOptionGroup } from "@/common/components/FilterCard/FilterCard";
-import { parseMapToOptions } from "@/common/utils/parseMapToOptions";
-import {
-  SELLER_REGISTRATION_KEYWORD_TYPE,
-  SELLER_REGISTRATION_STATUS,
-} from "@/features/seller/constants/params";
-import type {
-  SellerRegistrationParams,
-  SellerUserListParams,
-} from "@/features/seller/services/sellerService";
+import type { SellerUserListParams } from "@/features/seller/services/sellerService";
 
-export const SELLER_REGISTRATION_FILTER_OPTIONS: FilterOptionGroup<SellerRegistrationParams> =
-  {
-    상태: [
-      {
-        key: "status",
-        type: "radio",
-        options: parseMapToOptions(SELLER_REGISTRATION_STATUS, true),
-      },
-    ],
-    기간: [
-      {
-        key: "startDate",
-        type: "dateRange",
-        endKey: "endDate",
-      },
-    ],
-    검색: [
-      {
-        key: "keywordType",
-        type: "select",
-        options: parseMapToOptions(SELLER_REGISTRATION_KEYWORD_TYPE),
-      },
-      {
-        key: "keyword",
-        type: "input",
-        placeholder: "검색어를 입력해주세요.",
-      },
-    ],
-  };
+// 입점 신청 목록은 FilterCard 대신 ApplicationTabFilter(탭 + 브랜드명 검색)를 쓴다.
+// 기간·검색타입 필터는 API에서 제거되어 대응 상수도 함께 삭제했다.
 
 export const SELLER_USER_FILTER_OPTIONS: FilterOptionGroup<SellerUserListParams> =
   {

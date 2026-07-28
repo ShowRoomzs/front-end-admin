@@ -5,6 +5,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 const INITIAL_DISPLAY_COUNT = 3;
 const MIDDLE_DISPLAY_COUNT = 3;
 
+const PAGE_ITEM_BASE =
+  "flex min-w-[26px] h-[26px] items-center justify-center rounded-[6px] px-[6px] text-[12px] transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+
+// 현재 페이지는 hover 스타일을 주지 않는다 — :hover 특이성이 활성 배경색을 덮어쓰기 때문
+const PAGE_ITEM_IDLE =
+  "text-sz-n-600 hover:bg-sz-n-100 disabled:hover:bg-transparent";
+const PAGE_ITEM_ACTIVE = "bg-sz-accent-500 font-medium text-white";
+
 export interface PaginationProps extends Omit<PageInfo, "content"> {
   onPageChange?: (page: number) => void;
 }
@@ -31,10 +39,8 @@ export default function Pagination(props: PaginationProps) {
         <button
           key={`page-${page}`}
           className={cn(
-            "min-w-[30px] min-h-[30px] rounded-[4px] text-[14px] px-[5px] font-medium transition-colors",
-            isActive
-              ? "bg-[#5468CD] text-white"
-              : "bg-white text-[#666666] hover:bg-gray-50 border border-[#E0E0E0]"
+            PAGE_ITEM_BASE,
+            isActive ? PAGE_ITEM_ACTIVE : PAGE_ITEM_IDLE
           )}
           onClick={() => handlePageChange(page)}
         >
@@ -52,7 +58,7 @@ export default function Pagination(props: PaginationProps) {
 
       if (totalPages > INITIAL_DISPLAY_COUNT) {
         buttons.push(
-          <span key="ellipsis" className="text-[#999999] px-2">
+          <span key="ellipsis" className="px-2 text-sz-n-400">
             ...
           </span>
         );
@@ -67,7 +73,7 @@ export default function Pagination(props: PaginationProps) {
 
       if (leftmostPage > 2) {
         buttons.push(
-          <span key="ellipsis-start" className="text-[#999999] px-2">
+          <span key="ellipsis-start" className="px-2 text-sz-n-400">
             ...
           </span>
         );
@@ -82,7 +88,7 @@ export default function Pagination(props: PaginationProps) {
       if (rightmostPage < totalPages) {
         if (rightmostPage < totalPages - 1) {
           buttons.push(
-            <span key="ellipsis-end" className="text-[#999999] px-2">
+            <span key="ellipsis-end" className="px-2 text-sz-n-400">
               ...
             </span>
           );
@@ -115,57 +121,25 @@ export default function Pagination(props: PaginationProps) {
   }
 
   return (
-    <div className="flex flex-row items-center gap-[8px]">
+    <div className="flex flex-row items-center gap-1">
       <button
-        className={cn(
-          "w-[30px] h-[30px] rounded-[4px] bg-white border border-[#E0E0E0] flex items-center justify-center transition-colors",
-          isPreviousDisabled
-            ? "opacity-50 cursor-not-allowed"
-            : "hover:bg-gray-50"
-        )}
+        className={cn(PAGE_ITEM_BASE, PAGE_ITEM_IDLE)}
         onClick={handleClickPrevious}
         disabled={isPreviousDisabled}
+        aria-label="이전 페이지"
       >
-        <svg
-          width="8"
-          height="12"
-          viewBox="0 0 8 12"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M6 10L2 6L6 2"
-            stroke="#666666"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
+        ‹
       </button>
 
       {pageButtons}
 
       <button
-        className={cn(
-          "w-[30px] h-[30px] rounded-[4px] bg-white border border-[#E0E0E0] flex items-center justify-center transition-colors",
-          isNextDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"
-        )}
+        className={cn(PAGE_ITEM_BASE, PAGE_ITEM_IDLE)}
         onClick={handleClickNext}
         disabled={isNextDisabled}
+        aria-label="다음 페이지"
       >
-        <svg
-          width="8"
-          height="12"
-          viewBox="0 0 8 12"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M2 2L6 6L2 10"
-            stroke="#666666"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        </svg>
+        ›
       </button>
     </div>
   );

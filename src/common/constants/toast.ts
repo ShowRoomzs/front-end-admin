@@ -1,48 +1,64 @@
+/**
+ * 토스트 규격 (웹 디자인시스템 v1.1 · 어드민 공통)
+ * 우상단 top:72px right:24px · 좌측 3px 강조 보더 · 3초
+ *
+ * 기존 Tailwind 계열 상태색(#10b981 / #ef4444 / #3b82f6)은 v1.0 폐기와 함께 사용 금지.
+ */
+const BASE_STYLE = {
+  background: "#fff",
+  color: "var(--sz-n-900)",
+  border: "1px solid var(--sz-n-200)",
+  borderLeftWidth: "3px",
+  borderRadius: "7px",
+  boxShadow: "0 4px 16px rgba(26, 27, 31, 0.1)",
+  padding: "11px 14px",
+  minWidth: "260px",
+  fontSize: "12px",
+  fontWeight: "500",
+};
+
+/** Toaster containerStyle — 탑바(56px) 아래로 내려 겹치지 않게 한다 */
+export const TOAST_CONTAINER_STYLE = {
+  top: 72,
+  right: 24,
+};
+
 export const TOAST_OPTIONS = {
-  // 기본 스타일
   duration: 3000,
   style: {
-    background: "#fff",
-    color: "#363636",
-    padding: "16px",
-    borderRadius: "8px",
-    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-    fontSize: "14px",
-    fontWeight: "500",
+    ...BASE_STYLE,
+    borderLeftColor: "var(--sz-n-400)",
   },
-  // success 스타일
   success: {
     duration: 3000,
     style: {
-      background: "#10b981",
-      color: "#fff",
+      ...BASE_STYLE,
+      borderLeftColor: "var(--sz-success-text)",
     },
     iconTheme: {
-      primary: "#fff",
-      secondary: "#10b981",
+      primary: "var(--sz-success-text)",
+      secondary: "#fff",
     },
   },
-  // error 스타일
   error: {
     duration: 4000,
     style: {
-      background: "#ef4444",
-      color: "#fff",
+      ...BASE_STYLE,
+      borderLeftColor: "var(--sz-danger-text)",
     },
     iconTheme: {
-      primary: "#fff",
-      secondary: "#ef4444",
+      primary: "var(--sz-danger-text)",
+      secondary: "#fff",
     },
   },
-  // loading 스타일
   loading: {
     style: {
-      background: "#3b82f6",
-      color: "#fff",
+      ...BASE_STYLE,
+      borderLeftColor: "var(--sz-accent-500)",
     },
     iconTheme: {
-      primary: "#fff",
-      secondary: "#3b82f6",
+      primary: "var(--sz-accent-500)",
+      secondary: "#fff",
     },
   },
 };
