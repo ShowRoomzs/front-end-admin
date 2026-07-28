@@ -7,14 +7,21 @@ import App from "./App.tsx";
 import { Toaster } from "react-hot-toast";
 import { queryClient } from "@/common/lib/queryClient.ts";
 import { CookiesProvider } from "react-cookie";
-import { TOAST_OPTIONS } from "@/common/constants/toast.ts";
+import {
+  TOAST_CONTAINER_STYLE,
+  TOAST_OPTIONS,
+} from "@/common/constants/toast.ts";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <CookiesProvider>
         <QueryClientProvider client={queryClient}>
-          <Toaster position="top-right" toastOptions={TOAST_OPTIONS} />
+          <Toaster
+            position="top-right"
+            containerStyle={TOAST_CONTAINER_STYLE}
+            toastOptions={TOAST_OPTIONS}
+          />
           <App />
         </QueryClientProvider>
       </CookiesProvider>

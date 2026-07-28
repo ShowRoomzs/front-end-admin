@@ -1,46 +1,39 @@
-import { useNavigate } from "react-router-dom";
-import logo from "@/common/assets/logo.svg";
-import { HEADER_HEIGHT } from "./config";
-
 interface HeaderProps {
-  isSidebarOpen: boolean;
-  onToggleSidebar: () => void;
+  /** 상위 메뉴명 (예: 입점 관리) */
+  title?: string;
+  /** 하위 경로 (예: 브랜드) */
+  subtitle?: string;
+  operatorName?: string;
 }
 
+/**
+ * 어드민 탑바 — 사이드바 우측에만 걸친다(높이 56px).
+ * 좌측 브레드크럼 · 우측 운영자 정보.
+ */
 export default function Header(props: HeaderProps) {
-  const { isSidebarOpen, onToggleSidebar } = props;
-  const navigate = useNavigate();
+  const { title, subtitle, operatorName } = props;
 
   return (
-    <header
-      className="bg-white border-b border-[#e3e6f0] flex items-center px-3"
-      style={{ height: `${HEADER_HEIGHT}px` }}
-    >
-      <button
-        onClick={onToggleSidebar}
-        className="mr-4 p-2 hover:bg-[#f7f8fa] rounded transition-colors cursor-pointer"
-        aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
-      >
-        <svg
-          className="w-6 h-6 text-[#2e3547]"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 6h16M4 12h16M4 18h16"
-          />
-        </svg>
-      </button>
-      <img
-        src={logo}
-        alt="Showroom Logo"
-        className="h-4 cursor-pointer"
-        onClick={() => navigate("/")}
-      />
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-sz-n-200 bg-white px-6">
+      <div className="text-[16px] font-semibold text-sz-n-900">
+        {title}
+        {subtitle && (
+          <span className="ml-1.5 text-[12px] font-normal text-sz-n-500">
+            / {subtitle}
+          </span>
+        )}
+      </div>
+
+      {operatorName && (
+        <div className="flex items-center gap-2 text-[12px] text-sz-n-600">
+          <span>
+            {operatorName} <b className="font-semibold">운영자</b>
+          </span>
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sz-n-200 text-[11px] font-semibold text-sz-n-600">
+            {operatorName.charAt(0)}
+          </span>
+        </div>
+      )}
     </header>
   );
 }

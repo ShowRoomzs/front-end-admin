@@ -11,8 +11,11 @@ import { Loader2Icon } from "lucide-react";
 import { useSyncHorizontalScroll } from "@/common/hooks/useSyncHorizontalScroll";
 import { getColumnKeyWithLabel } from "@/common/components/Table/config";
 import { DragDropContext } from "@hello-pangea/dnd";
+import { cn } from "@/lib/utils";
 
 const MAX_TABLE_WIDTH = 1880; // 최대 테이블 너비
+// 본문 행 1개 높이: 상하 패딩 14px + 12px 본문 줄높이 + 구분선 1px
+const ROW_HEIGHT = 47;
 
 export default function Table<T, K extends keyof T = keyof T>(
   props: TableProps<T, K>
@@ -33,7 +36,16 @@ export default function Table<T, K extends keyof T = keyof T>(
     headerClassName = "",
     onSortChange,
     rowDrag,
+    emptyState,
+    fitWidth = false,
+    autoHeight = false,
+    maxRows,
   } = props;
+
+  // autoHeight 모드에서 행이 maxRows를 넘으면 본문만 내부 스크롤한다
+  const bodyMaxHeight =
+    autoHeight && maxRows ? maxRows * ROW_HEIGHT : undefined;
+  const isBodyScrollable = !autoHeight || bodyMaxHeight !== undefined;
   const [checkedKeys, setCheckedKeys] = useState<Array<T[K]>>(
     originCheckedKeys as Array<T[K]>
   );
@@ -223,6 +235,21 @@ export default function Table<T, K extends keyof T = keyof T>(
       0
     );
 
+    // 컨테이너 폭에 맞추는 모드: 측정한 자연 너비를 비율(%)로 환산해
+    // 헤더·바디 두 테이블이 같은 비율을 공유하도록 한다(별도 table이라 정렬이 어긋나면 안 됨)
+    if (fitWidth) {
+      if (totalWidth <= 0) {
+        return;
+      }
+      const ratios: Record<string, number> = {};
+      columns.forEach((col) => {
+        const colKey = getColumnKeyWithLabel(col);
+        ratios[colKey] = (measuredWidths[colKey] / totalWidth) * 100;
+      });
+      setColWidths(ratios);
+      return;
+    }
+
     // col.width가 있는 컬럼 너비의 합
     const absoluteWidths = columns.reduce(
       (abs, col) => (col.width ? abs + col.width : abs),
@@ -250,7 +277,7 @@ export default function Table<T, K extends keyof T = keyof T>(
       });
     }
     setColWidths(measuredWidths);
-  }, [colWidths, columns, getRowWidths, isLoading]);
+  }, [colWidths, columns, getRowWidths, isLoading, fitWidth]);
 
   useEffect(() => {
     handleMeasureWidths();
@@ -259,23 +286,38 @@ export default function Table<T, K extends keyof T = keyof T>(
     }
   }, [handleMeasureWidths, isMounted]);
 
+  // 측정 전에는 auto 레이아웃이어야 컬럼별 자연 너비가 나온다.
+  // 처음부터 table-fixed를 걸면 콜그룹이 비어 있어 균등 분할된 값이 측정된다.
+  const isFitWidthMeasured = fitWidth && Object.keys(colWidths).length > 0;
+
+  // fitWidth 모드에서는 최소 너비를 강제하지 않아 가로 스크롤이 생기지 않는다
   const totalTableWidth = useMemo(() => {
+    if (fitWidth) {
+      return undefined;
+    }
     const total = Object.values(colWidths).reduce((sum, w) => sum + w, 0);
     return total > 0 ? total : MAX_TABLE_WIDTH;
-  }, [colWidths]);
+  }, [colWidths, fitWidth]);
 
   const renderColGroup = useCallback(() => {
     return (
       <colgroup>
-        {columns.map((col) => (
-          <col
-            key={getColumnKeyWithLabel(col)}
-            style={{ width: colWidths[getColumnKeyWithLabel(col)] }}
-          />
-        ))}
+        {columns.map((col) => {
+          const colKey = getColumnKeyWithLabel(col);
+          const width = colWidths[colKey];
+          return (
+            <col
+              key={colKey}
+              style={{
+                width:
+                  fitWidth && width != null ? `${width}%` : width,
+              }}
+            />
+          );
+        })}
       </colgroup>
     );
-  }, [colWidths, columns]);
+  }, [colWidths, columns, fitWidth]);
 
   const renderContent = useCallback(() => {
     if (!hasData) {
@@ -283,7 +325,10 @@ export default function Table<T, K extends keyof T = keyof T>(
       if (isLoading) {
         return (
           <div
-            className="w-full h-full flex items-center justify-center"
+            className={cn(
+              "w-full flex items-center justify-center",
+              autoHeight ? "py-12" : "h-full"
+            )}
             style={{
               animation: "spin 1s linear infinite",
             }}
@@ -293,16 +338,31 @@ export default function Table<T, K extends keyof T = keyof T>(
         );
       }
       // 데이터 없음 and 로딩 완료 : EmptyView
+      // autoHeight일 때는 부모 높이가 0이라 absolute/h-full을 쓰면 보이지 않는다
       return (
-        <div className="absolute flex items-center justify-center h-full w-full">
-          <div className="text-sm text-gray-500">데이터가 없습니다</div>
+        <div
+          className={cn(
+            "flex w-full items-center justify-center",
+            !autoHeight && "absolute h-full"
+          )}
+        >
+          {emptyState ?? (
+            <div className="text-sm text-sz-n-500">데이터가 없습니다</div>
+          )}
         </div>
       );
     }
 
     const tableContent = (
       <div style={{ minWidth: totalTableWidth }}>
-        <table ref={bodyTableRef} className="border-separate border-spacing-0">
+        <table
+          ref={bodyTableRef}
+          className={cn(
+            "border-separate border-spacing-0",
+            fitWidth && "w-full",
+            isFitWidthMeasured && "table-fixed"
+          )}
+        >
           {renderColGroup()}
           <TableBody<T>
             columns={columns}
@@ -334,11 +394,18 @@ export default function Table<T, K extends keyof T = keyof T>(
     totalTableWidth,
     bodyClassName,
     rowDrag,
+    emptyState,
+    fitWidth,
+    isFitWidthMeasured,
+    autoHeight,
   ]);
 
   return (
     <div
-      className="font-noto flex flex-col flex-1 min-h-0 bg-white transition-opacity duration-200 rounded-lg overflow-hidden"
+      className={cn(
+        "flex flex-col bg-white transition-opacity duration-200 rounded-lg overflow-hidden",
+        !autoHeight && "flex-1 min-h-0"
+      )}
       style={{ opacity: isMounted ? 1 : 0 }}
     >
       <div
@@ -355,7 +422,11 @@ export default function Table<T, K extends keyof T = keyof T>(
             style={{
               minWidth: !hasData || isLoading ? totalTableWidth : undefined,
             }}
-            className="border-separate border-spacing-0"
+            className={cn(
+              "border-separate border-spacing-0",
+              fitWidth && "w-full",
+              isFitWidthMeasured && "table-fixed"
+            )}
             ref={headerTableRef}
           >
             {renderColGroup()}
@@ -368,20 +439,29 @@ export default function Table<T, K extends keyof T = keyof T>(
           </table>
         </div>
       </div>
-      <div className="flex flex-row flex-1 overflow-hidden relative">
+      <div
+        className={cn(
+          "flex flex-row relative",
+          !autoHeight && "flex-1 overflow-hidden"
+        )}
+      >
         <div
           ref={bodyScrollRef}
-          className="flex-1 overflow-auto scrollbar-hidden"
+          className={cn(
+            "flex-1 scrollbar-hidden",
+            isBodyScrollable && "overflow-auto"
+          )}
+          style={{ maxHeight: bodyMaxHeight }}
         >
           {renderContent()}
         </div>
-        {hasData && (
+        {hasData && isBodyScrollable && (
           <div className="absolute right-0 top-0 h-full">
             <ScrollBar direction="vertical" scrollRef={bodyScrollRef} />
           </div>
         )}
       </div>
-      {hasData && (
+      {hasData && !fitWidth && (
         <ScrollBar direction="horizontal" scrollRef={bodyScrollRef} />
       )}
 

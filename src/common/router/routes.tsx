@@ -39,9 +39,9 @@ export const mainRoutes: Array<RouteObject> = [
     children: [
       {
         index: true,
-        element: <PlaceholderPage title="대시보드" />,
+        element: <PlaceholderPage title="홈" />,
       },
-      // 마켓 관리
+      // 입점 관리(브랜드) · 회원 관리(브랜드)
       {
         path: "market",
         children: [
@@ -89,7 +89,7 @@ export const mainRoutes: Array<RouteObject> = [
           },
         ],
       },
-      // 쇼룸 관리
+      // 입점 관리(인플루언서) · 회원 관리(인플루언서)
       {
         path: "showroom",
         children: [
@@ -103,7 +103,30 @@ export const mainRoutes: Array<RouteObject> = [
           },
           {
             path: "list",
-            element: <PlaceholderPage title="쇼룸 목록" />,
+            element: <PlaceholderPage title="인플루언서 회원 관리" />,
+          },
+        ],
+      },
+      // 공구 관리
+      {
+        path: "group-buy",
+        element: <PlaceholderPage title="공구 관리" />,
+      },
+      // 게시물·소통 모니터링
+      {
+        path: "monitoring",
+        children: [
+          {
+            path: "group-buy-posts",
+            element: <PlaceholderPage title="공구 게시물" />,
+          },
+          {
+            path: "posts",
+            element: <PlaceholderPage title="일반 게시물" />,
+          },
+          {
+            path: "threads",
+            element: <PlaceholderPage title="소통 스레드" />,
           },
         ],
       },
@@ -169,6 +192,14 @@ export const mainRoutes: Array<RouteObject> = [
             path: "process",
             element: <PlaceholderPage title="정산 처리" />,
           },
+          {
+            path: "group-buy",
+            element: <PlaceholderPage title="공구 정산" />,
+          },
+          {
+            path: "fixed-payout",
+            element: <PlaceholderPage title="고정 지급비 정산" />,
+          },
         ],
       },
       // 수수료 정책 관리
@@ -201,7 +232,15 @@ export const mainRoutes: Array<RouteObject> = [
         children: [
           {
             path: "inquiry",
-            element: <PlaceholderPage title="문의 관리" />,
+            element: <PlaceholderPage title="1:1 문의" />,
+          },
+          {
+            path: "product-inquiry",
+            element: <PlaceholderPage title="상품 문의 모니터링" />,
+          },
+          {
+            path: "terms",
+            element: <PlaceholderPage title="약관 관리" />,
           },
           {
             path: "faq",
