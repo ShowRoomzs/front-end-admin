@@ -1,3 +1,4 @@
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
 import { CREATOR_REJECTION_REASONS } from "@/features/creator/constants/params";
 import type { CreatorRejectionReasonType } from "@/features/creator/services/creatorService";
 import { useEffect, useState } from "react";
@@ -109,7 +110,8 @@ export default function ApplicationRejectionModal(
                 event.target.value as CreatorRejectionReasonType | ""
               )
             }
-            className="h-9 w-full rounded-[6px] border border-sz-n-300 bg-white px-3 text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+            style={MODAL_SELECT_CHEVRON_STYLE}
+            className="h-9 w-full appearance-none rounded-[6px] border border-sz-n-300 bg-white pl-3 pr-[30px] text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
           >
             <option value="">반려 사유 선택</option>
             {CREATOR_REJECTION_REASONS.map((reason) => (
@@ -136,7 +138,7 @@ export default function ApplicationRejectionModal(
             id="rejection-reason-detail"
             value={reasonDetail}
             onChange={(event) => setReasonDetail(event.target.value)}
-            placeholder="신청자에게는 발송되지 않습니다. 내부 심사 기록·재신청 대조용으로 구체적으로 남겨주세요."
+            placeholder="신청자에게는 발송되지 않습니다. 내부 심사 기록·재발 방지용으로 구체적으로 남겨주세요."
             className={`min-h-[96px] w-full resize-y rounded-[6px] border bg-white px-3 py-2 text-[13px] leading-relaxed text-sz-n-900 outline-none placeholder:text-sz-n-400 ${
               isDetailMissing
                 ? "border-sz-danger-text focus:ring-[3px] focus:ring-sz-danger-bg"

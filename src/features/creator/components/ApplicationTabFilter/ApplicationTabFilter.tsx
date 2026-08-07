@@ -29,7 +29,7 @@ interface ApplicationTabFilterProps {
  * 좌측 상태 탭 + 우측 검색. 목록형 화면 상단 필터 카드.
  *
  * 검색은 계정 아이디가 기준이다(§9-1 — 계정 아이디가 주요 식별 컬럼).
- * 서버는 활동명까지 OR 검색하지만, 운영자가 입력하는 값은 계정 아이디로 안내한다.
+ * 서버는 계정 이름(닉네임)까지 OR 검색하지만, 운영자가 입력하는 값은 계정 아이디로 안내한다.
  */
 export default function ApplicationTabFilter(props: ApplicationTabFilterProps) {
   const { status, onStatusChange, counts, keyword, onKeywordChange, onSearch } =
