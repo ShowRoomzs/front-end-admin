@@ -2,9 +2,9 @@ import { CREATOR_APPLICATION_DETAIL_QUERY_KEY } from "@/features/creator/constan
 import { creatorService } from "@/features/creator/services/creatorService";
 import { useQuery } from "@tanstack/react-query";
 
-export function useGetCreatorApplicationDetail(creatorId: number) {
+export function useGetCreatorApplicationDetail(applicationId: number) {
   return useQuery({
-    queryKey: [CREATOR_APPLICATION_DETAIL_QUERY_KEY, creatorId],
-    queryFn: () => creatorService.getCreatorApplicationDetail(creatorId),
+    queryKey: [CREATOR_APPLICATION_DETAIL_QUERY_KEY, applicationId],
+    queryFn: () => creatorService.getCreatorApplicationDetail(applicationId),
   });
 }

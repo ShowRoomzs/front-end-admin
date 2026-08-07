@@ -5,7 +5,9 @@ import {
 } from "@/features/creator/services/creatorService";
 import { useQuery } from "@tanstack/react-query";
 
-export function useGetCreatorApplicationList(params: CreatorApplicationParams) {
+export function useGetCreatorApplicationList(
+  params: CreatorApplicationParams
+) {
   return useQuery({
     queryKey: [CREATOR_APPLICATION_LIST_QUERY_KEY, params],
     queryFn: () => creatorService.getCreatorApplicationList(params),
