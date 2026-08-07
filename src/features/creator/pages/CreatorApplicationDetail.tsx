@@ -178,10 +178,11 @@ export default function CreatorApplicationDetail() {
 
   return (
     <div>
-      <div className="mb-4 flex items-end justify-between">
-        <h1 className="text-[20px] font-semibold text-sz-n-900">
-          @{detail.accountId}
-        </h1>
+      {/*
+        페이지 타이틀은 두지 않는다 — 계정 아이디는 아래 활동 채널 카드에 이미 있다.
+        건너뛰기 내비게이션은 목록으로 돌아갈 유일한 경로라 그대로 남긴다.
+      */}
+      <div className="mb-4 flex justify-end">
         <RecordNav
           onList={() => navigate("/showroom/registration")}
           onPrev={hasPrev ? () => goSibling(-1) : undefined}
@@ -230,12 +231,21 @@ export default function CreatorApplicationDetail() {
                 {markDummy(detail.phoneNumber) || "—"}
               </FieldRow>
             )}
-            <FieldRow label="인증 수단">
-              {detail.verificationMethodLabel || "—"}
-            </FieldRow>
+            {/* 반려 건은 인증 수단을 노출하지 않는다 — 인증 정보가 파기된 뒤라 남길 의미가 없다 */}
+            {!isRejected && (
+              <FieldRow label="인증 수단">
+                {detail.verificationMethodLabel || "—"}
+              </FieldRow>
+            )}
           </DetailCard>
 
           <DetailCard title="활동 채널" note="계약 이후 검증 식별 키">
+            {/*
+              활동명/계정 이름 행은 두지 않는다.
+              활동명은 신청서가 수집하지 않는 값이고(기능요구사항 §9-1·§3-4), 백엔드가
+              activityName으로 내려주는 것의 실체는 소비자 계정 닉네임이라 심사 판단에
+              쓸모가 없다. 쇼룸명은 승인 후 온보딩에서 생기므로 심사 시점에는 존재하지 않는다.
+            */}
             <FieldRow label="플랫폼">{detail.snsType}</FieldRow>
             <FieldRow label="채널 주소">
               {/* 운영자가 실적을 바로 확인해야 하므로 실제 링크로 연다(§3-5).
@@ -314,20 +324,20 @@ export default function CreatorApplicationDetail() {
                 label="신청일"
                 value={formatDateTimeShort(detail.appliedAt)}
               />
-              {/* 승인 건은 처리일을 굳이 보여주지 않는다(반려 건은 파기 시각으로서 의미가 있어 유지) */}
-              {detail.processedAt && detail.status !== "APPROVED" && (
-                <MetaRow
-                  label="처리일"
-                  value={formatDateTimeShort(detail.processedAt)}
-                />
-              )}
-              {/* 처리가 끝난 건은 경과 시간이 의미가 없어 행 자체를 뺀다 */}
-              {isPending && (
-                <MetaRow
-                  label="경과"
-                  value={formatElapsed(detail.appliedAt) ?? "—"}
-                />
-              )}
+              {/*
+                처리일 행은 두지 않는다 — 경과가 그 정보를 대신한다.
+                처리 완료 건의 경과는 "신청 → 처리"까지 걸린 시간이라
+                신청일 + 경과 = 처리일이 되어 행이 중복된다.
+              */}
+              <MetaRow
+                label="경과"
+                value={
+                  formatElapsed(
+                    detail.appliedAt,
+                    isPending ? null : detail.processedAt
+                  ) ?? "—"
+                }
+              />
               {detail.processorEmail && (
                 <MetaRow label="처리자" value={detail.processorEmail} />
               )}

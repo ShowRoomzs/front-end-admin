@@ -1,3 +1,4 @@
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
 import { SELLER_REJECTION_REASONS } from "@/features/seller/constants/params";
 import type { RejectionReason } from "@/features/seller/services/sellerService";
 import { useEffect, useState } from "react";
@@ -94,7 +95,8 @@ export default function ApplicationRejectionModal(
             onChange={(event) =>
               setReasonType(event.target.value as RejectionReason | "")
             }
-            className="h-9 w-full rounded-[6px] border border-sz-n-300 bg-white px-3 text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+            style={MODAL_SELECT_CHEVRON_STYLE}
+            className="h-9 w-full appearance-none rounded-[6px] border border-sz-n-300 bg-white pl-3 pr-[30px] text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
           >
             <option value="">반려 사유 선택</option>
             {SELLER_REJECTION_REASONS.map((reason) => (

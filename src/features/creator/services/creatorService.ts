@@ -9,7 +9,7 @@ export type CreatorApplicationStatus =
 /** 목록 검색 조건 — 백엔드 CreatorApplicationSearchCondition + PagingRequest와 1:1 */
 export interface CreatorApplicationParams extends BaseParams {
   status: CreatorApplicationStatus;
-  /** 활동명·계정 아이디 부분 일치 OR 검색 */
+  /** 계정 이름(닉네임)·계정 아이디 부분 일치 OR 검색 */
   keyword: string;
 }
 
@@ -18,8 +18,19 @@ export type SnsType = "INSTAGRAM" | "TIKTOK" | "X" | "YOUTUBE";
 /** 목록 행 — 백엔드 CreatorApplicationResponse와 1:1 */
 export interface CreatorApplicationInfo {
   applicationId: number;
-  /** 활동명(유저 닉네임) — 상세 응답에는 없고 목록에만 있다 */
+  /**
+   * 이름은 activityName이지만 실체는 **소비자 계정 닉네임**이다
+   * (백엔드: `ca.getUser().getNickname()`). 활동명은 신청서가 수집하지 않는다(§9-1·§3-4).
+   *
+   * 화면에는 목록·상세 어디에도 노출하지 않는다. 응답에 실제로 담겨 오는 값이라
+   * 계약 문서용으로 타입에만 남겨 둔다.
+   */
   activityName: string | null;
+  /**
+   * 본인확인 실명 — 목록 컬럼(§9-1)에 필요하지만 **백엔드 CreatorApplicationResponse에
+   * 아직 없다**. 필드가 추가되면 그대로 표시되도록 옵셔널로 열어 둔다(그전까지 "—").
+   */
+  realName?: string | null;
   email: string | null;
   snsType: SnsType;
   channelUrl: string;
