@@ -1,9 +1,16 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* 디자인시스템 v1.2 §타이포그래피 — 서체는 Pretendard.
+   폰트 파일 자체는 index.html의 <link>로 싣는다(여기서 @import하면 Tailwind v4가 버린다).
+   로드 실패 시 -apple-system → 시스템 sans-serif로 대체되며 레이아웃은 깨지지 않는다. */
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* v1.2 §서체 — Tailwind의 font-sans 유틸리티와 기본 서체를 함께 갈아끼운다 */
+  --font-sans: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui,
+    sans-serif;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -69,6 +76,11 @@
   --color-sz-danger-text: var(--sz-danger-text);
   --color-sz-neutral-bg: var(--sz-neutral-bg);
   --color-sz-neutral-text: var(--sz-neutral-text);
+  /* 로고 전용 (v1.2) — UI 액센트와 혼용 금지 */
+  --color-sz-brand-500: var(--sz-brand-500);
+  --color-sz-logo-color: var(--sz-logo-color);
+  --color-sz-logo-dark: var(--sz-logo-dark);
+  --color-sz-logo-white: var(--sz-logo-white);
 }
 
 :root {
@@ -132,6 +144,25 @@
   --sz-danger-text: #b23434;
   --sz-neutral-bg: #f1f2f4;
   --sz-neutral-text: #5b5f68;
+
+  /* ── 브랜드 로고 (v1.2 §브랜드 로고) ──
+     ⚠️ 로고 색과 UI 액센트 색은 **별개 체계**다. UI 액센트는 인디고(--sz-accent-500),
+     로고는 아래 램프를 쓴다. 웹 3서피스(파트너센터·스튜디오·어드민)의 로고 기본값은
+     --sz-logo-dark이며, 로즈레드는 소비자 앱·IR·마케팅용이다. 섞어 쓰지 말 것. */
+  --sz-brand-50: #fef4f6;
+  --sz-brand-100: #fde1e8;
+  --sz-brand-200: #fbc0ce;
+  --sz-brand-300: #f899af;
+  --sz-brand-400: #f56e8e;
+  --sz-brand-500: #f2456e;
+  --sz-brand-600: #cf3d61;
+  --sz-brand-700: #a93353;
+  --sz-brand-800: #822a44;
+  --sz-brand-900: #5b2136;
+  --sz-logo-color: var(--sz-brand-500);
+  --sz-logo-dark: var(--sz-n-900);
+  --sz-logo-white: #ffffff;
+
   /* 타이포 · 간격 · 반경 (컴포넌트에서 var()로 직접 참조) */
   --sz-fs-h1: 20px;
   --sz-fs-h2: 16px;
@@ -195,7 +226,7 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
   }
 }
 
