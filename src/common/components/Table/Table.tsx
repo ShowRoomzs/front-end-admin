@@ -122,7 +122,13 @@ export default function Table<T, K extends keyof T = keyof T>(
     let columns = originColumns;
     const hasAllWidth = columns.every((col) => col.width);
 
-    if (hasAllWidth) {
+    /*
+      가상 컬럼은 "모든 컬럼이 고정 폭이라 표가 컨테이너보다 좁을 때 남는 자리를
+      메우는" 용도다. fitWidth 모드에서는 컬럼 폭을 비율(%)로 환산해 표가 이미
+      100%를 채우므로 붙이면 안 된다 — 붙이면 이 빈 칸이 남는 폭을 통째로 가져가
+      실제 컬럼들이 왼쪽으로 몰린다.
+    */
+    if (hasAllWidth && !fitWidth) {
       columns = [
         ...columns,
         {
@@ -173,6 +179,7 @@ export default function Table<T, K extends keyof T = keyof T>(
     originColumns,
     rowKey,
     showCheckbox,
+    fitWidth,
   ]);
 
   const getRowWidths = useCallback(
