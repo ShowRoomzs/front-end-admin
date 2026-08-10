@@ -99,6 +99,14 @@ export default function Sidebar(props: SidebarProps) {
             ? isChildActive(group)
             : isPathActive(group.path);
 
+          /*
+            디자인시스템 `.gnb-item.active` — 현재 화면인 항목을 액센트로 채운다.
+            하위 메뉴를 가진 그룹은 제외한다. 그룹 자체는 화면이 아니라 묶음이고,
+            실제 현재 화면인 하위 항목이 따로 채워지므로 둘 다 칠하면 어디가
+            현재 위치인지 흐려진다.
+          */
+          const isFilled = !hasChildren && isActive;
+
           return (
             <div key={group.id}>
               <button
@@ -106,18 +114,31 @@ export default function Sidebar(props: SidebarProps) {
                 onClick={() =>
                   group.path ? navigate(group.path) : toggleGroup(group.id)
                 }
-                className={`mb-0.5 flex w-full items-center gap-2 rounded-[6px] px-2.5 py-[7px] text-left text-[12px] hover:bg-sz-n-200 ${
-                  isOpen || isActive
-                    ? "font-medium text-sz-n-900"
-                    : "text-sz-n-600"
+                className={`mb-0.5 flex w-full items-center gap-2 rounded-[6px] px-2.5 py-[7px] text-left text-[12px] ${
+                  isFilled
+                    ? "bg-sz-accent-500 font-medium text-white"
+                    : `hover:bg-sz-n-200 ${
+                        isOpen || isActive
+                          ? "font-medium text-sz-n-900"
+                          : "text-sz-n-600"
+                      }`
                 }`}
               >
-                <span className="w-[15px] shrink-0 text-center text-[11px] text-sz-n-400">
+                <span
+                  className={`w-[15px] shrink-0 text-center text-[11px] ${
+                    isFilled ? "text-white/70" : "text-sz-n-400"
+                  }`}
+                >
                   {index + 1}
                 </span>
                 <span className="flex-1">{group.label}</span>
                 {group.badge !== undefined && (
-                  <span className="min-w-4 shrink-0 rounded-[8px] bg-sz-danger-text px-[5px] text-center text-[10px] font-semibold text-white">
+                  <span
+                    className={`min-w-4 shrink-0 rounded-[8px] px-[5px] text-center text-[10px] font-semibold text-white ${
+                      // 파란 배경 위에 빨간 배지를 얹으면 둘 다 안 읽힌다
+                      isFilled ? "bg-white/25" : "bg-sz-danger-text"
+                    }`}
+                  >
                     {group.badge.toLocaleString()}
                   </span>
                 )}
