@@ -1,6 +1,6 @@
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 
-export type HistoryDotTone = "accent" | "success" | "muted";
+export type HistoryDotTone = "accent" | "success" | "muted" | "warn";
 
 export interface HistoryItem {
   /** 처리 내용 (예: "신청 접수", "승인 처리 · 김운영") */
@@ -8,6 +8,10 @@ export interface HistoryItem {
   /** 처리 일시 (ISO 문자열) */
   processedAt: string | null;
   tone: HistoryDotTone;
+  /** 처리자명 — 있으면 일시 옆에 "일시 · 처리자"로 붙는다 */
+  processorName?: string | null;
+  /** 상세 사유 인용 박스(시안 `.hist-sub`) — 미진열 처리 이력에만 붙는다 */
+  detail?: { title: string; text: string } | null;
 }
 
 interface HistoryListProps {
@@ -18,6 +22,7 @@ const DOT_CLASS: Record<HistoryDotTone, string> = {
   accent: "bg-sz-accent-500",
   success: "bg-sz-success-text",
   muted: "bg-sz-n-500",
+  warn: "bg-sz-warning-text",
 };
 
 // 처리 이력 — 점 + 텍스트 + 시각. 최신순(내림차순)으로 정렬해 전달받는다.
@@ -40,11 +45,22 @@ export default function HistoryList(props: HistoryListProps) {
           <span
             className={`mt-[6px] h-[7px] w-[7px] shrink-0 rounded-full ${DOT_CLASS[item.tone]}`}
           />
-          <div>
+          <div className="min-w-0">
             <div className="text-[12px] text-sz-n-900">{item.label}</div>
+            {/* 시안 `.hmeta` — "일시 · 처리자(브랜드명/운영자명)" 한 줄 */}
             <div className="text-[11px] text-sz-n-500">
-              {formatDateTimeShort(item.processedAt)}
+              {[formatDateTimeShort(item.processedAt), item.processorName]
+                .filter(Boolean)
+                .join(" · ")}
             </div>
+            {item.detail && (
+              <div className="mt-1.5 rounded-[6px] bg-sz-n-50 px-2.5 py-2 text-[11px] leading-relaxed text-sz-n-600">
+                <b className="font-semibold text-sz-n-700">
+                  {item.detail.title}
+                </b>{" "}
+                — {item.detail.text}
+              </div>
+            )}
           </div>
         </div>
       ))}
