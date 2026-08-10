@@ -142,10 +142,10 @@ interface ProductStatusFilterProps {
 /**
  * 시안 `.filter-panel` — 진열 상태 행 + 공구 상태 행 + 우상단 초기화 + 하단 검색.
  *
- * ⚠️ 생김새는 체크박스지만 **한 축에 하나만 켜진다.** 백엔드 검색 조건
- * (AdminProductSearchCondition)의 displayStatus·groupBuyStatus가 각각 단일 enum이라
- * 서버가 OR(IN) 조건을 못 받는다. 서버가 List<>를 받게 되면 selected를 배열로
- * 바꾸고 CheckRow의 onToggle만 누적 방식으로 고치면 된다.
+ * 생김새는 체크박스지만 **한 축에 하나만 켜지는 것이 확정된 동작이다**(2026-08-10 확인).
+ * 다중선택을 지원하려는 시도가 아니므로 배열 선택으로 "고치지" 말 것.
+ * 백엔드도 같은 전제다 — AdminProductSearchCondition의 displayStatus·groupBuyStatus는
+ * 각각 단일 enum이라 서버가 OR(IN) 조건을 받지 않는다.
  */
 export default function ProductStatusFilter(props: ProductStatusFilterProps) {
   const {

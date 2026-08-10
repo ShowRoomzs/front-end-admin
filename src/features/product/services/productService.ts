@@ -33,8 +33,8 @@ export type ProductListSortType = "CREATED_AT" | "MODIFIED_AT" | "STOCK_ASC";
 /**
  * 목록 검색 조건 — 백엔드 AdminProductSearchCondition + PagingRequest.
  *
- * ⚠️ 진열·공구 상태는 각각 **단일값**만 받는다. 시안은 체크박스 다중선택이지만
- * 서버가 IN 조건을 지원하지 않아 화면도 단일선택 탭으로 맞췄다.
+ * 진열·공구 상태는 각각 **단일값**이다. 화면은 체크박스지만 한 축에 하나만 켜진다 —
+ * 서버·화면 모두 단일선택으로 합의된 상태다(ProductStatusFilter 주석 참고).
  */
 export interface AdminProductParams extends BaseParams {
   displayStatus: ProductDisplayStatus | null;

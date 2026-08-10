@@ -408,10 +408,15 @@ export default function Table<T, K extends keyof T = keyof T>(
       )}
       style={{ opacity: isMounted ? 1 : 0 }}
     >
+      {/*
+        shrink-0 필수 — 이 래퍼는 세로 flex 아이템이라 기본값(flex-shrink:1)이면
+        본문이 가용 높이를 넘길 때 헤더가 0px까지 눌리고, overflow-y-hidden이
+        눌린 부분을 잘라내 머리글이 통째로 사라진다(행이 적을 땐 멀쩡해 보인다).
+      */}
       <div
         id="table-layout"
         ref={headerScrollRef}
-        className="overflow-x-auto overflow-y-hidden scrollbar-hidden"
+        className="shrink-0 overflow-x-auto overflow-y-hidden scrollbar-hidden"
       >
         <div
           style={{
