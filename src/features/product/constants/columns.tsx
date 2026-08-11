@@ -83,8 +83,9 @@ export const PRODUCT_LIST_COLUMNS: Columns<AdminProductListItem> = [
     width: 90,
     // 재고 0이면 숫자 없이 품절 배지만 표시한다(§3-4 · rev.4에서 숫자 제거로 확정)
     render: (value) => {
-      const stock = value as number | null;
-      if (stock === null) {
+      const stock = value as number | null | undefined;
+      // == 로 null·undefined를 함께 걸러야 한다 — 조합이 없는 상품은 서버가 값을 안 준다
+      if (stock == null) {
         return "—";
       }
       if (stock === 0) {
