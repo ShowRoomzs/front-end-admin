@@ -145,8 +145,11 @@ export interface ProductOptionGroupInfo {
 /** 옵션 조합(SKU) */
 export interface ProductVariantInfo {
   variantId: number;
-  /** 조합명 (예: "S, Black") */
-  name: string;
+  /**
+   * 조합명 — 서버가 옵션명을 `" / "`로 이어 붙인 문자열.
+   * 옵션 미사용 상품의 단일 조합은 **null**이다(서버가 name 자리에 null을 넣는다).
+   */
+  name: string | null;
   /** 옵션가가 포함된 판매가 */
   regularPrice: number;
   stock: number;
