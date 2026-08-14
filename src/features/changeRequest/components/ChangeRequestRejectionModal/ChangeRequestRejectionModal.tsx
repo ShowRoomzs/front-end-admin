@@ -1,35 +1,50 @@
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
-import { SELLER_REJECTION_REASONS } from "@/features/seller/constants/params";
-import type { RejectionReason } from "@/features/seller/services/sellerService";
+import { CHANGE_REQUEST_TYPE_LABELS } from "@/features/changeRequest/constants/params";
+import type {
+  ChangeRequestRejectReasonOption,
+  ChangeRequestType,
+} from "@/features/changeRequest/services/changeRequestService";
 import { useEffect, useState } from "react";
 
-interface ApplicationRejectionModalProps {
+const REASON_DETAIL_MAX = 500;
+
+interface ChangeRequestRejectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  marketName: string;
+  brandName: string;
+  type: ChangeRequestType;
+  /** 유형별 목록이라 부모가 조회해 넘긴다 — 프론트 상수가 아니다 */
+  reasons: Array<ChangeRequestRejectReasonOption>;
+  isReasonsLoading?: boolean;
   isSubmitting?: boolean;
-  onReject: (reasonType: RejectionReason, reasonDetail: string) => void;
+  onReject: (reasonType: string, reasonDetail: string) => void;
 }
 
 /**
- * 입점 신청 반려 모달(520px).
+ * C8·C9 — 반려 모달(520px).
  *
- * - 반려 사유 유형: 필수
- * - 상세 사유: 기본은 선택. 단 "기타(직접 입력)"을 고르면 필수가 된다
- *   (유형만으로는 신청자가 무엇을 고쳐야 할지 알 수 없기 때문)
+ * 입점 심사 반려 모달과 **정책이 정반대**다: 저기는 사유가 내부 전용이지만
+ * 여기서 고른 문구는 브랜드 파트너센터 배너와 통지 이메일에 **가공 없이 그대로** 실린다.
+ * 그래서 운영자용 축약어를 쓰지 않고 문장형으로 유지한다(§16-5).
+ *
+ * 상세 사유의 필수 여부는 `"OTHER"`를 하드코딩하지 않고 서버가 준 `detailRequired`를 본다 —
+ * 사유 목록과 그 규칙의 SoT가 서버 enum이기 때문이다.
  */
-export default function ApplicationRejectionModal(
-  props: ApplicationRejectionModalProps
+export default function ChangeRequestRejectionModal(
+  props: ChangeRequestRejectionModalProps
 ) {
   const {
     open,
     onOpenChange,
-    marketName,
+    brandName,
+    type,
+    reasons,
+    isReasonsLoading = false,
     isSubmitting = false,
     onReject,
   } = props;
 
-  const [reasonType, setReasonType] = useState<RejectionReason | "">("");
+  const [reasonType, setReasonType] = useState("");
   const [reasonDetail, setReasonDetail] = useState("");
 
   // 모달을 닫으면 입력을 초기화한다
@@ -44,7 +59,8 @@ export default function ApplicationRejectionModal(
     return null;
   }
 
-  const isDetailRequired = reasonType === "OTHER";
+  const selectedReason = reasons.find((reason) => reason.code === reasonType);
+  const isDetailRequired = selectedReason?.detailRequired ?? false;
   const isDetailMissing = isDetailRequired && reasonDetail.trim().length === 0;
   const canSubmit = reasonType !== "" && !isDetailMissing;
 
@@ -52,7 +68,7 @@ export default function ApplicationRejectionModal(
     if (!canSubmit) {
       return;
     }
-    onReject(reasonType as RejectionReason, reasonDetail.trim());
+    onReject(reasonType, reasonDetail.trim());
   };
 
   return (
@@ -67,7 +83,7 @@ export default function ApplicationRejectionModal(
       <div className="w-[520px] max-w-full overflow-hidden rounded-[8px] bg-white shadow-[0_8px_24px_rgba(26,27,31,0.12),0_2px_6px_rgba(26,27,31,0.08)]">
         <div className="flex items-center justify-between border-b border-sz-n-200 px-5 py-3.5">
           <h2 className="text-[13px] font-semibold text-sz-n-900">
-            입점 신청 반려
+            변경 요청 반려
           </h2>
           <button
             type="button"
@@ -80,69 +96,70 @@ export default function ApplicationRejectionModal(
         </div>
 
         <div className="px-5 py-5 text-[12px] leading-relaxed text-sz-n-700">
-          <b className="text-sz-n-900">{marketName}</b>의 입점 신청을 반려합니다.
-          반려 사유는 신청자에게 <b>이메일·문자로만</b> 전달됩니다.
-
+          <b className="text-sz-n-900">{brandName}</b>의{" "}
+          {CHANGE_REQUEST_TYPE_LABELS[type]} 변경 요청을 반려하시겠습니까?
+          <br />
+          반려 사유는 브랜드 파트너센터 배너와 이메일로 전달되며, 브랜드는{" "}
+          <b className="text-sz-n-900">대기기간 없이 즉시 재요청</b>할 수
+          있습니다.
           <label
-            htmlFor="rejection-reason-type"
+            htmlFor="change-request-reason-type"
             className="mb-1 mt-4 block text-[12px] font-medium text-sz-n-600"
           >
             반려 사유<span className="ml-0.5 text-sz-danger-text">*</span>
           </label>
           <select
-            id="rejection-reason-type"
+            id="change-request-reason-type"
             value={reasonType}
-            onChange={(event) =>
-              setReasonType(event.target.value as RejectionReason | "")
-            }
+            onChange={(event) => setReasonType(event.target.value)}
+            disabled={isReasonsLoading}
             style={MODAL_SELECT_CHEVRON_STYLE}
-            className="h-8 w-full appearance-none rounded-[6px] border border-sz-n-300 bg-white py-1.5 pl-2.5 pr-[30px] text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+            className="h-8 w-full appearance-none rounded-[6px] border border-sz-n-300 bg-white py-1.5 pl-2.5 pr-[30px] text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50 disabled:bg-sz-n-100 disabled:text-sz-n-400"
           >
-            <option value="">반려 사유 선택</option>
-            {SELLER_REJECTION_REASONS.map((reason) => (
-              <option key={reason.value} value={reason.value}>
+            <option value="">
+              {isReasonsLoading ? "불러오는 중…" : "반려 사유 선택"}
+            </option>
+            {reasons.map((reason) => (
+              <option key={reason.code} value={reason.code}>
                 {reason.label}
               </option>
             ))}
           </select>
-
           <label
-            htmlFor="rejection-reason-detail"
+            htmlFor="change-request-reason-detail"
             className="mb-1 mt-4 block text-[12px] font-medium text-sz-n-600"
           >
             상세 사유
             {isDetailRequired ? (
               <span className="ml-0.5 text-sz-danger-text">*</span>
             ) : (
-              <span className="ml-1 font-normal text-sz-n-500">(선택)</span>
+              <span className="ml-1 font-normal text-sz-n-400">(선택)</span>
             )}
           </label>
           <textarea
-            id="rejection-reason-detail"
+            id="change-request-reason-detail"
             value={reasonDetail}
+            maxLength={REASON_DETAIL_MAX}
             onChange={(event) => setReasonDetail(event.target.value)}
-            placeholder="통지 이메일·문자에 그대로 발송됩니다. 어떤 서류를 어떻게 보완해야 하는지 적어주세요."
+            placeholder="브랜드에게 전달할 상세 사유를 입력하세요."
             className={`min-h-[88px] w-full resize-y rounded-[6px] border bg-white px-2.5 py-1.5 text-[13px] leading-relaxed text-sz-n-900 outline-none placeholder:text-sz-n-400 ${
               isDetailMissing
                 ? "border-sz-danger-text focus:ring-[3px] focus:ring-sz-danger-bg"
                 : "border-sz-n-300 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
             }`}
           />
-          <p
-            className={`mt-1.5 text-[11px] ${
-              isDetailMissing ? "text-sz-danger-text" : "text-sz-n-500"
-            }`}
-          >
-            사유를 <b>기타(직접 입력)</b>로 선택한 경우 상세 사유는{" "}
-            <b>필수</b>입니다.
-          </p>
-
-          <div className="mt-4 flex gap-2 rounded-[6px] bg-sz-danger-bg px-3 py-2.5 text-[11px] font-medium leading-relaxed text-sz-danger-text">
-            <span>⚠</span>
-            <span>
-              반려 즉시 <b>계정과 제출 정보가 파기</b>되며, 신청자는 처음부터
-              회원가입을 다시 진행합니다(동일 이메일 재가입 허용).{" "}
-              <b>이 처리는 되돌릴 수 없습니다.</b>
+          <div className="mt-1.5 flex items-start justify-between gap-3">
+            <p
+              className={`text-[11px] ${
+                isDetailMissing ? "text-sz-danger-text" : "text-sz-n-500"
+              }`}
+            >
+              {isDetailMissing
+                ? `"${selectedReason?.label}"를 선택한 경우 상세 사유는 필수입니다.`
+                : "입력한 내용은 브랜드 배너와 통지 이메일에 그대로 노출됩니다."}
+            </p>
+            <span className="shrink-0 text-[11px] tabular-nums text-sz-n-400">
+              {reasonDetail.length}/{REASON_DETAIL_MAX}
             </span>
           </div>
         </div>

@@ -85,7 +85,7 @@ export default function UnlistModal(props: UnlistModalProps) {
           소비자 화면 노출이 즉시 중단됩니다.
           <label
             htmlFor="hide-reason-type"
-            className="mb-1.5 mt-4 block text-[12px] font-semibold text-sz-n-600"
+            className="mb-1 mt-4 block text-[12px] font-medium text-sz-n-600"
           >
             미진열 사유<span className="ml-0.5 text-sz-danger-text">*</span>
           </label>
@@ -96,7 +96,7 @@ export default function UnlistModal(props: UnlistModalProps) {
               setReasonType(event.target.value as ProductHideReasonType | "")
             }
             style={MODAL_SELECT_CHEVRON_STYLE}
-            className="h-9 w-full appearance-none rounded-[6px] border border-sz-n-300 bg-white pl-3 pr-[30px] text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+            className="h-8 w-full appearance-none rounded-[6px] border border-sz-n-300 bg-white py-1.5 pl-2.5 pr-[30px] text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
           >
             <option value="">사유 선택</option>
             {PRODUCT_HIDE_REASONS.map((reason) => (
@@ -108,7 +108,7 @@ export default function UnlistModal(props: UnlistModalProps) {
 
           <label
             htmlFor="hide-reason-detail"
-            className="mb-1.5 mt-4 block text-[12px] font-semibold text-sz-n-600"
+            className="mb-1 mt-4 block text-[12px] font-medium text-sz-n-600"
           >
             상세 사유
             {isDetailRequired ? (
@@ -122,7 +122,7 @@ export default function UnlistModal(props: UnlistModalProps) {
             value={reasonDetail}
             onChange={(event) => setReasonDetail(event.target.value)}
             placeholder="브랜드가 확인할 수 있도록 구체적으로 적어주세요."
-            className={`min-h-[80px] w-full resize-y rounded-[6px] border bg-white px-3 py-2 text-[13px] leading-relaxed text-sz-n-900 outline-none placeholder:text-sz-n-400 ${
+            className={`min-h-[80px] w-full resize-y rounded-[6px] border bg-white px-2.5 py-1.5 text-[13px] leading-relaxed text-sz-n-900 outline-none placeholder:text-sz-n-400 ${
               isDetailMissing
                 ? "border-sz-danger-text focus:ring-[3px] focus:ring-sz-danger-bg"
                 : "border-sz-n-300 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
