@@ -20,6 +20,8 @@ import CreatorApplicationManagement from "@/features/creator/pages/CreatorApplic
 import CreatorApplicationDetail from "@/features/creator/pages/CreatorApplicationDetail";
 import ProductListManagement from "@/features/product/pages/ProductListManagement";
 import ProductDetailPage from "@/features/product/pages/ProductDetailPage";
+import ChangeRequestManagement from "@/features/changeRequest/pages/ChangeRequestManagement";
+import ChangeRequestDetail from "@/features/changeRequest/pages/ChangeRequestDetail";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -56,6 +58,15 @@ export const mainRoutes: Array<RouteObject> = [
           {
             path: "list",
             element: <SellerUserManagement />,
+          },
+          // 입점 관리(변경 요청) — 브랜드가 요청한 사업자 정보·정산 계좌 변경 검토
+          {
+            path: "change-requests",
+            element: <ChangeRequestManagement />,
+          },
+          {
+            path: "change-requests/:id",
+            element: <ChangeRequestDetail />,
           },
         ],
       },

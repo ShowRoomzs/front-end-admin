@@ -1,5 +1,6 @@
 import { ADMIN_MENU } from "@/common/constants";
 import type { MenuItem } from "@/common/types";
+import { useGetChangeRequestPendingCount } from "@/features/changeRequest/hooks/useGetChangeRequestPendingCount";
 import { useGetCreatorPendingCount } from "@/features/creator/hooks/useGetCreatorPendingCount";
 import { useGetSellerPendingCount } from "@/features/seller/hooks/useGetSellerPendingCount";
 import { Outlet, useLocation } from "react-router-dom";
@@ -11,21 +12,25 @@ const GROUPS = MENUS.flatMap((menu) => menu.groups);
 const ALL_ITEMS = GROUPS.flatMap((group) => group.children ?? [group]);
 
 /**
- * 입점 관리 그룹에 심사 대기 건수를 채워 넣은 메뉴를 만든다.
- * 그룹 뱃지는 브랜드 + 인플루언서 합산이고, 하위 메뉴는 각자의 건수를 갖는다.
+ * 입점 관리 그룹에 대기 건수를 채워 넣은 메뉴를 만든다.
+ * 그룹 뱃지는 브랜드 + 인플루언서 + 변경 요청 합산이고, 하위 메뉴는 각자의 건수를 갖는다.
  */
 function withOnboardingCounts(
   menus: Array<typeof ADMIN_MENU>,
   brandPending: number,
-  influencerPending: number
+  influencerPending: number,
+  changeRequestPending: number
 ) {
   // 0건이면 뱃지 자체를 렌더링하지 않는다(사이드바가 undefined를 그렇게 취급한다)
   const toBadge = (value: number) => (value > 0 ? value : undefined);
-  const groupCount = toBadge(brandPending + influencerPending);
+  const groupCount = toBadge(
+    brandPending + influencerPending + changeRequestPending
+  );
 
   const childCounts: Record<string, number | undefined> = {
     "onboarding-brand": toBadge(brandPending),
     "onboarding-influencer": toBadge(influencerPending),
+    "onboarding-change-request": toBadge(changeRequestPending),
   };
 
   return menus.map((menu) => ({
@@ -79,12 +84,19 @@ export default function MainLayout() {
   const { title, subtitle } = resolveBreadcrumb(location.pathname);
   const { pendingCount: brandPending } = useGetSellerPendingCount();
   const { pendingCount: influencerPending } = useGetCreatorPendingCount();
+  const { pendingCount: changeRequestPending } =
+    useGetChangeRequestPendingCount();
 
   // 목록 화면은 메뉴에 지정된 제목을 페이지 타이틀로 쓴다.
   // 상세 화면(하위 경로)은 브랜드명 등 자체 타이틀을 렌더링하므로 비워둔다.
   const currentItem = ALL_ITEMS.find((item) => item.path === location.pathname);
   const pageTitle = currentItem?.pageTitle ?? currentItem?.label;
-  const menus = withOnboardingCounts(MENUS, brandPending, influencerPending);
+  const menus = withOnboardingCounts(
+    MENUS,
+    brandPending,
+    influencerPending,
+    changeRequestPending
+  );
 
   return (
     <div className="flex h-screen bg-sz-n-50">

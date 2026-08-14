@@ -29,6 +29,16 @@ export const ADMIN_MENU: MenuConfig = {
           pageTitle: "인플루언서 입점 신청",
           path: "/showroom/registration",
         },
+        /*
+          입점 심사와 행위가 같아(서류 대조 → 승인/반려) 최상위 메뉴를 새로 만들지 않고
+          입점 관리 하위에 붙인다(§16-0).
+        */
+        {
+          id: "onboarding-change-request",
+          label: "변경 요청",
+          pageTitle: "변경 요청",
+          path: "/market/change-requests",
+        },
       ],
     },
     {

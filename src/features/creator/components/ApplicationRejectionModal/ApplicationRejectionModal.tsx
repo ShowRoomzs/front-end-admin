@@ -95,7 +95,7 @@ export default function ApplicationRejectionModal(
           반려 사유는 <b>내부 기록용</b>이며 신청자에게 별도로 안내되지 않습니다.
           <label
             htmlFor="rejection-reason-type"
-            className="mb-1.5 mt-4 block text-[12px] font-semibold text-sz-n-600"
+            className="mb-1 mt-4 block text-[12px] font-medium text-sz-n-600"
           >
             반려 사유<span className="ml-0.5 text-sz-danger-text">*</span>
             <span className="ml-1 font-normal text-sz-n-500">
@@ -111,7 +111,7 @@ export default function ApplicationRejectionModal(
               )
             }
             style={MODAL_SELECT_CHEVRON_STYLE}
-            className="h-9 w-full appearance-none rounded-[6px] border border-sz-n-300 bg-white pl-3 pr-[30px] text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+            className="h-8 w-full appearance-none rounded-[6px] border border-sz-n-300 bg-white py-1.5 pl-2.5 pr-[30px] text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
           >
             <option value="">반려 사유 선택</option>
             {CREATOR_REJECTION_REASONS.map((reason) => (
@@ -123,7 +123,7 @@ export default function ApplicationRejectionModal(
 
           <label
             htmlFor="rejection-reason-detail"
-            className="mb-1.5 mt-4 block text-[12px] font-semibold text-sz-n-600"
+            className="mb-1 mt-4 block text-[12px] font-medium text-sz-n-600"
           >
             상세 사유
             {isDetailRequired ? (
@@ -139,7 +139,7 @@ export default function ApplicationRejectionModal(
             value={reasonDetail}
             onChange={(event) => setReasonDetail(event.target.value)}
             placeholder="신청자에게는 발송되지 않습니다. 내부 심사 기록·재발 방지용으로 구체적으로 남겨주세요."
-            className={`min-h-[96px] w-full resize-y rounded-[6px] border bg-white px-3 py-2 text-[13px] leading-relaxed text-sz-n-900 outline-none placeholder:text-sz-n-400 ${
+            className={`min-h-[88px] w-full resize-y rounded-[6px] border bg-white px-2.5 py-1.5 text-[13px] leading-relaxed text-sz-n-900 outline-none placeholder:text-sz-n-400 ${
               isDetailMissing
                 ? "border-sz-danger-text focus:ring-[3px] focus:ring-sz-danger-bg"
                 : "border-sz-n-300 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
