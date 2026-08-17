@@ -42,13 +42,21 @@ export type FaqReorderRequest = Array<FaqReorderItem>;
 /** 카테고리 키 → 건수. 탭 배지에 쓴다 */
 export type FaqCategoryCounts = Record<string, number>;
 
+/** 서버 `AdminFaqCategoryCount` — 전체(ALL)가 맨 앞이고 5종이 뒤따르는 6개 배열의 한 칸 */
+export interface FaqCategoryCountItem {
+  category: string;
+  displayName: string;
+  count: number;
+}
+
 /**
- * 서버에서 막 받은 목록 응답. `categoryCounts`의 모양이 서버 버전마다 달라
- * (배열 / 객체 맵 / 아예 없음) 여기서는 `unknown`으로 두고, 서비스 계층에서
- * `normalizeCategoryCounts`로 눌러 준 뒤 화면에 넘긴다.
+ * 서버에서 막 받은 목록 응답.
+ *
+ * 건수를 배열로 주므로 화면이 쓰기 좋은 맵으로 바꿔서 넘긴다(서비스 계층에서 처리).
+ * 배열째로 화면까지 들고 가면 탭마다 `find`를 돌아야 한다.
  */
 export interface RawFaqListResponse extends PageResponse<Faq> {
-  categoryCounts?: unknown;
+  categoryCounts?: Array<FaqCategoryCountItem>;
 }
 
 export interface FaqListResponse extends PageResponse<Faq> {
