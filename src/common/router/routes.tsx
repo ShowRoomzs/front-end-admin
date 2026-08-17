@@ -14,8 +14,6 @@ import CouponManagement from "@/features/coupon/pages/CouponManagement";
 import NoticeManagement from "@/features/notice/pages/NoticeManagement";
 import NoticeRegister from "@/features/notice/pages/NoticeRegister";
 import FaqManagement from "@/features/faq/pages/FaqManagement";
-import FaqRegister from "@/features/faq/pages/FaqRegister";
-import FaqDetailPage from "@/features/faq/pages/FaqDetailPage";
 import CreatorApplicationManagement from "@/features/creator/pages/CreatorApplicationManagement";
 import CreatorApplicationDetail from "@/features/creator/pages/CreatorApplicationDetail";
 import ProductListManagement from "@/features/product/pages/ProductListManagement";
@@ -253,17 +251,14 @@ export const mainRoutes: Array<RouteObject> = [
             path: "terms",
             element: <PlaceholderPage title="약관 관리" />,
           },
+          /*
+            FAQ는 등록·수정·삭제가 전부 모달이라 목록 라우트 하나뿐이다.
+            상세/등록 페이지를 다시 만들지 말 것 — 항목당 필드가 3개뿐이라
+            목록 → 상세 → 수정 3단계는 운영 비용만 늘린다(ui-admin-08-faq rev.2).
+          */
           {
             path: "faq",
             element: <FaqManagement />,
-          },
-          {
-            path: "faq/register",
-            element: <FaqRegister />,
-          },
-          {
-            path: "faq/:faqId",
-            element: <FaqDetailPage />,
           },
           {
             path: "notice",
