@@ -2,6 +2,7 @@ import { ADMIN_MENU } from "@/common/constants";
 import type { MenuItem } from "@/common/types";
 import { useGetChangeRequestPendingCount } from "@/features/changeRequest/hooks/useGetChangeRequestPendingCount";
 import { useGetCreatorPendingCount } from "@/features/creator/hooks/useGetCreatorPendingCount";
+import { useGetInquiryUnansweredCount } from "@/features/inquiry/hooks/useGetInquiryUnansweredCount";
 import { useGetSellerPendingCount } from "@/features/seller/hooks/useGetSellerPendingCount";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../Sidebar";
@@ -52,6 +53,36 @@ function withOnboardingCounts(
   }));
 }
 
+/**
+ * CS·콘텐츠 관리 그룹에 1:1 문의 미답변 건수를 채워 넣는다.
+ *
+ * 그룹 뱃지 = 1:1 문의 미답변 건수 **그대로**다. 상품 문의 답변대기는 브랜드가 할
+ * 일이라 운영자 뱃지에 더하지 않는다 — 더하면 운영자가 손댈 수 없는 숫자가 GNB에
+ * 남아 배지가 줄지 않는다(§17-7).
+ */
+function withCsCounts(
+  menus: Array<typeof ADMIN_MENU>,
+  inquiryUnanswered: number
+) {
+  const badge = inquiryUnanswered > 0 ? inquiryUnanswered : undefined;
+
+  return menus.map((menu) => ({
+    ...menu,
+    groups: menu.groups.map((group) => {
+      if (group.id !== "cs-content") {
+        return group;
+      }
+      return {
+        ...group,
+        badge,
+        children: group.children?.map((child) =>
+          child.id === "cs-inquiry" ? { ...child, count: badge } : child
+        ),
+      };
+    }),
+  }));
+}
+
 /** 상세 화면(`/market/registration/12`)도 해당 메뉴에 속한 것으로 본다 */
 function matches(item: MenuItem, pathname: string) {
   return (
@@ -86,16 +117,20 @@ export default function MainLayout() {
   const { pendingCount: influencerPending } = useGetCreatorPendingCount();
   const { pendingCount: changeRequestPending } =
     useGetChangeRequestPendingCount();
+  const { unansweredCount: inquiryUnanswered } = useGetInquiryUnansweredCount();
 
   // 목록 화면은 메뉴에 지정된 제목을 페이지 타이틀로 쓴다.
   // 상세 화면(하위 경로)은 브랜드명 등 자체 타이틀을 렌더링하므로 비워둔다.
   const currentItem = ALL_ITEMS.find((item) => item.path === location.pathname);
   const pageTitle = currentItem?.pageTitle ?? currentItem?.label;
-  const menus = withOnboardingCounts(
-    MENUS,
-    brandPending,
-    influencerPending,
-    changeRequestPending
+  const menus = withCsCounts(
+    withOnboardingCounts(
+      MENUS,
+      brandPending,
+      influencerPending,
+      changeRequestPending
+    ),
+    inquiryUnanswered
   );
 
   return (

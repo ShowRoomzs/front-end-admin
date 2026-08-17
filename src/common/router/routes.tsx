@@ -20,6 +20,8 @@ import ProductListManagement from "@/features/product/pages/ProductListManagemen
 import ProductDetailPage from "@/features/product/pages/ProductDetailPage";
 import ChangeRequestManagement from "@/features/changeRequest/pages/ChangeRequestManagement";
 import ChangeRequestDetail from "@/features/changeRequest/pages/ChangeRequestDetail";
+import InquiryManagement from "@/features/inquiry/pages/InquiryManagement";
+import InquiryDetail from "@/features/inquiry/pages/InquiryDetail";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -241,7 +243,15 @@ export const mainRoutes: Array<RouteObject> = [
         children: [
           {
             path: "inquiry",
-            element: <PlaceholderPage title="1:1 문의" />,
+            element: <InquiryManagement />,
+          },
+          /*
+            상세는 목록의 쿼리스트링(status·type·keyword)을 그대로 물려받는다 —
+            서버가 그 범위로 이전/다음을 계산하므로 링크를 만들 때 검색 조건을 떼지 말 것.
+          */
+          {
+            path: "inquiry/:inquiryId",
+            element: <InquiryDetail />,
           },
           {
             path: "product-inquiry",
