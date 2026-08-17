@@ -38,22 +38,11 @@ export default function FaqTabFilter(props: FaqTabFilterProps) {
   } = props;
 
   /*
-    전체 탭 배지는 서버가 ALL 키를 함께 내려주면 그 값을, 아니면 나머지 합을 쓴다.
+    전체 탭 건수는 서버가 ALL 칸에 합계를 담아 주므로 그대로 쓴다.
     counts가 없으면 배지를 그리지 않는다 — 0으로 그리면 "집계가 없다"와
     "정말 0건이다"가 구분되지 않는다.
-
-    합계는 숫자로 확인된 값만 더한다. counts는 서비스 계층에서 정규화되지만,
-    여기서 한 번 더 막지 않으면 응답 모양이 바뀌었을 때 배지에 문자열이 찍힌다.
   */
-  const totalCount = counts
-    ? (counts[FAQ_CATEGORY_ALL] ??
-      Object.entries(counts)
-        .filter(([key]) => key !== FAQ_CATEGORY_ALL)
-        .reduce(
-          (sum, [, value]) => (typeof value === "number" ? sum + value : sum),
-          0
-        ))
-    : undefined;
+  const totalCount = counts?.[FAQ_CATEGORY_ALL];
 
   const tabs: Array<{ label: string; value: string | null; count?: number }> = [
     { label: "전체", value: null, count: totalCount },
@@ -81,7 +70,7 @@ export default function FaqTabFilter(props: FaqTabFilterProps) {
               }`}
             >
               {tab.label}
-              {typeof tab.count === "number" && (
+              {tab.count !== undefined && (
                 <span
                   className={`rounded-lg px-1.5 text-[10px] ${
                     isActive

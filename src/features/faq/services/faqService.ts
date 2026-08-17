@@ -1,5 +1,4 @@
 import { apiInstance } from "@/common/lib/apiInstance";
-import { normalizeCategoryCounts } from "@/features/faq/utils/normalizeCategoryCounts";
 import type {
   Faq,
   FaqCategory,
@@ -17,7 +16,7 @@ export const faqService = {
     );
     return response;
   },
-  // 카테고리 건수는 서버 버전마다 모양이 달라 경계에서 한 번만 정규화하고 넘긴다
+  // 서버가 건수를 배열로 주므로 경계에서 맵으로 바꿔 넘긴다(탭마다 find를 돌지 않도록)
   getFaqList: async (params: FaqListParams): Promise<FaqListResponse> => {
     const { data: response } = await apiInstance.get<RawFaqListResponse>(
       "/admin/faqs",
@@ -25,7 +24,11 @@ export const faqService = {
     );
     return {
       ...response,
-      categoryCounts: normalizeCategoryCounts(response.categoryCounts),
+      categoryCounts: response.categoryCounts
+        ? Object.fromEntries(
+            response.categoryCounts.map((item) => [item.category, item.count])
+          )
+        : undefined,
     };
   },
   createFaq: async (data: FaqRequest) => {
