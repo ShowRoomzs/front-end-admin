@@ -1,4 +1,5 @@
 import { apiInstance } from "@/common/lib/apiInstance";
+import { normalizeCategoryCounts } from "@/features/faq/utils/normalizeCategoryCounts";
 import type {
   Faq,
   FaqCategory,
@@ -6,6 +7,7 @@ import type {
   FaqListResponse,
   FaqReorderRequest,
   FaqRequest,
+  RawFaqListResponse,
 } from "@/features/faq/types/faq";
 
 export const faqService = {
@@ -15,12 +17,16 @@ export const faqService = {
     );
     return response;
   },
-  getFaqList: async (params: FaqListParams) => {
-    const { data: response } = await apiInstance.get<FaqListResponse>(
+  // 카테고리 건수는 서버 버전마다 모양이 달라 경계에서 한 번만 정규화하고 넘긴다
+  getFaqList: async (params: FaqListParams): Promise<FaqListResponse> => {
+    const { data: response } = await apiInstance.get<RawFaqListResponse>(
       "/admin/faqs",
       { params }
     );
-    return response;
+    return {
+      ...response,
+      categoryCounts: normalizeCategoryCounts(response.categoryCounts),
+    };
   },
   createFaq: async (data: FaqRequest) => {
     const response = await apiInstance.post("/admin/faqs", data);
