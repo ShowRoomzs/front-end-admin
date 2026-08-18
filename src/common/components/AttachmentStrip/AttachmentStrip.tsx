@@ -6,17 +6,18 @@ interface AttachmentStripProps {
 }
 
 /**
- * 소비자 첨부 사진 — `첨부 사진 N장` + 72px 썸네일 한 줄(최대 5장, 한 줄에 들어간다).
+ * 첨부 사진 — `첨부 사진 N장` + 72px 썸네일 한 줄, 클릭 시 라이트박스.
  *
- * 환불·배송 문의는 소비자가 상품 상태 사진을 근거로 붙이는 경우가 대부분이라
- * 첨부가 CS 판단의 핵심 자료다(§17-5). 접어 두거나 링크로 대체하지 말 것.
+ * 장수 상한은 화면마다 다르다(1:1 문의 5장 · 상품 문의 3장). 그 값은 서버가 이미
+ * 검증하고 내려주므로 이 컴포넌트는 받은 만큼 그리고 상한을 알지 못한다 —
+ * 여기에 5나 3을 박아 넣지 말 것.
  *
- * 운영자 답변에는 첨부가 없다 — 요건에 없고, 캡처 안내가 필요하면 FAQ·공지로
- * 유도하는 편이 이력 관리에 유리하다.
+ * 접어 두거나 링크로 대체하지 않는 이유: 환불·상품 상태 문의는 소비자가 사진을
+ * 근거로 붙이는 경우가 대부분이라 첨부가 판단의 핵심 자료다(§17-5).
  */
 export default function AttachmentStrip(props: AttachmentStripProps) {
   const { imageUrls } = props;
-  // null = 닫힘. 0이 첫 장이라 인덱스로만 열림 여부를 판단할 수 없다
+  // null = 닫힘. 0이 첫 장이라 인덱스 자체로는 열림 여부를 판단할 수 없다
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   if (imageUrls.length === 0) {

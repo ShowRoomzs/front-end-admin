@@ -121,11 +121,11 @@ export const ADMIN_MENU: MenuConfig = {
           label: "공지 관리",
           path: "/support/notice",
         },
-        {
-          id: "cs-terms",
-          label: "약관 관리",
-          path: "/support/terms",
-        },
+        /*
+          [v0.29] 약관 관리는 여기 없다 — `설정 > 약관·정책 관리`로 옮겼다(§21).
+          약관은 소비자 문의 대응 콘텐츠가 아니라 서비스 운영 규정이라 수수료·정책과
+          같은 층이 맞다. CS·콘텐츠 관리 하위는 **4개**가 정본이니 되돌리지 말 것.
+        */
       ],
     },
     {
@@ -162,6 +162,13 @@ export const ADMIN_MENU: MenuConfig = {
           id: "settings-admin-account",
           label: "운영자 계정 관리",
           path: "/admin/list",
+        },
+        // [v0.29] CS·콘텐츠 관리에서 이곳으로 옮겨 왔다(§21 메뉴 위치 이동)
+        {
+          id: "settings-terms",
+          label: "약관·정책 관리",
+          pageTitle: "약관 및 정책 관리",
+          path: "/settings/terms",
         },
       ],
     },
