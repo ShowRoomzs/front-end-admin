@@ -163,9 +163,15 @@ export default function NoticeManagement() {
 
   return (
     <ListViewWrapper>
-      {/* 셸은 pageTitle로 h1만 그리므로 설명문·버튼 줄은 화면이 직접 만든다 */}
-      <div className="mb-4 flex shrink-0 items-start justify-between gap-4">
-        <p className="-mt-2 text-[12px] text-sz-n-600">
+      {/*
+        셸은 pageTitle로 h1만 그리므로 설명문·버튼 줄은 화면이 직접 만든다.
+
+        여기에 음수 마진(`-mt-*`)을 주지 말 것 — 이 줄은 flex 아이템이고 위쪽
+        `ListViewWrapper`가 `overflow-hidden`이라, 위로 끌어올리면 컨테이너 밖으로
+        나간 만큼 글자 윗부분이 잘려 나간다.
+      */}
+      <div className="mb-4 flex shrink-0 items-center justify-between gap-4">
+        <p className="text-[12px] text-sz-n-600">
           소비자 앱 공지사항에 노출됩니다. 중요로 표시한 공지는 목록 상단에
           최신순으로 노출됩니다.
         </p>
