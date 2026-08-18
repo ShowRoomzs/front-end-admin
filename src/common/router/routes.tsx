@@ -3,7 +3,7 @@ import { MainLayout } from "@/common/components";
 import LoginPage from "@/features/auth/pages/LoginPage";
 import PlaceholderPage from "@/common/components/PlaceholderPage";
 import CategoryManagement from "@/features/category/pages/CategoryManagement";
-import CommonUserManagement from "@/features/user/pages/CommonUserManagement";
+import ConsumerManagement from "@/features/consumer/pages/ConsumerManagement";
 import SellerRegistrationManagement from "@/features/seller/pages/SellerRegistrationManagement";
 import SellerRegistrationDetail from "@/features/seller/pages/SellerRegistrationDetail";
 import SellerUserManagement from "@/features/seller/pages/SellerUserManagement";
@@ -166,9 +166,13 @@ export const mainRoutes: Array<RouteObject> = [
       {
         path: "member",
         children: [
+          /*
+            소비자 회원 목록 (§25-3). 상세(§25-4)는 아직 라우트를 두지 않는다 —
+            서버 상세 응답이 구버전이라 마스킹 해제·본인확인 정보·배송지 목록이 없다.
+          */
           {
             path: "list",
-            element: <CommonUserManagement />,
+            element: <ConsumerManagement />,
           },
           {
             path: "sanction",
