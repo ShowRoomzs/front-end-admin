@@ -15,7 +15,8 @@ import { cn } from "@/lib/utils";
 
 const MAX_TABLE_WIDTH = 1880; // 최대 테이블 너비
 // 본문 행 1개 높이: 상하 패딩 14px + 12px 본문 줄높이 + 구분선 1px
-const ROW_HEIGHT = 47;
+/** 본문 행 높이 — `TableBody`의 `h-[50px]`과 반드시 같아야 maxRows 스크롤 지점이 맞는다 */
+const ROW_HEIGHT = 50;
 
 export default function Table<T, K extends keyof T = keyof T>(
   props: TableProps<T, K>
@@ -316,8 +317,7 @@ export default function Table<T, K extends keyof T = keyof T>(
             <col
               key={colKey}
               style={{
-                width:
-                  fitWidth && width != null ? `${width}%` : width,
+                width: fitWidth && width != null ? `${width}%` : width,
               }}
             />
           );
