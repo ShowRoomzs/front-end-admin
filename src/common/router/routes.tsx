@@ -12,7 +12,7 @@ import SocialLoginManagement from "@/features/user/pages/SocialLoginManagement";
 import LoginHistoryManagement from "@/features/user/pages/LoginHistoryManagement";
 import CouponManagement from "@/features/coupon/pages/CouponManagement";
 import NoticeManagement from "@/features/notice/pages/NoticeManagement";
-import NoticeRegister from "@/features/notice/pages/NoticeRegister";
+import NoticeFormPage from "@/features/notice/pages/NoticeFormPage";
 import FaqManagement from "@/features/faq/pages/FaqManagement";
 import CreatorApplicationManagement from "@/features/creator/pages/CreatorApplicationManagement";
 import CreatorApplicationDetail from "@/features/creator/pages/CreatorApplicationDetail";
@@ -20,6 +20,15 @@ import ProductListManagement from "@/features/product/pages/ProductListManagemen
 import ProductDetailPage from "@/features/product/pages/ProductDetailPage";
 import ChangeRequestManagement from "@/features/changeRequest/pages/ChangeRequestManagement";
 import ChangeRequestDetail from "@/features/changeRequest/pages/ChangeRequestDetail";
+import InquiryManagement from "@/features/inquiry/pages/InquiryManagement";
+import InquiryDetail from "@/features/inquiry/pages/InquiryDetail";
+import ProductInquiryManagement from "@/features/productInquiry/pages/ProductInquiryManagement";
+import ProductInquiryDetail from "@/features/productInquiry/pages/ProductInquiryDetail";
+import TermsManagement from "@/features/terms/pages/TermsManagement";
+import TermsDocumentDetail from "@/features/terms/pages/TermsDocumentDetail";
+import TermsDocumentRegister from "@/features/terms/pages/TermsDocumentRegister";
+import TermsVersionRegister from "@/features/terms/pages/TermsVersionRegister";
+import TermsVersionDetail from "@/features/terms/pages/TermsVersionDetail";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -241,16 +250,27 @@ export const mainRoutes: Array<RouteObject> = [
         children: [
           {
             path: "inquiry",
-            element: <PlaceholderPage title="1:1 문의" />,
+            element: <InquiryManagement />,
+          },
+          /*
+            상세는 목록의 쿼리스트링(status·type·keyword)을 그대로 물려받는다 —
+            서버가 그 범위로 이전/다음을 계산하므로 링크를 만들 때 검색 조건을 떼지 말 것.
+          */
+          {
+            path: "inquiry/:inquiryId",
+            element: <InquiryDetail />,
           },
           {
             path: "product-inquiry",
-            element: <PlaceholderPage title="상품 문의 모니터링" />,
+            element: <ProductInquiryManagement />,
           },
           {
-            path: "terms",
-            element: <PlaceholderPage title="약관 관리" />,
+            path: "product-inquiry/:inquiryId",
+            element: <ProductInquiryDetail />,
           },
+          /*
+            [v0.29] 약관은 `/settings/terms`로 옮겼다(§21) — 여기에 다시 만들지 말 것.
+          */
           /*
             FAQ는 등록·수정·삭제가 전부 모달이라 목록 라우트 하나뿐이다.
             상세/등록 페이지를 다시 만들지 말 것 — 항목당 필드가 3개뿐이라
@@ -264,9 +284,18 @@ export const mainRoutes: Array<RouteObject> = [
             path: "notice",
             element: <NoticeManagement />,
           },
+          /*
+            등록·수정이 같은 화면이다(§20-4) — 우측 게시 설정 카드만 달라진다.
+            `register`가 `:noticeId`보다 먼저 매칭되는 건 리액트 라우터가 정적 세그먼트를
+            우선하기 때문이다. 순서를 바꿔도 동작하지만 읽기 순서를 위해 위에 둔다.
+          */
           {
             path: "notice/register",
-            element: <NoticeRegister />,
+            element: <NoticeFormPage />,
+          },
+          {
+            path: "notice/:noticeId",
+            element: <NoticeFormPage />,
           },
           {
             path: "push",
@@ -274,21 +303,37 @@ export const mainRoutes: Array<RouteObject> = [
           },
         ],
       },
-      // 정책/약관 관리
+      /*
+        약관·정책 관리 (§21) — `10. 설정` 하위다.
+
+        예전 `/policy/terms`·`/policy/privacy`·`/policy/seller-terms` 자리 표시
+        라우트 3개를 지웠다. 메뉴에서 닿을 수 없는 고아 경로였고, 문서를 유형별
+        고정 화면으로 나누는 구조 자체가 §21과 맞지 않는다 — 문서는 8종이고 각각
+        여러 버전을 갖는 목록형 데이터라 화면을 문서마다 만들 수 없다.
+      */
       {
-        path: "policy",
+        path: "settings",
         children: [
           {
             path: "terms",
-            element: <PlaceholderPage title="이용약관" />,
+            element: <TermsManagement />,
           },
           {
-            path: "privacy",
-            element: <PlaceholderPage title="개인정보처리방침" />,
+            path: "terms/register",
+            element: <TermsDocumentRegister />,
           },
           {
-            path: "seller-terms",
-            element: <PlaceholderPage title="판매자 이용약관" />,
+            path: "terms/:documentId",
+            element: <TermsDocumentDetail />,
+          },
+          {
+            path: "terms/:documentId/versions/register",
+            element: <TermsVersionRegister />,
+          },
+          /* 조회 전용이다 — 수정·삭제 라우트는 서버에도 없다 */
+          {
+            path: "terms/:documentId/versions/:versionId",
+            element: <TermsVersionDetail />,
           },
         ],
       },

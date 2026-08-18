@@ -1,6 +1,7 @@
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 
-export type HistoryDotTone = "accent" | "success" | "muted" | "warn";
+/** `danger`는 소비자 노출이 실제로 막힌 집행 이벤트에만 쓴다(상품 문의 삭제 처리 등) */
+export type HistoryDotTone = "accent" | "success" | "muted" | "warn" | "danger";
 
 export interface HistoryItem {
   /** 처리 내용 (예: "신청 접수", "승인 처리 · 김운영") */
@@ -23,6 +24,7 @@ const DOT_CLASS: Record<HistoryDotTone, string> = {
   success: "bg-sz-success-text",
   muted: "bg-sz-n-500",
   warn: "bg-sz-warning-text",
+  danger: "bg-sz-danger-text",
 };
 
 // 처리 이력 — 점 + 텍스트 + 시각. 최신순(내림차순)으로 정렬해 전달받는다.

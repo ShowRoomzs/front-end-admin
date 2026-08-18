@@ -109,11 +109,6 @@ export default function ChangeRequestManagement() {
 
   return (
     <ListViewWrapper>
-      {/* 셸은 메뉴의 pageTitle로 h1만 그리므로 설명 줄은 화면이 직접 렌더링한다 */}
-      <p className="mb-4 -mt-2 shrink-0 text-[12px] text-sz-n-600">
-        브랜드가 요청한 사업자 정보·정산 계좌 변경을 검토하고 승인·반려합니다.
-      </p>
-
       <ChangeRequestTabFilter
         status={params.status}
         onStatusChange={handleStatusChange}
