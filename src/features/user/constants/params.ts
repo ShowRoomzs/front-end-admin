@@ -5,12 +5,6 @@ export const SOCIAL_PROVIDER_TYPE = {
   GOOGLE: "구글",
 } as const;
 
-export const USER_STATUS_TYPE = {
-  NORMAL: "정상",
-  DORMANT: "휴면",
-  WITHDRAWN: "탈퇴",
-} as const;
-
 export const DEVICE_TYPE = {
   ANDROID: "안드로이드",
   IPHONE: "아이폰",
