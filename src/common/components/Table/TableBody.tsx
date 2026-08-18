@@ -47,11 +47,7 @@ export default function TableBody<T>(props: TableBodyProps<T>) {
     }
   };
 
-  const renderCells = (
-    row: T,
-    index: number,
-    options?: ColumnRenderOptions
-  ) =>
+  const renderCells = (row: T, index: number, options?: ColumnRenderOptions) =>
     columns.map((col: Column<T>) => {
       const width = col.width;
       const alignClass =
@@ -77,9 +73,17 @@ export default function TableBody<T>(props: TableBodyProps<T>) {
             }
           }}
           onClick={(e) => handleCellClick(e, col, index)}
-          // 구분선 위계: 본문 행 사이는 --n-100. 첫 행은 헤더 경계선과 이중선이 되지 않도록 생략
+          /*
+            구분선 위계: 본문 행 사이는 --n-100. 첫 행은 헤더 경계선과 이중선이 되지 않도록 생략.
+
+            행 높이는 **50px 고정**이다(디자인시스템 규격). 예전처럼 패딩만 주면 행 높이가
+            셀 안에 무엇이 들어갔는지에 따라 달라졌다 — 관리 열 버튼(26px)이 있는 목록은
+            54px, 상품 썸네일(36px)이 있는 목록은 64px, 배지뿐인 목록은 48px이라 페이지를
+            옮길 때마다 행 간격이 달라 보였다. 패딩은 이제 최소 여백일 뿐이고 높이를 정하지
+            않으므로, 새 셀 내용을 넣을 때 42px(50 - 상하 패딩)을 넘지 않는지만 보면 된다.
+          */
           className={cn(
-            "px-4 py-[14px] align-middle",
+            "h-[50px] px-4 py-1.5 align-middle",
             index !== 0 && "border-t border-sz-n-100",
             col.fixed && "bg-white group-hover:bg-sz-accent-50"
           )}
