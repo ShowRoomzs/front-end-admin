@@ -88,7 +88,7 @@ export default function ConsumerManagement() {
     if (params.keyword) {
       return (
         <div className="px-6 py-[72px] text-center">
-          <div className="mb-2.5 text-[28px] leading-none text-sz-n-300">⌕</div>
+          <div className="mb-2.5 text-[28px] leading-none text-sz-n-300">?</div>
           <div className="mb-1 text-[13px] font-semibold text-sz-n-700">
             검색 결과가 없습니다
           </div>
