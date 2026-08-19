@@ -60,7 +60,7 @@ export const ADMIN_MENU: MenuConfig = {
         {
           id: "member-consumer",
           label: "소비자",
-          pageTitle: "소비자 회원 관리",
+          // pageTitle을 두지 않아 label이 그대로 h1이 된다 — 시안 page-t가 `소비자`다
           path: "/member/list",
         },
       ],
