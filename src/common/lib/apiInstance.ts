@@ -49,7 +49,10 @@ apiInstance.interceptors.response.use(
     const message =
       error.response?.data?.message ??
       "요청을 처리하지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.";
-    toast.error(message);
+    // 호출부가 실패를 직접 화면에 그리는 요청은 토스트를 건너뛴다(중복 알림 방지)
+    if (config.suppressErrorToast !== true) {
+      toast.error(message);
+    }
     return Promise.reject(error);
   }
 );

@@ -71,6 +71,12 @@ export const ADMIN_MENU: MenuConfig = {
       path: "/product/list",
     },
     {
+      id: "contract",
+      label: "계약 관리",
+      // 목록이 제목·설명 줄을 직접 그린다(MainLayout SELF_TITLED_PATHS)
+      path: "/contract",
+    },
+    {
       id: "group-buy",
       label: "공구 관리",
       path: "/group-buy",
