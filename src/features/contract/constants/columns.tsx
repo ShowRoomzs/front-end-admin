@@ -73,7 +73,8 @@ export const CONTRACT_COLUMNS: Columns<AdminContractListItem> = [
   {
     key: "reviewRequestedAt",
     label: "검토 요청",
-    width: 116,
+    // 시안은 116px이지만 시안 표는 넘치면 열이 늘어나고 공용 Table은 잘라낸다 — 셀 여백 포함 「2026.08.13 16:52」가 다 들어가는 폭
+    width: 128,
     align: "center",
     render: (value) => (
       <span className="whitespace-nowrap text-[12px] tabular-nums text-sz-n-500">

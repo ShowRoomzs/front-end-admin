@@ -153,7 +153,8 @@ export default function ContractManagement() {
         <div className="flex shrink-0 items-center justify-between border-b border-sz-n-200 px-4 py-2.5">
           <span className="text-[12px] text-sz-n-600">
             총 <b className="text-sz-n-900">{pageInfo.totalResults}</b>건
-            {actionRequired > 0 && (
+            {/* 시안 A2 — 결과가 0건이면 「총 0건」만 남긴다 */}
+            {actionRequired > 0 && pageInfo.totalResults > 0 && (
               <span className="text-[11px] text-sz-n-500">
                 {" · 조치 필요 "}
                 <b className="text-sz-n-900">{actionRequired}</b>건
@@ -197,17 +198,28 @@ export default function ContractManagement() {
           </div>
         </div>
 
-        <Table
-          columns={CONTRACT_COLUMNS}
-          data={contractList?.content ?? []}
-          pageInfo={pageInfo}
-          isLoading={isLoading}
-          onRowClick={handleRowClick}
-          emptyState={emptyState}
-          fitWidth
-          bodyClassName="overflow-hidden whitespace-nowrap"
-          headerClassName="whitespace-nowrap"
-        />
+        {/*
+          공용 Table의 fitWidth는 좁아지면 모든 열을 같은 비율로 줄여 날짜 열(「2026.10.05 10:00 ~ …」)이
+          잘린다. 최소 폭을 두고, 그보다 좁은 화면(1280px 노트북 등)에서는 카드 안에서만 가로 스크롤한다.
+        */}
+        <div className="overflow-x-auto">
+          <div className="min-w-[1080px]">
+            <Table
+              columns={CONTRACT_COLUMNS}
+              data={contractList?.content ?? []}
+              pageInfo={pageInfo}
+              isLoading={isLoading}
+              onRowClick={handleRowClick}
+              emptyState={emptyState}
+              fitWidth
+              // 카드 높이를 행 수에 맞춘다 — 없으면 0건일 때 카드가 헤더 높이로 접혀 빈 상태가 잘린다
+              autoHeight
+              maxRows={14}
+              bodyClassName="overflow-hidden whitespace-nowrap"
+              headerClassName="whitespace-nowrap"
+            />
+          </div>
+        </div>
       </div>
     </ListViewWrapper>
   );

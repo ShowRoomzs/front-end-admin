@@ -1,7 +1,10 @@
 import { ModalShell } from "@/common/components/ModalShell/ModalShell";
 import Btn from "@/features/contract/components/shared/Btn";
 import { TermRow, Terms } from "@/features/contract/components/shared/Terms";
-import { ModalWarn } from "@/features/contract/components/modals/ModalParts";
+import {
+  ModalWarn,
+  MODAL_SUMMARY_CLASS,
+} from "@/features/contract/components/modals/ModalParts";
 import type { AdminContractDetail } from "@/features/contract/types";
 import {
   formatMonthDayTime,
@@ -84,7 +87,7 @@ export default function SignatureSaveModal(props: SignatureSaveModalProps) {
       }
     >
       모두싸인에서 확인한 값을 저장합니다.
-      <Terms className="my-4 px-3">
+      <Terms className={MODAL_SUMMARY_CLASS}>
         <TermRow label="브랜드" labelWidth={96} className="py-2">
           <span className="tabular-nums">
             <Diff before={signature.brandSignedAt} after={brandAfter} />
@@ -119,12 +122,6 @@ export default function SignatureSaveModal(props: SignatureSaveModalProps) {
         <ModalWarn tone="info">
           서명 완료가 해제되므로 저장 후 상태가 <b>서명 진행중</b>으로
           돌아갑니다. 올린 체결 문서는 그대로 남습니다.
-        </ModalWarn>
-      )}
-      {bothAfter === bothBefore && contract.status === "SIGNING" && (
-        <ModalWarn tone="info">
-          잘못 입력했으면 <b>체결 완료 전까지 체크를 해제</b>해 되돌릴 수
-          있습니다.
         </ModalWarn>
       )}
     </ModalShell>

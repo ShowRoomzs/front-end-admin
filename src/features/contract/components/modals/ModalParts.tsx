@@ -53,3 +53,10 @@ export const MODAL_SELECT_CLASS =
 
 export const MODAL_TEXTAREA_CLASS =
   "min-h-[88px] w-full resize-y rounded-[6px] border border-sz-n-300 bg-white px-2.5 pb-1.5 pt-[7px] text-[13px] leading-[1.6] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
+
+/**
+ * 모달 요약(시안 `.msum`) — 어드민 시안은 테두리·배경 없이 구분선 행만 그린다.
+ * `Terms`의 박스 스타일을 걷어내고 행 구조만 쓴다.
+ */
+export const MODAL_SUMMARY_CLASS =
+  "my-3 rounded-none border-0 bg-transparent px-0 py-0";

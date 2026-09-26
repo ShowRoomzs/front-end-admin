@@ -31,6 +31,14 @@ const HIDDEN_EVENTS: Array<AdminContractHistory["eventType"]> = [
   "BRAND_SIGNED",
   "CREATOR_SIGNED",
   "BOTH_SIGNED_CONFIRMED",
+  // 체결 처리와 같은 순간에 남는다 — 시안은 「체결 완료 처리 · 공구 생성」 한 줄이고 번호는 본문에 있다
+  "GROUP_BUY_CREATED",
+];
+
+/** 모두싸인에서 운영자가 한 일 — 이력 메타에 「· 모두싸인」을 붙인다(시안 B3) */
+const VIA_MODUSIGN: Array<AdminContractHistory["eventType"]> = [
+  "SIGNATURE_SENT",
+  "RESEND_HANDLED",
 ];
 
 /**
@@ -120,11 +128,29 @@ export function toHistoryItems(
       entry.eventType === "REVIEW_REJECTED"
         ? null
         : humanize(entry.detail);
+    const actor = entry.actorDisplayName ?? ACTOR_LABEL[entry.actorType];
+    // 시안: 모두싸인에서 한 일은 「김운영 · 모두싸인」, 취소 사유는 「김운영 · 사유: …」로 메타 줄에 붙는다
+    if (VIA_MODUSIGN.includes(entry.eventType)) {
+      return {
+        label: detail ? `${label} · ${detail}` : label,
+        processedAt: entry.occurredAt,
+        tone: HISTORY_TONE[entry.eventType] ?? "muted",
+        processorName: `${actor} · 모두싸인`,
+      };
+    }
+    if (entry.eventType === "CANCELED" && detail) {
+      return {
+        label,
+        processedAt: entry.occurredAt,
+        tone: HISTORY_TONE[entry.eventType] ?? "muted",
+        processorName: `${actor} · 사유: ${detail}`,
+      };
+    }
     return {
       label: detail ? `${label} · ${detail}` : label,
       processedAt: entry.occurredAt,
       tone: HISTORY_TONE[entry.eventType] ?? "muted",
-      processorName: entry.actorDisplayName ?? ACTOR_LABEL[entry.actorType],
+      processorName: actor,
     };
   });
 }

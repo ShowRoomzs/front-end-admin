@@ -113,6 +113,11 @@ export default function ProgressCard(props: ProgressCardProps) {
   const isSigningPhase = SIGNING_PHASE.includes(status);
   const isClosed = CLOSED_STATUSES.includes(status);
   const editable = isSigningPhase && permissions.canUpdateSignature;
+  const rejectedBy =
+    [...detail.history]
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
+      .find((item) => item.eventType === "REVIEW_REJECTED")?.actorDisplayName ??
+    null;
   const title =
     status === "REVIEW_PENDING" || status === "REVIEW_REJECTED"
       ? "검토 진행"
@@ -154,6 +159,7 @@ export default function ProgressCard(props: ProgressCardProps) {
                 <span className="tabular-nums">
                   {formatDateTimeShort(review.rejectedAt)}
                 </span>
+                {rejectedBy && ` · ${rejectedBy} 운영자`}
               </FieldRow>
             </div>
           </>
@@ -190,22 +196,6 @@ export default function ProgressCard(props: ProgressCardProps) {
               </div>
             )}
           </div>
-        )}
-        {isClosed && signature.asOf && (
-          <div className="mt-3">
-            <AsOf detail={detail} />
-          </div>
-        )}
-
-        {status === "SIGNING" && signature.deadlinePassedDays > 0 && (
-          <Notice tone="warn" className="mt-4">
-            <b className="font-semibold">
-              서명 기한이 {signature.deadlinePassedDays}일 지났습니다.
-            </b>{" "}
-            모두싸인 대시보드에서 서명이 정말 없는지 확인한 뒤{" "}
-            <b className="font-semibold">만료 처리</b>하세요 — 시스템이 자동으로
-            닫지 않습니다.
-          </Notice>
         )}
         {status === "SIGNING" && (
           <Notice tone="warn" className="mt-3">
@@ -291,6 +281,9 @@ export default function ProgressCard(props: ProgressCardProps) {
                         {GROUP_BUY_STATUS_LABEL[groupBuy.status] ??
                           groupBuy.status}
                       </b>
+                      {/* 준비중 공구는 인플루언서 게시물 등록이 다음 단계다(시안 B5) */}
+                      {groupBuy.status === "PREPARING" &&
+                        " · 인플루언서 게시물 등록 대기"}
                     </>
                   ) : undefined
                 }
@@ -311,18 +304,10 @@ export default function ProgressCard(props: ProgressCardProps) {
           </>
         )}
 
-        {isClosed && detail.closure.memo && (
+        {/* 거절은 시안이 없어 인플루언서가 남긴 사유를 여기서 보인다(취소 사유는 레일에 있다 — 시안 B6) */}
+        {status === "DECLINED" && detail.closure.memo && (
           <div className="mt-3">
-            <FieldRow
-              label={
-                status === "DECLINED"
-                  ? "거절 사유"
-                  : status === "CANCELED"
-                    ? "취소 사유"
-                    : "종결 사유"
-              }
-              sub={detail.closure.memo}
-            >
+            <FieldRow label="거절 사유" sub={detail.closure.memo}>
               {detail.closure.reasonLabel ?? "—"}
             </FieldRow>
           </div>

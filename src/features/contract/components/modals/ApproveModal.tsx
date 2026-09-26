@@ -7,6 +7,7 @@ import {
   CheckBox,
   MLabel,
   ModalWarn,
+  MODAL_SUMMARY_CLASS,
 } from "@/features/contract/components/modals/ModalParts";
 import type {
   AdminContractApproveRequest,
@@ -92,7 +93,7 @@ export default function ApproveModal(props: ApproveModalProps) {
       {contract.contractNumber})를 승인합니다. 상세 화면에서 내려받은 계약서를{" "}
       <b className="font-semibold text-sz-n-900">모두싸인에 올려 발송한 뒤</b>{" "}
       이 창에서 승인을 눌러 주세요.
-      <Terms className="my-4 px-3">
+      <Terms className={MODAL_SUMMARY_CLASS}>
         <TermRow label="수신자 ①" labelWidth={96} className="py-2">
           {[contract.brand.name, contract.brand.email]
             .filter(Boolean)
@@ -109,9 +110,7 @@ export default function ApproveModal(props: ApproveModalProps) {
           {contract.title} 계약서 ({contract.contractNumber})
         </TermRow>
       </Terms>
-      <MLabel required first>
-        모두싸인 업로드 확인
-      </MLabel>
+      <MLabel required>모두싸인 업로드 확인</MLabel>
       <CheckBox>
         <CheckListRow checked={checks[0]} onChange={(v) => toggle(0, v)}>
           수신자 <b className="font-semibold">2명</b>을 브랜드·인플루언서 순으로
