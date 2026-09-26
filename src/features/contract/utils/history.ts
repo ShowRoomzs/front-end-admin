@@ -31,6 +31,8 @@ const HIDDEN_EVENTS: Array<AdminContractHistory["eventType"]> = [
   "BRAND_SIGNED",
   "CREATOR_SIGNED",
   "BOTH_SIGNED_CONFIRMED",
+  // 체결 처리와 같은 순간에 남는다 — 시안은 「체결 완료 처리 · 공구 생성」 한 줄이고 번호는 본문에 있다
+  "GROUP_BUY_CREATED",
 ];
 
 /**

@@ -32,7 +32,10 @@ import {
   useUpdateSignatures,
   useUploadDocument,
 } from "@/features/contract/hooks/useAdminContractMutations";
-import { useGetAdminContractDetail } from "@/features/contract/hooks/useAdminContractQueries";
+import {
+  useDocumentSizes,
+  useGetAdminContractDetail,
+} from "@/features/contract/hooks/useAdminContractQueries";
 import { useContractNeighbors } from "@/features/contract/hooks/useContractNeighbors";
 import { adminContractService } from "@/features/contract/services/adminContractService";
 import type {
@@ -121,6 +124,7 @@ export default function ContractDetail() {
     refetch,
   } = useGetAdminContractDetail(contractId);
   const { prevId, nextId } = useContractNeighbors(contractId, location.search);
+  const documentSizes = useDocumentSizes(contractId, detail?.documents ?? []);
   usePageSubtitle(detail ? (detail.contract.title ?? "(공구명 미입력)") : null);
 
   const [modal, setModal] = useState<ModalKind>(null);
@@ -226,7 +230,7 @@ export default function ContractDetail() {
     upload.mutate(
       { contractId, documentType: type, file },
       {
-        onSuccess: () => toast.success(`${file.name}을 올렸습니다.`),
+        onSuccess: () => toast.success(`업로드했습니다 — ${file.name}`),
         onError: (error) => {
           // S3 업로드 실패는 axios 요청이 아니라 인터셉터가 알리지 못한다
           if (!axios.isAxiosError(error)) {
@@ -357,6 +361,7 @@ export default function ContractDetail() {
           {showDocuments && (
             <DocumentsCard
               documents={documents}
+              sizes={documentSizes}
               mode={
                 contract.status === "CONCLUSION_PENDING" &&
                 detail.permissions.canUploadDocument

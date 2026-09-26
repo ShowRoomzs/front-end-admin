@@ -291,6 +291,9 @@ export default function ProgressCard(props: ProgressCardProps) {
                         {GROUP_BUY_STATUS_LABEL[groupBuy.status] ??
                           groupBuy.status}
                       </b>
+                      {/* 준비중 공구는 인플루언서 게시물 등록이 다음 단계다(시안 B5) */}
+                      {groupBuy.status === "PREPARING" &&
+                        " · 인플루언서 게시물 등록 대기"}
                     </>
                   ) : undefined
                 }
