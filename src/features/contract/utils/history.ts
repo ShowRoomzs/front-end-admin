@@ -35,6 +35,12 @@ const HIDDEN_EVENTS: Array<AdminContractHistory["eventType"]> = [
   "GROUP_BUY_CREATED",
 ];
 
+/** 모두싸인에서 운영자가 한 일 — 이력 메타에 「· 모두싸인」을 붙인다(시안 B3) */
+const VIA_MODUSIGN: Array<AdminContractHistory["eventType"]> = [
+  "SIGNATURE_SENT",
+  "RESEND_HANDLED",
+];
+
 /**
  * 같은 시각에 찍힌 이벤트의 논리 순서 — 승인 모달 하나가 「검토 통과」와 「서명 요청 발송」을
  * 같은 순간에 남기는데 서버 저장 순서가 거꾸로 올 수 있다. 숫자가 클수록 나중 일이다.
@@ -122,11 +128,29 @@ export function toHistoryItems(
       entry.eventType === "REVIEW_REJECTED"
         ? null
         : humanize(entry.detail);
+    const actor = entry.actorDisplayName ?? ACTOR_LABEL[entry.actorType];
+    // 시안: 모두싸인에서 한 일은 「김운영 · 모두싸인」, 취소 사유는 「김운영 · 사유: …」로 메타 줄에 붙는다
+    if (VIA_MODUSIGN.includes(entry.eventType)) {
+      return {
+        label: detail ? `${label} · ${detail}` : label,
+        processedAt: entry.occurredAt,
+        tone: HISTORY_TONE[entry.eventType] ?? "muted",
+        processorName: `${actor} · 모두싸인`,
+      };
+    }
+    if (entry.eventType === "CANCELED" && detail) {
+      return {
+        label,
+        processedAt: entry.occurredAt,
+        tone: HISTORY_TONE[entry.eventType] ?? "muted",
+        processorName: `${actor} · 사유: ${detail}`,
+      };
+    }
     return {
       label: detail ? `${label} · ${detail}` : label,
       processedAt: entry.occurredAt,
       tone: HISTORY_TONE[entry.eventType] ?? "muted",
-      processorName: entry.actorDisplayName ?? ACTOR_LABEL[entry.actorType],
+      processorName: actor,
     };
   });
 }

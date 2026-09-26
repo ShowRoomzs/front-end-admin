@@ -54,8 +54,12 @@ export function useDocumentSizes(
         document.uploadedAt,
       ],
       queryFn: () =>
-        adminContractService.getDocument(contractId, document.type),
+        adminContractService.getDocument(contractId, document.type, {
+          silent: true,
+        }),
       staleTime: Infinity,
+      // 용량은 부가 정보 — 실패하면 표시만 빼고 재시도하지 않는다
+      retry: false,
       select: (data: { sizeBytes: number | null }) => data.sizeBytes,
     })),
   });

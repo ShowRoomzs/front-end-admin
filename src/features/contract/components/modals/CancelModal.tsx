@@ -9,6 +9,7 @@ import {
   MODAL_SELECT_CLASS,
   MODAL_TEXTAREA_CLASS,
   ModalWarn,
+  MODAL_SUMMARY_CLASS,
 } from "@/features/contract/components/modals/ModalParts";
 import { CANCEL_REASONS } from "@/features/contract/constants/labels";
 import { SELECT_CHEVRON_STYLE } from "@/features/contract/constants/params";
@@ -89,7 +90,7 @@ export default function CancelModal(props: CancelModalProps) {
       <b className="font-semibold text-sz-n-900">{contract.title}</b>(
       {contract.contractNumber})를 <b className="font-semibold">취소</b>로
       종결합니다.
-      <Terms className="my-4 px-3">
+      <Terms className={MODAL_SUMMARY_CLASS}>
         <TermRow label="현재 상태" labelWidth={96} className="py-2">
           {currentStateText(detail)}
         </TermRow>
@@ -98,9 +99,7 @@ export default function CancelModal(props: CancelModalProps) {
           {onOpenThread && <FLink onClick={onOpenThread}>스레드 열기 ↗</FLink>}
         </TermRow>
       </Terms>
-      <MLabel required first>
-        취소 사유
-      </MLabel>
+      <MLabel required>취소 사유</MLabel>
       <select
         className={MODAL_SELECT_CLASS}
         style={SELECT_CHEVRON_STYLE}

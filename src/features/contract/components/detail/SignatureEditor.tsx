@@ -40,7 +40,8 @@ function SignBox(props: SignBoxProps) {
   return (
     <div
       className={cn(
-        "flex-1 rounded-[6px] border p-3.5",
+        // 좁은 화면에서 날짜·시·분 칸이 박스 밖으로 넘치지 않게 최소 폭을 두고 줄바꿈한다
+        "min-w-[250px] flex-1 rounded-[6px] border p-3.5",
         editable ? "border-sz-n-300 bg-white" : "border-sz-n-200 bg-sz-n-50"
       )}
     >
@@ -111,7 +112,7 @@ export default function SignatureEditor(props: SignatureEditorProps) {
   } = props;
 
   return (
-    <div className="flex gap-3">
+    <div className="flex flex-wrap gap-3">
       <SignBox
         who="브랜드"
         name={brandName}

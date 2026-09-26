@@ -2,7 +2,10 @@ import { ModalShell } from "@/common/components/ModalShell/ModalShell";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import Btn from "@/features/contract/components/shared/Btn";
 import { TermRow, Terms } from "@/features/contract/components/shared/Terms";
-import { ModalWarn } from "@/features/contract/components/modals/ModalParts";
+import {
+  ModalWarn,
+  MODAL_SUMMARY_CLASS,
+} from "@/features/contract/components/modals/ModalParts";
 import type { AdminContractDetail } from "@/features/contract/types";
 import { formatKRW } from "@/features/contract/utils/format";
 import { formatMonthDayTime } from "@/features/contract/utils/datetime";
@@ -46,7 +49,7 @@ export default function ConcludeModal(props: ConcludeModalProps) {
     >
       <b className="font-semibold text-sz-n-900">{contract.title}</b>(
       {contract.contractNumber})를 체결 완료 처리합니다.
-      <Terms className="my-4 px-3">
+      <Terms className={MODAL_SUMMARY_CLASS}>
         <TermRow label="브랜드 서명" labelWidth={96} className="py-2">
           <span className="tabular-nums">
             {contract.brand.name} ·{" "}

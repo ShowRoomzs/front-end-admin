@@ -10,6 +10,7 @@ import {
   CheckBox,
   MLabel,
   ModalWarn,
+  MODAL_SUMMARY_CLASS,
 } from "@/features/contract/components/modals/ModalParts";
 import type { AdminContractDetail } from "@/features/contract/types";
 import dayjs from "dayjs";
@@ -77,7 +78,7 @@ export default function ExpireModal(props: ExpireModalProps) {
       <b className="font-semibold text-sz-n-900">{contract.title}</b>(
       {contract.contractNumber})를 <b className="font-semibold">만료</b>로
       종결합니다.
-      <Terms className="my-4 px-3">
+      <Terms className={MODAL_SUMMARY_CLASS}>
         <TermRow label="서명 기한" labelWidth={96} className="py-2">
           <span className="tabular-nums">
             {formatDateTimeShort(signature.deadlineAt)}
