@@ -29,6 +29,8 @@ import TermsDocumentDetail from "@/features/terms/pages/TermsDocumentDetail";
 import TermsDocumentRegister from "@/features/terms/pages/TermsDocumentRegister";
 import TermsVersionRegister from "@/features/terms/pages/TermsVersionRegister";
 import TermsVersionDetail from "@/features/terms/pages/TermsVersionDetail";
+import ContractManagement from "@/features/contract/pages/ContractManagement";
+import ContractDetail from "@/features/contract/pages/ContractDetail";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -124,6 +126,15 @@ export const mainRoutes: Array<RouteObject> = [
             element: <PlaceholderPage title="인플루언서 회원 관리" />,
           },
         ],
+      },
+      // 계약 관리
+      {
+        path: "contract",
+        element: <ContractManagement />,
+      },
+      {
+        path: "contract/:id",
+        element: <ContractDetail />,
       },
       // 공구 관리
       {

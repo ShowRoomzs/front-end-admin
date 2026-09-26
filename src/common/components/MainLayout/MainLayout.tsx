@@ -1,12 +1,15 @@
 import { ADMIN_MENU } from "@/common/constants";
 import type { MenuItem } from "@/common/types";
+import { useGetAdminContractSummary } from "@/features/contract/hooks/useAdminContractQueries";
 import { useGetChangeRequestPendingCount } from "@/features/changeRequest/hooks/useGetChangeRequestPendingCount";
 import { useGetCreatorPendingCount } from "@/features/creator/hooks/useGetCreatorPendingCount";
 import { useGetInquiryUnansweredCount } from "@/features/inquiry/hooks/useGetInquiryUnansweredCount";
 import { useGetSellerPendingCount } from "@/features/seller/hooks/useGetSellerPendingCount";
+import { useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../Sidebar";
 import Header from "./Header";
+import type { ShellOutletContext } from "./usePageSubtitle";
 
 const MENUS = [ADMIN_MENU];
 const GROUPS = MENUS.flatMap((menu) => menu.groups);
@@ -83,6 +86,26 @@ function withCsCounts(
   }));
 }
 
+/**
+ * 계약 관리 GNB 뱃지 = 조치 큐 합계(검토 대기 · 체결 처리 대기 · 만료 확인 · 재발송 요청).
+ * 단일 메뉴라 하위 count 없이 그룹 뱃지만 채운다.
+ */
+function withContractCount(
+  menus: Array<typeof ADMIN_MENU>,
+  actionRequired: number
+) {
+  const badge = actionRequired > 0 ? actionRequired : undefined;
+  return menus.map((menu) => ({
+    ...menu,
+    groups: menu.groups.map((group) =>
+      group.id === "contract" ? { ...group, badge } : group
+    ),
+  }));
+}
+
+/** 제목 아래 설명 줄이 붙어 화면이 h1을 직접 그리는 목록 */
+const SELF_TITLED_PATHS = ["/contract"];
+
 /** 상세 화면(`/market/registration/12`)도 해당 메뉴에 속한 것으로 본다 */
 function matches(item: MenuItem, pathname: string) {
   return (
@@ -112,25 +135,40 @@ function resolveBreadcrumb(pathname: string) {
  */
 export default function MainLayout() {
   const location = useLocation();
-  const { title, subtitle } = resolveBreadcrumb(location.pathname);
+  const { title, subtitle: menuSubtitle } = resolveBreadcrumb(
+    location.pathname
+  );
+  // 상세 화면이 올린 레코드 이름(usePageSubtitle) — 없으면 메뉴 하위 라벨
+  const [pageSubtitle, setPageSubtitle] = useState<string | null>(null);
+  const subtitle = pageSubtitle ?? menuSubtitle;
+  const outletContext = useMemo<ShellOutletContext>(
+    () => ({ setSubtitle: setPageSubtitle }),
+    []
+  );
   const { pendingCount: brandPending } = useGetSellerPendingCount();
   const { pendingCount: influencerPending } = useGetCreatorPendingCount();
   const { pendingCount: changeRequestPending } =
     useGetChangeRequestPendingCount();
   const { unansweredCount: inquiryUnanswered } = useGetInquiryUnansweredCount();
+  const { data: contractSummary } = useGetAdminContractSummary();
 
   // 목록 화면은 메뉴에 지정된 제목을 페이지 타이틀로 쓴다.
   // 상세 화면(하위 경로)은 브랜드명 등 자체 타이틀을 렌더링하므로 비워둔다.
   const currentItem = ALL_ITEMS.find((item) => item.path === location.pathname);
-  const pageTitle = currentItem?.pageTitle ?? currentItem?.label;
-  const menus = withCsCounts(
-    withOnboardingCounts(
-      MENUS,
-      brandPending,
-      influencerPending,
-      changeRequestPending
+  const pageTitle = SELF_TITLED_PATHS.includes(location.pathname)
+    ? undefined
+    : (currentItem?.pageTitle ?? currentItem?.label);
+  const menus = withContractCount(
+    withCsCounts(
+      withOnboardingCounts(
+        MENUS,
+        brandPending,
+        influencerPending,
+        changeRequestPending
+      ),
+      inquiryUnanswered
     ),
-    inquiryUnanswered
+    contractSummary?.actionRequiredCount ?? 0
   );
 
   return (
@@ -145,7 +183,7 @@ export default function MainLayout() {
               {pageTitle}
             </h1>
           )}
-          <Outlet />
+          <Outlet context={outletContext} />
         </main>
       </div>
     </div>
