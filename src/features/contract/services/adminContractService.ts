@@ -139,15 +139,12 @@ export const adminContractService = {
     await apiInstance.delete(`${BASE}/${contractId}/documents/${documentType}`);
   },
 
-  /** silent — 용량 표시처럼 실패해도 화면이 멀쩡한 부가 조회는 오류 토스트를 띄우지 않는다 */
   getDocument: async (
     contractId: number,
-    documentType: ContractDocumentType,
-    options?: { silent?: boolean }
+    documentType: ContractDocumentType
   ) => {
     const { data } = await apiInstance.get<AdminContractDownloadResponse>(
-      `${BASE}/${contractId}/documents/${documentType}`,
-      { suppressErrorToast: options?.silent }
+      `${BASE}/${contractId}/documents/${documentType}`
     );
     return data;
   },

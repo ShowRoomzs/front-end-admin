@@ -364,8 +364,23 @@ function StatusCard(props: {
               value={closure.reasonLabel}
             />
           )}
-          {eventType !== "DECLINED" && (
-            <MetaRow label="처리자" value={actor ? `${actor} 운영자` : "—"} />
+          {eventType === "CANCELED" && detail.cancelRequest?.requesterType ? (
+            // 시안 B6 「요청 · 처리: 무드코스메틱 · 김운영」 — 직권이면 요청자 대신 「직권」, 기록 이전 건은 처리자만
+            <MetaRow
+              label="요청 · 처리"
+              value={[
+                detail.cancelRequest.requesterType === "ADMIN"
+                  ? "운영자 직권"
+                  : detail.cancelRequest.requesterName,
+                detail.cancelRequest.processedByName ?? actor,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            />
+          ) : (
+            eventType !== "DECLINED" && (
+              <MetaRow label="처리자" value={actor ? `${actor} 운영자` : "—"} />
+            )
           )}
           <MetaRow
             label="기준 시각"
@@ -426,7 +441,9 @@ export default function StatusRail(props: {
     <div className="sticky top-0 flex flex-col gap-4">
       <StatusCard detail={detail} actions={actions} />
       <DetailCard title="이력" flushBody>
-        <HistoryList items={toHistoryItems(detail.history)} />
+        <HistoryList
+          items={toHistoryItems(detail.history, detail.cancelRequest)}
+        />
       </DetailCard>
     </div>
   );
