@@ -146,6 +146,40 @@ function cancelRequestItem(
   };
 }
 
+/** 서버 변경 문자열의 한 조각 — 「브랜드 서명: null → 2026-09-27T05:05」 */
+const SIGNATURE_CHANGE = /^(브랜드|인플루언서) 서명: (\S+) → (\S+)$/;
+
+/**
+ * 서명 현황 저장 한 번의 요약 — 서버는 변경 내역을 원문(「브랜드 서명: null → …」)으로 남긴다.
+ * 시안 이력은 「서명 현황 갱신 · 브랜드 서명 완료 확인」 / 「… · 양측 서명 완료 확인」처럼 결과만 적는다.
+ * 양측 완료는 같은 저장에서 남는 `BOTH_SIGNED_CONFIRMED`(이력에서는 숨김)로 판정한다.
+ */
+function signatureUpdateSummary(
+  entry: AdminContractHistory,
+  history: Array<AdminContractHistory>
+) {
+  const bothConfirmed = history.some(
+    (item) =>
+      item.eventType === "BOTH_SIGNED_CONFIRMED" &&
+      item.occurredAt.slice(0, 16) === entry.occurredAt.slice(0, 16)
+  );
+  if (bothConfirmed) {
+    return "양측 서명 완료 확인";
+  }
+  const parts = (entry.detail ?? "").split(" / ").map((change) => {
+    const match = SIGNATURE_CHANGE.exec(change.trim());
+    if (!match) {
+      return change.includes("기준 시각만") ? "기준 시각만 갱신" : null;
+    }
+    const [, party, before, after] = match;
+    if (before === "null") {
+      return `${party} 서명 완료 확인`;
+    }
+    return after === "null" ? `${party} 서명 해제` : `${party} 서명 일시 정정`;
+  });
+  return parts.filter(Boolean).join(" · ") || null;
+}
+
 function toServerHistoryItems(
   history: Array<AdminContractHistory>
 ): Array<HistoryItem> {
@@ -168,7 +202,9 @@ function toServerHistoryItems(
       // 반려 사유는 코드(AGREEMENT_MISMATCH…)로 오고 본문 카드에 이미 풀어 적혀 있다
       entry.eventType === "REVIEW_REJECTED"
         ? null
-        : humanize(entry.detail);
+        : entry.eventType === "SIGNATURE_UPDATED"
+          ? signatureUpdateSummary(entry, history)
+          : humanize(entry.detail);
     const actor = entry.actorDisplayName ?? ACTOR_LABEL[entry.actorType];
     // 시안: 모두싸인에서 한 일은 「김운영 · 모두싸인」, 취소 사유는 「김운영 · 사유: …」로 메타 줄에 붙는다
     if (VIA_MODUSIGN.includes(entry.eventType)) {

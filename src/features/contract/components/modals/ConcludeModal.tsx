@@ -81,7 +81,7 @@ export default function ConcludeModal(props: ConcludeModalProps) {
         일시가 틀렸다면 <b>지금이 마지막 정정 기회</b>입니다 — 체결 후에는
         계약을 새로 작성해야 합니다.
       </ModalWarn>
-      <ModalWarn tone="info">
+      <ModalWarn icon="info">
         생성된 공구는 <b>준비중</b>으로 시작합니다 — 인플루언서가 게시물을
         등록하고 운영자가 <b>오픈 승인</b>해야 열립니다(공구 관리 소관).
         {fixedFee.amount ? (

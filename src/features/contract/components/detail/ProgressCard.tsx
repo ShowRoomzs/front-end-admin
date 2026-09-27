@@ -13,6 +13,7 @@ import type { AdminContractDetail } from "@/features/contract/types";
 import {
   buildStepper,
   CLOSED_STATUSES,
+  isSignatureOverdue,
   SIGNING_PHASE,
 } from "@/features/contract/utils/contractView";
 import {
@@ -127,6 +128,15 @@ export default function ProgressCard(props: ProgressCardProps) {
     <DetailCard title={title} note={cardNote(detail)}>
       <div className="pt-3">
         <Stepper steps={buildStepper(detail)} />
+
+        {/* 시안 C5 뒤 화면 — 만료는 자동이 아니라 반영 누락을 한 번 더 의심하게 한다 */}
+        {isSignatureOverdue(detail) && (
+          <Notice tone="warn" className="mt-4">
+            <b className="font-semibold">서명 기한이 지났습니다.</b> 모두싸인에
+            서명이 들어왔는지 다시 확인한 뒤 만료 처리하세요 — 화면에 반영되지
+            않았을 뿐 서명이 완료돼 있을 수 있습니다.
+          </Notice>
+        )}
 
         {status === "REVIEW_PENDING" && (
           <Notice tone="info" className="mt-4">
