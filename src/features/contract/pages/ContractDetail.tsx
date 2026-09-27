@@ -32,10 +32,7 @@ import {
   useUpdateSignatures,
   useUploadDocument,
 } from "@/features/contract/hooks/useAdminContractMutations";
-import {
-  useDocumentSizes,
-  useGetAdminContractDetail,
-} from "@/features/contract/hooks/useAdminContractQueries";
+import { useGetAdminContractDetail } from "@/features/contract/hooks/useAdminContractQueries";
 import { useContractNeighbors } from "@/features/contract/hooks/useContractNeighbors";
 import { adminContractService } from "@/features/contract/services/adminContractService";
 import type {
@@ -124,7 +121,6 @@ export default function ContractDetail() {
     refetch,
   } = useGetAdminContractDetail(contractId);
   const { prevId, nextId } = useContractNeighbors(contractId, location.search);
-  const documentSizes = useDocumentSizes(contractId, detail?.documents ?? []);
   usePageSubtitle(detail ? (detail.contract.title ?? "(공구명 미입력)") : null);
 
   const [modal, setModal] = useState<ModalKind>(null);
@@ -361,7 +357,6 @@ export default function ContractDetail() {
           {showDocuments && (
             <DocumentsCard
               documents={documents}
-              sizes={documentSizes}
               mode={
                 contract.status === "CONCLUSION_PENDING" &&
                 detail.permissions.canUploadDocument

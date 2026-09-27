@@ -237,8 +237,6 @@ export function FileSlot(props: {
 
 interface DocumentsCardProps {
   documents: Array<AdminContractDocument>;
-  /** 문서별 용량(바이트) — 받기 전이면 비어 있다 */
-  sizes?: Partial<Record<AdminContractDocument["type"], number | null>>;
   /** B4 업로드 모드 · B5 내려받기 모드 */
   mode: "upload" | "download";
   uploadingType: "SIGNED_PDF" | "AUDIT_TRAIL" | null;
@@ -259,7 +257,7 @@ const DOC_SLOTS: Array<{
  * 운영자가 모두싸인에서 내려받아 올린다(B4). 체결 후(B5)에는 교체·삭제 불가인 **단일 원본**이다.
  */
 export function DocumentsCard(props: DocumentsCardProps) {
-  const { documents, sizes, mode, uploadingType, onPick, onDownload } = props;
+  const { documents, mode, uploadingType, onPick, onDownload } = props;
   const find = (type: string) =>
     documents.find((document) => document.type === type && document.exists);
 
@@ -291,8 +289,8 @@ export function DocumentsCard(props: DocumentsCardProps) {
                 meta={
                   // 시안: 「1.2MB · 08.14 12:02 업로드」(체결 후엔 「업로드」 없이 시각만)
                   [
-                    sizes?.[slot.type] != null
-                      ? formatFileSize(sizes[slot.type] as number)
+                    document.sizeBytes != null
+                      ? formatFileSize(document.sizeBytes)
                       : null,
                     document.uploadedAt
                       ? `${formatMonthDayTime(document.uploadedAt)}${mode === "upload" ? " 업로드" : ""}`

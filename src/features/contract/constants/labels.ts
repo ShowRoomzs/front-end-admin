@@ -1,6 +1,7 @@
 import type { HistoryDotTone } from "@/common/components/HistoryList/HistoryList";
 import type {
   ContractActorType,
+  ContractCancelRequestChannel,
   ContractCloseReasonCode,
   ContractEventType,
   ContractReviewRejectReason,
@@ -35,6 +36,17 @@ export const CANCEL_REASONS: Array<{
   { code: "SCHEDULE_CHANGE", label: "공구 일정 변경" },
   { code: "NEGOTIATION_STOPPED", label: "상대와 협의 중단" },
   { code: "ETC", label: "기타(직접 입력)" },
+];
+
+/** 직권 취소 요청 경로 — 서버 `ContractCancelRequestChannel` 라벨 */
+export const CANCEL_REQUEST_CHANNELS: Array<{
+  code: ContractCancelRequestChannel;
+  label: string;
+}> = [
+  { code: "THREAD", label: "소통 스레드" },
+  { code: "PHONE", label: "전화" },
+  { code: "EMAIL", label: "이메일" },
+  { code: "ETC", label: "기타" },
 ];
 
 export function rejectReasonLabel(code: string | null | undefined) {

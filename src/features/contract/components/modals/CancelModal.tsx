@@ -11,14 +11,31 @@ import {
   ModalWarn,
   MODAL_SUMMARY_CLASS,
 } from "@/features/contract/components/modals/ModalParts";
-import { CANCEL_REASONS } from "@/features/contract/constants/labels";
+import DateTimeField from "@/features/contract/components/shared/DateTimeField";
+import {
+  CANCEL_REASONS,
+  CANCEL_REQUEST_CHANNELS,
+} from "@/features/contract/constants/labels";
 import { SELECT_CHEVRON_STYLE } from "@/features/contract/constants/params";
 import type {
   AdminContractCancelRequest,
   AdminContractDetail,
+  ContractCancelRequestChannel,
   ContractCloseReasonCode,
 } from "@/features/contract/types";
-import { useState } from "react";
+import {
+  formatMonthDayTime,
+  toParts,
+  toServerDateTime,
+  type DateTimeParts,
+} from "@/features/contract/utils/datetime";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import { useState, type ReactNode } from "react";
+
+dayjs.extend(utc);
+
+type Requester = AdminContractCancelRequest["requesterType"];
 
 const MEMO_MAX = 1000;
 
@@ -55,7 +72,58 @@ export default function CancelModal(props: CancelModalProps) {
   );
   const [memo, setMemo] = useState("");
   const [withdrawn, setWithdrawn] = useState(false);
-  const canSubmit = reasonCode !== "" && memo.trim().length > 0 && withdrawn;
+  // 요청자 — 서버가 스레드에서 판정할 수 없어 운영자가 기록한다(28-1). 직권이면 경로·시각이 없다
+  const [requester, setRequester] = useState<Requester | "">("");
+  const [channel, setChannel] = useState<ContractCancelRequestChannel | "">("");
+  const [requestedParts, setRequestedParts] = useState<DateTimeParts>(() => ({
+    ...toParts(null),
+    date: "",
+  }));
+
+  const byParty = requester === "SELLER" || requester === "CREATOR";
+  const requestedAt = byParty ? toServerDateTime(requestedParts) : null;
+  // 요청 시각은 현재 이전이어야 한다(서버도 같은 규칙) — 규칙 위반도 필수 미충족처럼 버튼만 막는다
+  const nowServer = dayjs.utc().format("YYYY-MM-DDTHH:mm:ss");
+  const requesterValid =
+    requester === "ADMIN" ||
+    (byParty &&
+      channel !== "" &&
+      requestedAt !== null &&
+      requestedAt <= nowServer);
+  const canSubmit =
+    reasonCode !== "" && memo.trim().length > 0 && withdrawn && requesterValid;
+
+  const requesterName =
+    requester === "SELLER"
+      ? contract.brand.name
+      : requester === "CREATOR"
+        ? (contract.creator?.name ?? "인플루언서")
+        : null;
+  const channelLabel = CANCEL_REQUEST_CHANNELS.find(
+    (item) => item.code === channel
+  )?.label;
+
+  // 시안 C6 요약의 「요청」 행 — 아래 입력값을 「무드코스메틱 · 소통 스레드 08.14 10:05」로 미리 보여 준다
+  let requestSummary: ReactNode = (
+    <span className="text-sz-n-400">아래에서 요청자를 기록하세요</span>
+  );
+  if (requester === "ADMIN") {
+    requestSummary = "운영자 직권 — 요청자 없음";
+  } else if (requesterName) {
+    requestSummary = (
+      <>
+        {[
+          requesterName,
+          // 시안: 「소통 스레드 08.14 10:05」 — 경로와 시각은 한 칸 띄워 붙인다
+          [channelLabel, requestedAt ? formatMonthDayTime(requestedAt) : null]
+            .filter(Boolean)
+            .join(" "),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      </>
+    );
+  }
 
   return (
     <ModalShell
@@ -75,10 +143,14 @@ export default function CancelModal(props: CancelModalProps) {
             isLoading={isPending}
             onClick={() =>
               reasonCode !== "" &&
+              requester !== "" &&
               onConfirm({
                 signatureRequestWithdrawn: withdrawn,
                 reasonCode,
                 memo: memo.trim(),
+                requesterType: requester,
+                requestChannel: byParty && channel !== "" ? channel : null,
+                requestedAt: byParty ? requestedAt : null,
               })
             }
           >
@@ -95,10 +167,56 @@ export default function CancelModal(props: CancelModalProps) {
           {currentStateText(detail)}
         </TermRow>
         <TermRow label="요청" labelWidth={96} className="py-2">
-          소통 스레드로 접수된 요청을 확인한 뒤 처리합니다{" "}
+          <span className="tabular-nums">{requestSummary}</span>{" "}
           {onOpenThread && <FLink onClick={onOpenThread}>스레드 열기 ↗</FLink>}
         </TermRow>
       </Terms>
+      <MLabel required>요청자</MLabel>
+      <select
+        className={MODAL_SELECT_CLASS}
+        style={SELECT_CHEVRON_STYLE}
+        value={requester}
+        onChange={(event) => setRequester(event.target.value as Requester | "")}
+      >
+        <option value="">누가 취소를 요청했는지 선택하세요</option>
+        <option value="SELLER">브랜드 · {contract.brand.name}</option>
+        {contract.creator && (
+          <option value="CREATOR">인플루언서 · {contract.creator.name}</option>
+        )}
+        <option value="ADMIN">운영자 직권 — 요청자 없음</option>
+      </select>
+      {byParty && (
+        <div className="flex gap-3">
+          <div className="w-[150px] shrink-0">
+            <MLabel required>요청 경로</MLabel>
+            <select
+              className={MODAL_SELECT_CLASS}
+              style={SELECT_CHEVRON_STYLE}
+              value={channel}
+              onChange={(event) =>
+                setChannel(
+                  event.target.value as ContractCancelRequestChannel | ""
+                )
+              }
+            >
+              <option value="">선택</option>
+              {CANCEL_REQUEST_CHANNELS.map((item) => (
+                <option key={item.code} value={item.code}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <MLabel required>요청 시각</MLabel>
+            <DateTimeField
+              ariaLabel="요청 시각"
+              value={requestedParts}
+              onChange={setRequestedParts}
+            />
+          </div>
+        </div>
+      )}
       <MLabel required>취소 사유</MLabel>
       <select
         className={MODAL_SELECT_CLASS}

@@ -91,6 +91,9 @@ export type ContractCloseReasonCode =
   | "NEGOTIATION_STOPPED"
   | "ETC";
 
+/** 직권 취소 요청이 들어온 경로 — 서버 `ContractCancelRequestChannel`. 운영자가 취소 모달에서 고른다 */
+export type ContractCancelRequestChannel = "THREAD" | "PHONE" | "EMAIL" | "ETC";
+
 export interface AdminContractListParams extends BaseParams {
   tab: AdminContractTab;
   /** 빈 문자열이면 큐 미선택 */
@@ -233,9 +236,27 @@ export interface AdminContractDocument {
   exists: boolean;
   fileName: string | null;
   downloadUrl: string | null;
+  /** 바이트 — 표시 단위는 FE가 계산한다. 문서가 없으면 null */
+  sizeBytes: number | null;
   uploadedAt: string | null;
   /** 생성본만 — 어느 제출본으로 만든 파일인지 */
   sourceReviewRequestedAt: string | null;
+}
+
+/**
+ * 운영자 취소의 요청·처리(C6 · 취소 계약 우측 레일). 운영자 취소가 아니면 상세에서 null.
+ * 요청 필드는 기록 도입 이전 취소 건이면 null이고 처리 필드만 채워진다.
+ */
+export interface AdminContractCancelRequestInfo {
+  /** SELLER · CREATOR · ADMIN(직권) */
+  requesterType: ContractActorType | null;
+  /** 브랜드면 마켓명, 인플루언서면 쇼룸명 — 직권이면 null */
+  requesterName: string | null;
+  requestChannel: ContractCancelRequestChannel | null;
+  requestChannelLabel: string | null;
+  requestedAt: string | null;
+  processedAt: string | null;
+  processedByName: string | null;
 }
 
 export interface AdminContractResend {
@@ -283,6 +304,7 @@ export interface AdminContractDetail {
   fixedFee: ContractFixedFee;
   settlement: ContractSettlement;
   closure: ContractClosure;
+  cancelRequest: AdminContractCancelRequestInfo | null;
   documents: Array<AdminContractDocument>;
   resend: AdminContractResend;
   groupBuy: AdminContractGroupBuy;
@@ -315,6 +337,12 @@ export interface AdminContractCancelRequest {
   signatureRequestWithdrawn: boolean;
   reasonCode: ContractCloseReasonCode;
   memo: string;
+  /** 필수 — ADMIN이면 운영자 직권(요청자 없음) */
+  requesterType: "SELLER" | "CREATOR" | "ADMIN";
+  /** 요청자가 브랜드·인플루언서면 필수, 직권이면 null */
+  requestChannel: ContractCancelRequestChannel | null;
+  /** 요청자가 브랜드·인플루언서면 필수(현재 이전·계약 생성 이후), 직권이면 null */
+  requestedAt: string | null;
 }
 
 export interface AdminContractProcessResponse {

@@ -6,7 +6,10 @@ import {
   EVENT_LABEL,
   HISTORY_TONE,
 } from "@/features/contract/constants/labels";
-import type { AdminContractHistory } from "@/features/contract/types";
+import type {
+  AdminContractCancelRequestInfo,
+  AdminContractHistory,
+} from "@/features/contract/types";
 
 /** 상세 문자열에 서버 시각(ISO)·null이 섞여 오면 화면 표기로 바꾼다 */
 const ISO_IN_TEXT =
@@ -106,6 +109,44 @@ function documentEventLabel(entry: AdminContractHistory) {
  * (파트너·스튜디오 쪽은 「어드민」·「운영자」로 익명).
  */
 export function toHistoryItems(
+  history: Array<AdminContractHistory>,
+  cancelRequest?: AdminContractCancelRequestInfo | null
+): Array<HistoryItem> {
+  const items = toServerHistoryItems(history);
+  const requestItem = cancelRequestItem(cancelRequest);
+  if (!requestItem) {
+    return items;
+  }
+  // 최신순 목록에 요청 시각 자리로 끼워 넣는다
+  const index = items.findIndex(
+    (item) => (item.processedAt ?? "") < (requestItem.processedAt ?? "")
+  );
+  return index < 0
+    ? [...items, requestItem]
+    : [...items.slice(0, index), requestItem, ...items.slice(index)];
+}
+
+/**
+ * 시안 B6 이력의 「취소 요청 · 소통 스레드 / 08.14 10:05 · 무드코스메틱」 — 요청은 서버 이력 이벤트가 아니라
+ * 운영자가 취소할 때 기록한 값(`cancelRequest`)이라 여기서 한 줄로 만든다. 직권·기록 이전 건은 없다.
+ */
+function cancelRequestItem(
+  cancelRequest?: AdminContractCancelRequestInfo | null
+): HistoryItem | null {
+  if (!cancelRequest?.requestedAt || !cancelRequest.requesterName) {
+    return null;
+  }
+  return {
+    label: cancelRequest.requestChannelLabel
+      ? `취소 요청 · ${cancelRequest.requestChannelLabel}`
+      : "취소 요청",
+    processedAt: cancelRequest.requestedAt,
+    tone: "accent",
+    processorName: cancelRequest.requesterName,
+  };
+}
+
+function toServerHistoryItems(
   history: Array<AdminContractHistory>
 ): Array<HistoryItem> {
   return newestFirst(
