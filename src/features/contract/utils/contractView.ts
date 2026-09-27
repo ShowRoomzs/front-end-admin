@@ -1,10 +1,15 @@
-import { formatDateTimeShort } from "@/common/utils/formatDate";
+import {
+  formatDateTimeShort,
+  parseServerDateTime,
+} from "@/common/utils/formatDate";
+import dayjs from "dayjs";
 import type {
   AdminContractDetail,
   ContractStatus,
 } from "@/features/contract/types";
 import {
   formatMonthDay,
+  formatTime,
   formatMonthDayTime,
 } from "@/features/contract/utils/datetime";
 
@@ -43,6 +48,25 @@ function signProgress(detail: AdminContractDetail, empty = "대기") {
   const brand = brandSignedAt ? "브랜드 완료" : `브랜드 ${empty}`;
   const creator = creatorSignedAt ? "인플루언서 완료" : `인플루언서 ${empty}`;
   return `${brand} · ${creator}`;
+}
+
+/**
+ * 서명 기한 경과 — 서명 진행중인데 기한이 지났다(시안 C5 뒤 화면). 시스템이 닫지 않으므로
+ * 운영자가 만료시킬 때까지 이 상태로 남는다. 서버 `deadlinePassedDays`는 일 단위라 당일 경과를 못 잡는다.
+ */
+export function isSignatureOverdue(detail: AdminContractDetail) {
+  const { deadlineAt } = detail.signature;
+  return (
+    detail.contract.status === "SIGNING" &&
+    deadlineAt !== null &&
+    parseServerDateTime(deadlineAt).isBefore(dayjs())
+  );
+}
+
+/** 「기한 경과」 값 — 하루가 안 됐으면 「오늘」 */
+export function overdueDaysText(detail: AdminContractDetail) {
+  const days = detail.signature.deadlinePassedDays;
+  return days > 0 ? `${days}일` : "오늘";
 }
 
 /** 시안 B1~B6 스텝퍼 — 4스텝 + 종결 칩 */
@@ -109,8 +133,10 @@ export function buildStepper(detail: AdminContractDetail): Array<StepChip> {
         {
           label: "양측 서명",
           who:
-            signProgress(detail) +
-            (signature.deadlinePassedDays > 0 ? " · 기한 경과" : ""),
+            // 시안 C5 뒤 화면 「브랜드 완료 · 인플루언서 미서명 · 기한 경과」
+            isSignatureOverdue(detail)
+              ? `${signProgress(detail, "미서명")} · 기한 경과`
+              : signProgress(detail),
           tone: "cur",
         },
         conclude,
@@ -132,7 +158,13 @@ export function buildStepper(detail: AdminContractDetail): Array<StepChip> {
         sent,
         {
           label: "양측 서명 완료",
-          who: `${formatMonthDayTime(signature.brandSignedAt)} · ${formatMonthDayTime(signature.creatorSignedAt)}`,
+          // 시안 B5 「08.14 09:12 · 11:40」 — 같은 날이면 두 번째는 시각만 적는다
+          who: `${formatMonthDayTime(signature.brandSignedAt)} · ${
+            formatMonthDay(signature.brandSignedAt) ===
+            formatMonthDay(signature.creatorSignedAt)
+              ? formatTime(signature.creatorSignedAt)
+              : formatMonthDayTime(signature.creatorSignedAt)
+          }`,
           tone: "done",
         },
         {

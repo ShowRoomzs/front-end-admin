@@ -15,8 +15,9 @@ export default function Check(props: CheckProps) {
 
   return (
     <label
+      // relative — 숨긴 input(absolute)이 body 기준으로 빠져 문서 높이를 늘리면 클릭 포커스 때 창 전체가 스크롤된다
       className={cn(
-        "inline-flex items-center gap-[7px] text-[11px] font-medium text-inherit",
+        "relative inline-flex items-center gap-[7px] text-[11px] font-medium text-inherit",
         disabled ? "cursor-default" : "cursor-pointer",
         className
       )}

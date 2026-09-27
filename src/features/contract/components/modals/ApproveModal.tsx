@@ -15,10 +15,15 @@ import type {
 } from "@/features/contract/types";
 import {
   toParts,
+  toServerComparable,
   toServerDateTime,
   type DateTimeParts,
 } from "@/features/contract/utils/datetime";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import { useState } from "react";
+
+dayjs.extend(utc);
 
 interface ApproveModalProps {
   detail: AdminContractDetail;
@@ -46,11 +51,15 @@ export default function ApproveModal(props: ApproveModalProps) {
 
   const sentValue = toServerDateTime(sentAt);
   const deadlineValue = toServerDateTime(deadline);
-  // 기한은 발송 뒤여야 한다(서버도 같은 순서를 검증한다) — 필수 미충족처럼 버튼만 막는다
+  const reviewRequestedAt = toServerComparable(detail.review.requestedAt);
+  const nowServer = dayjs.utc().format("YYYY-MM-DDTHH:mm:ss");
+  // 서버와 같은 순서 규칙 — 검토 요청 ≤ 발송 ≤ 지금, 발송 < 기한. 위반도 필수 미충족처럼 버튼만 막는다
   const canSubmit =
     checks.every(Boolean) &&
     sentValue !== null &&
     deadlineValue !== null &&
+    (reviewRequestedAt === null || sentValue >= reviewRequestedAt) &&
+    sentValue <= nowServer &&
     deadlineValue > sentValue;
 
   const toggle = (index: number, value: boolean) =>
@@ -110,7 +119,9 @@ export default function ApproveModal(props: ApproveModalProps) {
           {contract.title} 계약서 ({contract.contractNumber})
         </TermRow>
       </Terms>
-      <MLabel required>모두싸인 업로드 확인</MLabel>
+      <MLabel required first>
+        모두싸인 업로드 확인
+      </MLabel>
       <CheckBox>
         <CheckListRow checked={checks[0]} onChange={(v) => toggle(0, v)}>
           수신자 <b className="font-semibold">2명</b>을 브랜드·인플루언서 순으로

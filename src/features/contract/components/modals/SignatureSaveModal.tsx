@@ -112,14 +112,14 @@ export default function SignatureSaveModal(props: SignatureSaveModalProps) {
         <b>시각만 새로워지고 값은 그대로</b>인 화면이 나갑니다.
       </ModalWarn>
       {bothAfter && !bothBefore && (
-        <ModalWarn tone="info">
+        <ModalWarn icon="info">
           양측 서명이 모두 완료로 바뀌므로 저장 후 상태가 <b>체결 처리 대기</b>
           가 됩니다. 잘못 입력했으면 <b>체결 완료 전까지 체크를 해제</b>해
           되돌릴 수 있습니다.
         </ModalWarn>
       )}
       {!bothAfter && contract.status === "CONCLUSION_PENDING" && (
-        <ModalWarn tone="info">
+        <ModalWarn icon="info">
           서명 완료가 해제되므로 저장 후 상태가 <b>서명 진행중</b>으로
           돌아갑니다. 올린 체결 문서는 그대로 남습니다.
         </ModalWarn>

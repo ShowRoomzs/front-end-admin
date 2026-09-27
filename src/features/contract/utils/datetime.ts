@@ -39,6 +39,13 @@ export function toServerDateTime(parts: DateTimeParts): string | null {
   return local.utc().format("YYYY-MM-DDTHH:mm:ss");
 }
 
+/** 서버 시각을 `toServerDateTime`과 같은 형식(UTC · 초 단위)으로 — 문자열 비교로 순서를 본다 */
+export function toServerComparable(value: string | null) {
+  return value
+    ? parseServerDateTime(value).utc().format("YYYY-MM-DDTHH:mm:ss")
+    : null;
+}
+
 /** 같은 분인지 — 서명 현황 저장 전 변경 여부 판단용 */
 export function sameMinute(a: string | null, b: string | null) {
   if (!a || !b) {
@@ -49,6 +56,10 @@ export function sameMinute(a: string | null, b: string | null) {
 
 export function formatMonthDayTime(value: string | null) {
   return value ? parseServerDateTime(value).format("MM.DD HH:mm") : "—";
+}
+
+export function formatTime(value: string | null) {
+  return value ? parseServerDateTime(value).format("HH:mm") : "—";
 }
 
 export function formatMonthDay(value: string | null) {

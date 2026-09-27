@@ -6,6 +6,10 @@ import { FLink, MetaRow } from "@/features/contract/components/detail/Rows";
 import Btn from "@/features/contract/components/shared/Btn";
 import { MODUSIGN_DASHBOARD_URL } from "@/features/contract/constants/params";
 import type { AdminContractDetail } from "@/features/contract/types";
+import {
+  isSignatureOverdue,
+  overdueDaysText,
+} from "@/features/contract/utils/contractView";
 import { formatKRW } from "@/features/contract/utils/format";
 import { toHistoryItems } from "@/features/contract/utils/history";
 import { toneToVariant } from "@/features/contract/utils/statusBadge";
@@ -70,10 +74,6 @@ function StatusCard(props: {
   const draftLink = <FLink onClick={actions.onOpenDraft}>제출본 보기</FLink>;
   const signText = (value: string | null, empty: string) =>
     value ? formatDateTimeShort(value) : empty;
-  const deadlineValue =
-    signature.deadlinePassedDays > 0
-      ? `${formatDateTimeShort(signature.deadlineAt)} · ${signature.deadlinePassedDays}일 경과`
-      : formatDateTimeShort(signature.deadlineAt);
 
   let rows: ReactNode = null;
   let acts: ReactNode = null;
@@ -153,7 +153,57 @@ function StatusCard(props: {
       );
       break;
     }
-    case "SIGNING":
+    case "SIGNING": {
+      // 시안 C5 뒤 화면 — 기한이 지나면 할 일은 만료 확인 하나다(대시보드·직권 취소 버튼을 내린다)
+      if (isSignatureOverdue(detail)) {
+        const days = signature.deadlinePassedDays;
+        rows = (
+          <>
+            <MetaRow label="계약서" value={draftLink} />
+            <MetaRow
+              label="서명 요청 발송"
+              value={formatDateTimeShort(signature.requestedAt)}
+            />
+            <MetaRow
+              label="브랜드 서명"
+              value={signText(signature.brandSignedAt, "— 없음")}
+            />
+            <MetaRow
+              label="인플루언서 서명"
+              value={signText(signature.creatorSignedAt, "— 없음")}
+            />
+            <MetaRow
+              label="서명 기한"
+              value={formatDateTimeShort(signature.deadlineAt)}
+            />
+            <MetaRow label="기한 경과" value={overdueDaysText(detail)} />
+          </>
+        );
+        acts = (
+          <Btn
+            variant="danger"
+            className="mt-3.5 w-full"
+            disabled={!permissions.canExpire}
+            onClick={actions.onExpire}
+          >
+            만료 처리
+          </Btn>
+        );
+        hint = (
+          <Hint>
+            서명 기한이{" "}
+            {days > 0 ? (
+              <>
+                <b className="font-semibold">{days}일</b> 지났습니다
+              </>
+            ) : (
+              "지났습니다"
+            )}{" "}
+            — 운영자가 확인해 종결시켜야 목록에서 내려갑니다.
+          </Hint>
+        );
+        break;
+      }
       rows = (
         <>
           <MetaRow label="계약서" value={draftLink} />
@@ -171,8 +221,7 @@ function StatusCard(props: {
           />
           <MetaRow
             label="서명 기한"
-            value={deadlineValue}
-            tone={signature.deadlinePassedDays > 0 ? "warning" : undefined}
+            value={formatDateTimeShort(signature.deadlineAt)}
           />
           <MetaRow
             label="기준 시각"
@@ -217,6 +266,7 @@ function StatusCard(props: {
         </>
       );
       break;
+    }
     case "CONCLUSION_PENDING": {
       const uploaded = (type: string) =>
         docExists(type) ? (
