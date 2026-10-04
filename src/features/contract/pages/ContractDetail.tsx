@@ -48,9 +48,12 @@ import {
   formatMonthDayTime,
   sameMinute,
   toParts,
+  toServerComparable,
   toServerDateTime,
 } from "@/features/contract/utils/datetime";
 import axios from "axios";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import { useCallback, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import {
@@ -80,6 +83,26 @@ function draftValue(draft: SignDrafts["brand"]): string | null | undefined {
     return null;
   }
   return toServerDateTime(draft) ?? undefined;
+}
+
+dayjs.extend(utc);
+
+/**
+ * 서명 일시는 발송 일시 이후 · 지금 이전이어야 한다(서버와 같은 규칙) — 어기면 저장 버튼만 막는다.
+ * 운영자가 모두싸인 값을 옮겨 적다 발송 전 시각을 고르는 실수를 서버 오류 전에 막는다.
+ */
+function inSignRange(
+  value: string | null | undefined,
+  requestedAt: string | null
+) {
+  if (value === null || value === undefined) {
+    return true;
+  }
+  const from = toServerComparable(requestedAt);
+  return (
+    (from === null || value >= from) &&
+    value <= dayjs.utc().format("YYYY-MM-DDTHH:mm:ss")
+  );
 }
 
 /**
@@ -145,6 +168,10 @@ export default function ContractDetail() {
   const brandAfter = draftValue(drafts.brand);
   const creatorAfter = draftValue(drafts.creator);
   const draftsValid = brandAfter !== undefined && creatorAfter !== undefined;
+  const draftsInRange =
+    !!detail &&
+    inSignRange(brandAfter, detail.signature.requestedAt) &&
+    inSignRange(creatorAfter, detail.signature.requestedAt);
   const isDirty =
     !!detail &&
     (!draftsValid ||
@@ -341,7 +368,8 @@ export default function ContractDetail() {
             onDraftsChange={setDrafts}
             isDirty={isDirty}
             onRevert={revertDrafts}
-            onSave={() => draftsValid && setModal("signature")}
+            canSave={draftsValid && draftsInRange}
+            onSave={() => draftsValid && draftsInRange && setModal("signature")}
             onHandleResend={() =>
               handleResend.mutate(contractId, {
                 onSuccess: () =>

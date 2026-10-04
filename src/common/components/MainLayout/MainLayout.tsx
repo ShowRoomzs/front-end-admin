@@ -1,6 +1,7 @@
 import { ADMIN_MENU } from "@/common/constants";
 import type { MenuItem } from "@/common/types";
 import { useGetAdminContractSummary } from "@/features/contract/hooks/useAdminContractQueries";
+import { useGetAdminGroupBuySummary } from "@/features/groupBuy/hooks/useAdminGroupBuy";
 import { useGetChangeRequestPendingCount } from "@/features/changeRequest/hooks/useGetChangeRequestPendingCount";
 import { useGetCreatorPendingCount } from "@/features/creator/hooks/useGetCreatorPendingCount";
 import { useGetInquiryUnansweredCount } from "@/features/inquiry/hooks/useGetInquiryUnansweredCount";
@@ -103,6 +104,23 @@ function withContractCount(
   }));
 }
 
+/**
+ * 공구 관리 GNB 뱃지 = 조치 큐 합계(오픈 승인 · 중단 요청 · 조기 마감 요청 · 소명 검토).
+ * 0이면 뱃지를 그리지 않는다.
+ */
+function withGroupBuyCount(
+  menus: Array<typeof ADMIN_MENU>,
+  actionRequired: number
+) {
+  const badge = actionRequired > 0 ? actionRequired : undefined;
+  return menus.map((menu) => ({
+    ...menu,
+    groups: menu.groups.map((group) =>
+      group.id === "group-buy" ? { ...group, badge } : group
+    ),
+  }));
+}
+
 /** 제목 아래 설명 줄이 붙어 화면이 h1을 직접 그리는 목록 */
 const SELF_TITLED_PATHS = ["/contract"];
 
@@ -151,6 +169,7 @@ export default function MainLayout() {
     useGetChangeRequestPendingCount();
   const { unansweredCount: inquiryUnanswered } = useGetInquiryUnansweredCount();
   const { data: contractSummary } = useGetAdminContractSummary();
+  const { data: groupBuySummary } = useGetAdminGroupBuySummary();
 
   // 목록 화면은 메뉴에 지정된 제목을 페이지 타이틀로 쓴다.
   // 상세 화면(하위 경로)은 브랜드명 등 자체 타이틀을 렌더링하므로 비워둔다.
@@ -158,17 +177,20 @@ export default function MainLayout() {
   const pageTitle = SELF_TITLED_PATHS.includes(location.pathname)
     ? undefined
     : (currentItem?.pageTitle ?? currentItem?.label);
-  const menus = withContractCount(
-    withCsCounts(
-      withOnboardingCounts(
-        MENUS,
-        brandPending,
-        influencerPending,
-        changeRequestPending
+  const menus = withGroupBuyCount(
+    withContractCount(
+      withCsCounts(
+        withOnboardingCounts(
+          MENUS,
+          brandPending,
+          influencerPending,
+          changeRequestPending
+        ),
+        inquiryUnanswered
       ),
-      inquiryUnanswered
+      contractSummary?.actionRequiredCount ?? 0
     ),
-    contractSummary?.actionRequiredCount ?? 0
+    groupBuySummary?.actionRequiredCount ?? 0
   );
 
   return (
