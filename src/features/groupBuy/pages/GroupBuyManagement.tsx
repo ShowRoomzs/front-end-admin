@@ -110,8 +110,17 @@ function summaryLine(
       {parts.map((queue, index) => (
         <Fragment key={queue}>
           {index > 0 && " · "}
-          {QUEUE_LABEL[queue]}{" "}
-          <b className="text-sz-n-900">{summary.queues[queue]}</b>
+          {/* 시안 A1 — 소명 검토는 라벨까지 굵게(다른 큐와 성격이 다른 직권 중단 단계) */}
+          {queue === "APPEAL_REVIEW" ? (
+            <b className="text-sz-n-900">
+              {QUEUE_LABEL[queue]} {summary.queues[queue]}
+            </b>
+          ) : (
+            <>
+              {QUEUE_LABEL[queue]}{" "}
+              <b className="text-sz-n-900">{summary.queues[queue]}</b>
+            </>
+          )}
         </Fragment>
       ))}
     </>
@@ -258,7 +267,7 @@ export default function GroupBuyManagement() {
         </div>
 
         {isActionTabEmpty && !isLoading ? (
-          <div className="px-6 py-[72px] text-center">
+          <div className="px-6 py-[72px] text-center leading-[1.6]">
             <div className="mb-2.5 text-[28px] text-sz-n-300">✓</div>
             <div className="mb-1 text-[13px] font-semibold text-sz-n-700">
               지금 판단할 공구가 없습니다
@@ -315,10 +324,16 @@ export default function GroupBuyManagement() {
                               {row.title}
                             </span>
                           </td>
-                          <td className={cn(CELL_CLASS, "truncate")}>
+                          <td
+                            className={cn(CELL_CLASS, "truncate")}
+                            title={row.creatorName}
+                          >
                             {row.creatorName}
                           </td>
-                          <td className={cn(CELL_CLASS, "truncate")}>
+                          <td
+                            className={cn(CELL_CLASS, "truncate")}
+                            title={row.brandName}
+                          >
                             {row.brandName}
                           </td>
                           <td
@@ -361,7 +376,7 @@ export default function GroupBuyManagement() {
                   <Loader2 className="size-5 animate-spin" aria-hidden />
                 </div>
               ) : (
-                <div className="px-6 py-[72px] text-center">
+                <div className="px-6 py-[72px] text-center leading-[1.6]">
                   <div className="mb-1 text-[13px] font-semibold text-sz-n-700">
                     {params.keyword
                       ? "검색 결과가 없습니다"

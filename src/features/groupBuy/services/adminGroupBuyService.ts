@@ -13,13 +13,14 @@ import type {
   NoticeOptions,
   OpenRejectBody,
   PostHideBody,
+  PostRevision,
   SuspensionNoticeBody,
   SuspensionWithdrawBody,
 } from "@/features/groupBuy/types";
 
 const BASE = "/admin/group-buys";
 
-/** 어드민 공구 API — 백엔드 `AdminGroupBuyController`와 1:1(게시물 판본 조회는 화면이 쓰지 않는다) */
+/** 어드민 공구 API — 백엔드 `AdminGroupBuyController`와 1:1 */
 export const adminGroupBuyService = {
   getList: async (params: AdminGroupBuyListParams) => {
     const { data } = await apiInstance.get<PageResponse<AdminGroupBuyListItem>>(
@@ -48,6 +49,14 @@ export const adminGroupBuyService = {
   getNoticeOptions: async (groupBuyId: number) => {
     const { data } = await apiInstance.get<NoticeOptions>(
       `${BASE}/${groupBuyId}/admin-suspension/notice-options`
+    );
+    return data;
+  },
+
+  /** 게시물 판본 전체(오름차순) — 대조는 화면이 두 판을 골라 나란히 놓는다 */
+  getPostRevisions: async (groupBuyId: number) => {
+    const { data } = await apiInstance.get<Array<PostRevision>>(
+      `${BASE}/${groupBuyId}/post/revisions`
     );
     return data;
   },

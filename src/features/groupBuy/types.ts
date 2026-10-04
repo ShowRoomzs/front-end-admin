@@ -465,6 +465,25 @@ export interface ActionResponse {
   clauseCaution: string | null;
 }
 
+/** 게시물 판본(`AdminGroupBuyDto.PostRevisionItem`) — 차분은 서버가 계산하지 않는다 */
+export interface PostRevision {
+  revisionNo: number;
+  /** 제출·재제출 | 승인 후 수정 */
+  kind: "SUBMITTED" | "EDITED";
+  title: string | null;
+  content: string | null;
+  createdAt: string;
+  /** 운영자가 승인한 판 */
+  approved: boolean;
+  /** 현재·마지막 숨김의 기준 판 */
+  hiddenBasis: boolean;
+  /** 숨김 해제 판단에 쓴 판 */
+  unhiddenBasis: boolean;
+  /** 최근 직권 중단 통지의 기준 판 */
+  noticeBasis: boolean;
+  latest: boolean;
+}
+
 export interface NoticeOptions {
   today: string;
   appealDeadline: { default: string; min: string };

@@ -54,6 +54,16 @@ export function useGetNoticeOptions(groupBuyId: number, enabled: boolean) {
   });
 }
 
+/** 본문 대조 모달을 열 때만 — 그사이 인플루언서가 고쳤을 수 있어 열 때마다 새로 받는다 */
+export function useGetPostRevisions(groupBuyId: number, enabled: boolean) {
+  return useQuery({
+    queryKey: [GROUP_BUY_QUERY_KEYS.POST_REVISIONS, groupBuyId],
+    queryFn: () => adminGroupBuyService.getPostRevisions(groupBuyId),
+    enabled,
+    staleTime: 0,
+  });
+}
+
 /**
  * 공구 판정 — 성공하면 상세·목록·요약(조치 큐·GNB 배지)을 함께 무효화한다.
  * 낙관적 갱신을 쓰지 않는다: 상태·권한·이력을 서버가 다시 계산해 내려준다.

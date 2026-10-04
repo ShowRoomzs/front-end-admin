@@ -21,6 +21,7 @@ import {
   toHistoryItems,
   won,
 } from "@/features/groupBuy/utils/view";
+import dayjs from "dayjs";
 import type { ReactNode } from "react";
 
 export interface AdminRailActions {
@@ -284,12 +285,10 @@ export function CurrentStateCard(props: {
                   {mdDate(adminSuspension.appeal.submittedAt)}
                 </span>
               </>
+            ) : adminSuspension.appealDeadlinePassed ? (
+              "미제출 · 기한 경과"
             ) : (
-              <span className="text-sz-n-400">
-                {adminSuspension.appealDeadlinePassed
-                  ? "미제출 · 기한 경과"
-                  : `대기 · ${dDayFromNow(adminSuspension.appealDeadlineAt)}`}
-              </span>
+              `대기 · ${dDayFromNow(adminSuspension.appealDeadlineAt)}`
             ),
           }
         );
@@ -376,8 +375,9 @@ export function CurrentStateCard(props: {
             },
             {
               label: "승인 시 종료",
+              // 시안 B4 「2026.08.19 즉시」 — 승인하는 오늘이 종료일이 된다
               value: activeRequest.decisionBasis?.endsImmediatelyIfApproved
-                ? "승인 즉시"
+                ? `${dayjs().format("YYYY.MM.DD")} 즉시`
                 : "—",
             }
           );
@@ -411,8 +411,8 @@ export function CurrentStateCard(props: {
         );
         hint = isEarly ? (
           <Hint>
-            조기 마감은 파괴적 종결이 아니라 <B>정상 절차</B>라 승인 버튼이 주
-            액션 색입니다. 위험색은 <B>중단</B>에만 씁니다.
+            승인 버튼이 <B>인디고</B>인 이유 — 조기 마감은 파괴적 종결이 아니라
+            정상 절차입니다. 위험색은 <B>중단</B>에만 씁니다.
           </Hint>
         ) : (
           <Hint>
@@ -500,18 +500,42 @@ export function CurrentStateCard(props: {
             </>
           );
         }
+        // 시안 B5a · B5b — 이행이 끝나 미종결만 남으면 「남은 사유는 하나」로 말한다
+        const onlyUnclosed =
+          blockers.length === 1 &&
+          blockers[0] === "UNCLOSED_ORDERS" &&
+          !!fulfillment &&
+          (!!fulfillment.agreedAt ||
+            (!!fulfillment.brandToCreator && !!fulfillment.creatorToBrand));
         hint = (
           <Hint>
-            {reasons.length > 0 ? (
+            {onlyUnclosed ? (
               <>
-                정산이 멈춘 사유가 <B>{reasons.length}개</B>입니다 —{" "}
+                <B>
+                  {fulfillment?.agreedAt
+                    ? "이행 합의가 끝나"
+                    : "이행 확인이 끝나"}
+                </B>{" "}
+                남은 사유는 하나입니다 — {reasons[0]}. 0건이 되면 정산 확인이
+                열립니다.
+              </>
+            ) : reasons.length > 0 ? (
+              <>
+                정산이 멈춘 사유가{" "}
+                <B>{["하나", "둘", "셋", "넷"][reasons.length - 1]}</B>입니다 —{" "}
                 {reasons.map((reason, index) => (
                   <span key={index}>
                     {index > 0 && " "}
                     {["①", "②", "③", "④"][index]} {reason}
                   </span>
                 ))}
-                . 모두 풀려야 확인이 열립니다.
+                .{" "}
+                {reasons.length === 1
+                  ? "이 사유가 풀려야"
+                  : reasons.length === 2
+                    ? "둘 다 풀려야"
+                    : "모두 풀려야"}{" "}
+                확인이 열립니다.
               </>
             ) : (
               <>정산 선행 조건이 모두 충족됐습니다.</>

@@ -21,6 +21,8 @@ import {
   type Detail,
   actorText,
   d,
+  daysBetween,
+  daysUntilLocalDate,
   dLabel,
   dDayFromNow,
   dt,
@@ -33,7 +35,7 @@ import {
   quantityText,
   won,
 } from "@/features/groupBuy/utils/view";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 /*
   시안 ui-admin-17-groupbuys 좌측 카드 — 판정 맥락(요청 원문·통지·게이트)이 맨 위에 오고
@@ -150,11 +152,55 @@ export function OpenReviewCard(props: {
 
 // ── B2c 직권 중단 사전 통지 ──────────────────────────
 
+/** 「가이드 공유 캡처.png」 → 「가이드 공유 캡처」 */
+function fileBaseName(name: string): string {
+  return name.replace(/\.[^.]+$/, "");
+}
+
+function fileSizeText(bytes: number): string {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / 1024 / 1024).toFixed(1)}MB`
+    : `${Math.max(1, Math.round(bytes / 1024))}KB`;
+}
+
+/** 시안 ⑫ `.files` — 소명 첨부 목록(파일마다 누를 때 다운로드 URL 발급) */
+function AppealFiles(props: {
+  files: NonNullable<
+    NonNullable<Detail["adminSuspension"]>["appeal"]
+  >["attachments"];
+  onOpen: (attachmentId: number) => void;
+}) {
+  return (
+    <div className="mt-2 flex flex-col gap-2">
+      {props.files.map((file) => (
+        <button
+          key={file.attachmentId}
+          type="button"
+          onClick={() => props.onOpen(file.attachmentId)}
+          className="flex items-center gap-2.5 rounded-[6px] border border-sz-n-200 bg-white px-3 py-[9px] text-left hover:border-sz-n-300"
+        >
+          <span className="flex size-7 shrink-0 items-center justify-center rounded-[6px] bg-sz-accent-50 text-[9px] font-bold uppercase text-sz-accent-600">
+            {file.name.match(/\.([^.]+)$/)?.[1] ?? "FILE"}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[12px] text-sz-n-900">
+            {file.name}
+          </span>
+          <span className="text-[11px] tabular-nums text-sz-n-500">
+            {fileSizeText(file.sizeBytes)}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function NoticeCard(props: {
   detail: Detail;
   onOpenAttachment: (attachmentId: number) => void;
+  onOpenRevisions: () => void;
 }) {
-  const { detail, onOpenAttachment } = props;
+  const { detail, onOpenAttachment, onOpenRevisions } = props;
+  const [filesOpen, setFilesOpen] = useState(false);
   const suspension = detail.adminSuspension;
   if (!suspension) {
     return null;
@@ -217,29 +263,56 @@ export function NoticeCard(props: {
                 : dDayFromNow(suspension.appealDeadlineAt)}
             </B>
           </TSub>
-          {appeal && (
+        </FRow>
+        {/* 시안 B2c · M7 — 소명은 기한과 별 줄: 미제출이면 판정 규칙을, 제출이면 원문을 읽게 한다 */}
+        <FRow label="브랜드 소명">
+          {appeal ? (
             <>
+              <GbBadge tone="INFO" hideDot>
+                제출됨
+              </GbBadge>{" "}
+              <TSub>
+                · <span className="tabular-nums">{dt(appeal.submittedAt)}</span>{" "}
+                ·{" "}
+                {appeal.submittedByName
+                  ? `${detail.brand.name} 담당자 ${appeal.submittedByName}`
+                  : actorText("SELLER", detail.brand.name)}
+              </TSub>
               <div className="mt-[7px] whitespace-pre-line rounded-[6px] bg-sz-n-50 px-3 py-2.5 text-[12px] leading-[1.75] text-sz-n-700">
                 “{appeal.content}”
-                <div className="mt-1 text-[11px] text-sz-n-500">
-                  {dt(appeal.submittedAt)} ·{" "}
-                  {actorText("SELLER", detail.brand.name)}
-                  {appeal.submittedByName &&
-                    ` · 제출자 ${appeal.submittedByName}`}
-                </div>
               </div>
-              {appeal.attachments.length > 0 && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {appeal.attachments.map((file) => (
-                    <MiniBtn
-                      key={file.attachmentId}
-                      onClick={() => onOpenAttachment(file.attachmentId)}
-                    >
-                      {file.name} ↗
-                    </MiniBtn>
-                  ))}
-                </div>
+              {/* 시안 「수정 전후 본문 대조 ↗」 「첨부 2건 · 가이드 공유 캡처」 — 소명 주장(문장 삭제)을 판본으로 확인한다 */}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <MiniBtn onClick={onOpenRevisions}>
+                  수정 전후 본문 대조 ↗
+                </MiniBtn>
+                {appeal.attachments.length > 0 && (
+                  <MiniBtn
+                    onClick={() =>
+                      // 파일마다 다운로드 URL을 따로 발급한다 — 1건이면 바로 열고, 여러 건이면 목록을 편다
+                      appeal.attachments.length === 1
+                        ? onOpenAttachment(appeal.attachments[0].attachmentId)
+                        : setFilesOpen((open) => !open)
+                    }
+                  >
+                    첨부 {appeal.attachments.length}건 ·{" "}
+                    {fileBaseName(appeal.attachments[0].name)}
+                  </MiniBtn>
+                )}
+              </div>
+              {filesOpen && appeal.attachments.length > 1 && (
+                <AppealFiles
+                  files={appeal.attachments}
+                  onOpen={onOpenAttachment}
+                />
               )}
+            </>
+          ) : (
+            <>
+              미제출{" "}
+              <TSub>
+                · 기한 내 미제출 시 기존 자료를 기준으로 최종 판정(제17조④)
+              </TSub>
             </>
           )}
         </FRow>
@@ -275,7 +348,7 @@ export function ExtensionCard(props: { detail: Detail }) {
         body={
           <>
             <B>
-              요청 — 종료일 {mdDate(extension.beforeEndAt)} →{" "}
+              요청 — 종료일 {d(extension.beforeEndAt)} →{" "}
               {d(extension.afterEndAt)} ({extension.days}일 연장)
             </B>
             {extension.reason && (
@@ -343,7 +416,7 @@ export function RequestCard(props: { detail: Detail }) {
             <>
               검토 경과 <B>{request.elapsed}</B> · 승인하면{" "}
               <B>결과 상태는 종료</B>이며 <B>접수분은 그대로 배송·정산</B>된다 ·
-              환불이 발생하지 않는다
+              환불이 발생하지 않아 <B>위험색을 쓰지 않는다</B>
             </>
           ) : (
             <>
@@ -441,15 +514,54 @@ export function SalesCard(props: { detail: Detail; view: AdminView }) {
 
 // ── 인플루언서 게시물 ────────────────────────────────
 
+/** 하단 메타 — 시안 B5 「2026.08.07 종료」 · B6 「2026.07.18 중단으로 내림」 */
 function closedByText(detail: Detail) {
+  const date = d(detail.groupBuy.endedAt ?? detail.timeline.endAt);
   switch (detail.post.closedBy) {
     case "EARLY_CLOSED":
-      return "조기 마감으로 내려감";
+      return `${date} 조기 마감으로 내림`;
     case "SUSPENDED":
-      return "중단으로 내려감";
+      return `${date} 중단으로 내림`;
     default:
-      return "공구 종료로 내려감";
+      return `${date} 종료`;
   }
+}
+
+/** 게시물 하단 안내(.pv-l) — 내려간 게시물은 편집 권한 대신 보관 사실을 말한다(시안 B5 · B6) */
+function postFootnote(detail: Detail): ReactNode {
+  if (detail.post.status === "CLOSED") {
+    if (detail.post.closedBy === "SUSPENDED") {
+      return (
+        <>
+          <B className="text-sz-n-700">중단</B>으로 내려간 게시물이다 — 게시물
+          상태는 <B className="text-sz-n-700">종료</B>(게시물 「중단」 상태는
+          폐기 · 내리는 경로는 공구 종결뿐)이며 원문은 분쟁 근거로 보관된다
+        </>
+      );
+    }
+    return (
+      <>
+        공구가 닫혀 쇼룸에서는 내려갔지만{" "}
+        <B className="text-sz-n-700">원문은 보관</B>된다 — 분쟁 시 근거가 되는
+        유일한 기록이라 종결 후에도 남긴다(
+        {detail.post.closedBy === "EARLY_CLOSED" ? "조기 마감" : "정상 종료"})
+      </>
+    );
+  }
+  return (
+    <>
+      자동 삽입 — 대가관계 표시 · 판매자 정보(소비자 앱 법정 표기) · 공구가 ·
+      기간
+      <br />
+      편집 권한 — 승인 후에는{" "}
+      <B className="text-sz-n-700">인플루언서가 재승인 없이 본문을 수정</B>
+      한다(승인대기 중에는 불가) · 운영자는 본문을 고치지 않고{" "}
+      <B className="text-sz-n-700">게시물 숨김</B>으로만 개입한다 ·{" "}
+      <B className="text-sz-n-700">
+        §14 자동 삽입 문구와 계약 확정값(상품·가격·기간)은 누구도 바꿀 수 없다
+      </B>
+    </>
+  );
 }
 
 export function PostCard(props: {
@@ -530,19 +642,7 @@ export function PostCard(props: {
               ))}
             </div>
             <div className="mt-3 border-t border-sz-n-200 pt-[9px] text-[11px] leading-[1.7] text-sz-n-500">
-              자동 삽입 — 대가관계 표시 · 판매자 정보(소비자 앱 법정 표기) ·
-              공구가 · 기간
-              <br />
-              편집 권한 — 승인 후에는{" "}
-              <B className="text-sz-n-700">
-                인플루언서가 재승인 없이 본문을 수정
-              </B>
-              한다(승인대기 중에는 불가) · 운영자는 본문을 고치지 않고{" "}
-              <B className="text-sz-n-700">게시물 숨김</B>으로만 개입한다 ·{" "}
-              <B className="text-sz-n-700">
-                §14 자동 삽입 문구와 계약 확정값(상품·가격·기간)은 누구도 바꿀
-                수 없다
-              </B>
+              {postFootnote(detail)}
             </div>
           </div>
 
@@ -589,9 +689,14 @@ export function PostCard(props: {
               <MiniBtn className="ml-auto" onClick={onUnhide}>
                 숨김 해제
               </MiniBtn>
+            ) : permissions.canHidePost ? (
+              <MiniBtn className="ml-auto" onClick={onHide}>
+                게시물 숨김
+              </MiniBtn>
             ) : (
-              permissions.canHidePost && (
-                <MiniBtn className="ml-auto" onClick={onHide}>
+              // 시안 B5 · B6 — 내려간 게시물은 숨김 버튼을 잠근 채 남긴다(.unmask.off)
+              post.status === "CLOSED" && (
+                <MiniBtn className="ml-auto" disabled>
                   게시물 숨김
                 </MiniBtn>
               )
@@ -761,6 +866,15 @@ export function ItemsCard(props: {
 
 // ── B5 정산 진행 · 계약 이행 확인 ─────────────────────
 
+/** 시안 B5 「(기한 4일 전)」 — 감시 기한까지 남은 날 */
+function watchDueText(watch: { dueAt: string; reached: boolean }) {
+  const left = daysUntilLocalDate(watch.dueAt);
+  if (watch.reached || left < 0) {
+    return "기한 경과";
+  }
+  return left === 0 ? "오늘 기한" : `기한 ${left}일 전`;
+}
+
 export function SettlementCard(props: { detail: Detail }) {
   const { detail } = props;
   const settlement = detail.afterEnd?.settlement;
@@ -775,14 +889,21 @@ export function SettlementCard(props: { detail: Detail }) {
     >
       <SettlementMachine stage={settlement.stage} />
       {watch && detail.groupBuy.status === "ENDED" && (
-        <MWarn info={!watch.reached} className="mt-3.5 mb-0">
+        <MWarn info={!watch.reached} className="mt-3.5">
           <B>정산 지연 감시</B> — 종료 {d(detail.groupBuy.endedAt)} 기준{" "}
           <B className="tabular-nums">{watch.elapsedDays}일차</B>이며{" "}
           <B>종료 +30일</B> 알림 기한은{" "}
           <B className="tabular-nums">{localDate(watch.dueAt)}</B>입니다(
-          {watch.reached ? "기한 경과" : "아직 도달 전"}). 강제 처리 규칙은
-          없으나 미종결 건이 남으면 정산이 그만큼 늦어지므로, 기한을 넘기면
-          어드민 알림이 발송됩니다.
+          {watchDueText(watch)}). 강제 처리 규칙은 없으나 미종결 건이 남으면
+          정산이 그만큼 늦어지므로, 기한을 넘기면 어드민 알림이 발송됩니다.
+        </MWarn>
+      )}
+      {detail.groupBuy.status === "ENDED" && (
+        <MWarn info className="mb-0 mt-3.5">
+          정산 트리거는 구매확정이 아니라 <B>모든 주문 항목의 종결</B>입니다 —
+          구매확정·환불·거절 확정 셋 다 종결로 셉니다.{" "}
+          <B>반품·교환 거절 확정은 즉시 구매확정</B>이라 거절 보류 1건이 공구
+          전체 정산을 붙잡지 않습니다. 종결 후 <B>영업일 5일 내 이체</B>.
         </MWarn>
       )}
     </GbCard>
@@ -797,11 +918,23 @@ function CheckLine(props: {
   duty: string;
   name: string;
   extra?: ReactNode;
+  agreedAt?: string | null;
 }) {
-  const { label, check, duty, name, extra } = props;
+  const { label, check, duty, name, extra, agreedAt } = props;
   return (
     <FRow label={label}>
-      {check ? (
+      {check && check.result === "UNFULFILLED" && agreedAt ? (
+        // 시안 B5a — 합의로 이행 전환된 줄은 결과(이행)를 보이고 전환 경위를 적는다
+        <>
+          <GbBadge hideDot tone="SUCCESS">
+            이행
+          </GbBadge>{" "}
+          <TSub>
+            미이행 제출 {d(check.checkedAt)} → <B>합의로 이행 전환</B>{" "}
+            {d(agreedAt)}
+          </TSub>
+        </>
+      ) : check ? (
         <>
           <GbBadge
             hideDot
@@ -851,6 +984,26 @@ export function FulfillmentCard(props: {
   const agreed = disputed && fulfillment.agreedAt;
   const bothDone = !!brandToCreator && !!creatorToBrand && !disputed;
   const openIssue = detail.afterEnd?.openIssue;
+  const bothResponded =
+    !!brandToCreator &&
+    !!creatorToBrand &&
+    !brandToCreator.auto &&
+    !creatorToBrand.auto;
+  // 무응답 자동 이행된 쪽 — 확인 기한 줄에 그 사실을 남긴다(시안 B5b)
+  const autoSides = [
+    brandToCreator?.auto ? "브랜드" : null,
+    creatorToBrand?.auto ? "인플루언서" : null,
+  ].filter(Boolean);
+  const disputedCheck =
+    brandToCreator?.result === "UNFULFILLED" ? brandToCreator : creatorToBrand;
+  const agreeDays = daysBetween(disputedCheck?.checkedAt, fulfillment.agreedAt);
+  const daysAfterEnd = daysBetween(
+    detail.groupBuy.endedAt ?? detail.timeline.endAt,
+    fulfillment.dueAt
+  );
+  // 버튼이 하나도 없으면 줄을 두지 않는다(빈 여백 방지)
+  const hasActions =
+    disputed || !!openIssue?.threadId || detail.permissions.canOpenIssue;
 
   const reasonBox = (check: typeof brandToCreator) =>
     check?.result === "UNFULFILLED" && check.reason ? (
@@ -896,6 +1049,7 @@ export function FulfillmentCard(props: {
         duty={dutyText(targets.brandToCreator)}
         name={actorText("SELLER", detail.brand.name)}
         extra={reasonBox(brandToCreator)}
+        agreedAt={agreed ? fulfillment.agreedAt : null}
       />
       <CheckLine
         label="인플루언서 → 브랜드"
@@ -903,18 +1057,25 @@ export function FulfillmentCard(props: {
         duty={dutyText(targets.creatorToBrand)}
         name={actorText("CREATOR", detail.creator.name)}
         extra={reasonBox(creatorToBrand)}
+        agreedAt={agreed ? fulfillment.agreedAt : null}
       />
       {agreed ? (
         <>
           <FRow label="합의">
             <span className="tabular-nums">{dt(fulfillment.agreedAt)}</span>{" "}
-            <TSub>· 3자 스레드 종결 · 양측 동의</TSub>
+            <TSub>
+              · 3자 스레드 종결
+              {agreeDays !== null && ` · 소요 ${agreeDays}일`}
+            </TSub>
           </FRow>
           <FRow label="정산">
             {fulfillment.resolvedAt ? (
               <>
                 <B className="text-sz-success-text">보류 해제</B>{" "}
-                <TSub>· {d(fulfillment.resolvedAt)} · 정산 관리에서 처리</TSub>
+                <TSub>
+                  · {d(fulfillment.resolvedAt)} · 양측 동의로 종결 · 정산
+                  관리에서 처리
+                </TSub>
               </>
             ) : (
               <>
@@ -928,7 +1089,13 @@ export function FulfillmentCard(props: {
         <>
           <FRow label="확인 기한">
             <span className="tabular-nums">{dt(fulfillment.dueAt)}</span>{" "}
-            <TSub>· {fulfillment.duePassed ? "경과" : "진행 중"}</TSub>
+            <TSub>
+              · {fulfillment.duePassed ? "경과" : "진행 중"}
+              {bothResponded
+                ? " · 무응답은 이행으로 처리되나 양측 모두 응답했다"
+                : fulfillment.autoConfirmOnTimeout &&
+                  " · 무응답은 이행으로 처리된다"}
+            </TSub>
           </FRow>
           <FRow label="정산">
             <B className="text-sz-warning-text">보류 중</B>{" "}
@@ -939,11 +1106,19 @@ export function FulfillmentCard(props: {
         <>
           <FRow label="확인 기한">
             <span className="tabular-nums">{dt(fulfillment.dueAt)}</span>{" "}
-            <TSub>
-              · {fulfillment.duePassed ? "경과" : "진행 중"}
-              {fulfillment.autoConfirmOnTimeout &&
-                " · 무응답은 이행으로 처리된다"}
-            </TSub>
+            {autoSides.length > 0 ? (
+              <TSub>
+                {daysAfterEnd !== null && `· 종료 후 ${daysAfterEnd}일 `}·{" "}
+                {autoSides.join("·")}는 기한까지 응답하지 않아{" "}
+                <B>이행으로 처리</B>됐다
+              </TSub>
+            ) : (
+              <TSub>
+                · {fulfillment.duePassed ? "경과" : "진행 중"}
+                {fulfillment.autoConfirmOnTimeout &&
+                  " · 무응답은 이행으로 처리된다"}
+              </TSub>
+            )}
           </FRow>
           <FRow label="이슈 스레드">
             {openIssue ? (
@@ -956,41 +1131,66 @@ export function FulfillmentCard(props: {
               </>
             ) : (
               <>
-                <span className="text-sz-n-400">열리지 않음</span>{" "}
-                <TSub>· 미이행 제출이 없었다</TSub>
+                열리지 않음 <TSub>· 미이행 제출이 없었다</TSub>
               </>
             )}
           </FRow>
         </>
       )}
-      <div className="mt-3.5 flex gap-2">
-        {(disputed || agreed) && fulfillment.threadId !== null ? (
-          <Btn
-            variant="secondary"
-            onClick={() => onOpenThread(fulfillment.threadId!)}
-          >
-            {agreed ? "종결된 스레드 보기" : "이행 스레드 보기"}
-          </Btn>
-        ) : openIssue?.threadId ? (
-          <Btn
-            variant="secondary"
-            onClick={() => onOpenThread(openIssue.threadId!)}
-          >
-            이슈 스레드 보기
-          </Btn>
-        ) : (
-          detail.permissions.canOpenIssue && (
-            <Btn variant="secondary" onClick={onOpenIssue}>
-              이슈 스레드 열기
+      {agreed ? (
+        <MWarn info className="mb-0 mt-3.5">
+          합의가 끝나 <B>결과 표시로 굳었습니다</B> — 확인은 되돌릴 수 없고
+          재판단 경로를 두지 않습니다. 합의 내용은 <B>정산 금액의 근거</B>라
+          원문 그대로 보존되며, 이 카드에서 수정할 수 없습니다.
+        </MWarn>
+      ) : disputed ? (
+        <MWarn info className="mb-0 mt-3.5">
+          이행 확인은 <B>양측이 서로의 의무를 확인</B>하는 절차입니다 — 자기
+          이행을 스스로 체크하지 않으며 <B>무응답은 이행</B>으로 처리됩니다.{" "}
+          <B>이 화면에서 처리하지 않습니다</B>: 합의는 <B>3자 스레드</B>에서,
+          보류 해제는 <B>정산 관리</B>에서 합니다. 공구 관리는 사유 조회와{" "}
+          <B>스레드 개설</B>까지만 담당합니다.
+        </MWarn>
+      ) : (
+        bothDone && (
+          <MWarn info className="mb-0 mt-3.5">
+            양측 확인이 <B>이행</B>이라 정산 선행 조건이 충족됐습니다 — 남은
+            것은 <B>주문 종결</B>뿐입니다. <B>무응답은 이행으로 처리</B>됩니다:
+            한쪽이 답하지 않는 것만으로 상대 정산을 무기한 멈출 수 없기
+            때문이고, 그 사실을 위 기한 줄에 남깁니다.
+          </MWarn>
+        )
+      )}
+      {hasActions && (
+        <div className="mt-3.5 flex gap-2">
+          {(disputed || agreed) && fulfillment.threadId !== null ? (
+            <Btn
+              variant="secondary"
+              onClick={() => onOpenThread(fulfillment.threadId!)}
+            >
+              {agreed ? "종결된 스레드 보기" : "이행 스레드 보기"}
             </Btn>
-          )
-        )}
-        {(disputed || agreed) && (
-          <Btn variant="secondary" onClick={onGoSettlement}>
-            정산 관리에서 보기 ↗
-          </Btn>
-        )}
-      </div>
+          ) : openIssue?.threadId ? (
+            <Btn
+              variant="secondary"
+              onClick={() => onOpenThread(openIssue.threadId!)}
+            >
+              이슈 스레드 보기
+            </Btn>
+          ) : (
+            detail.permissions.canOpenIssue && (
+              <Btn variant="secondary" onClick={onOpenIssue}>
+                이슈 스레드 열기
+              </Btn>
+            )
+          )}
+          {(disputed || agreed) && (
+            <Btn variant="secondary" onClick={onGoSettlement}>
+              정산 관리에서 보기 ↗
+            </Btn>
+          )}
+        </div>
+      )}
     </GbCard>
   );
 }
@@ -1016,7 +1216,7 @@ export function ClosureCard(props: { detail: Detail; onGoSales: () => void }) {
           : "운영자 승인으로 확정 · 되돌릴 수 없음"
       }
     >
-      <MWarn className="mb-3.5 mt-0">
+      <MWarn className="mt-0">
         이 공구는 <B>중단</B>되어 신규 주문이 차단됐습니다.{" "}
         <B>
           접수분
