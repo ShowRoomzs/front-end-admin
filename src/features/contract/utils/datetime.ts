@@ -11,16 +11,16 @@ export interface DateTimeParts {
   minute: string;
 }
 
-/** 서버 시각 → 입력칸 값. 비어 있으면 현재 시각(분은 5분 단위로 내림)을 기본값으로 쓴다 */
+/**
+ * 서버 시각 → 입력칸 값. 비어 있으면 현재 시각을 기본값으로 쓴다.
+ * 분 선택지가 1분 단위라 내림하지 않는다 — 내리면 발송 직후 서명 기본값이 발송보다 일러 저장이 막힌다.
+ */
 export function toParts(serverValue: string | null): DateTimeParts {
   const base = serverValue ? parseServerDateTime(serverValue) : dayjs();
-  const minute = serverValue
-    ? base.minute()
-    : Math.floor(base.minute() / 5) * 5;
   return {
     date: base.format("YYYY-MM-DD"),
     hour: String(base.hour()).padStart(2, "0"),
-    minute: String(minute).padStart(2, "0"),
+    minute: String(base.minute()).padStart(2, "0"),
   };
 }
 

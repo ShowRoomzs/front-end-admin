@@ -31,6 +31,8 @@ interface ProgressCardProps {
   drafts: SignDrafts;
   onDraftsChange: (next: SignDrafts) => void;
   isDirty: boolean;
+  /** 입력이 저장 규칙(발송 ≤ 서명 ≤ 지금)을 지키는지 — 어기면 저장만 막는다 */
+  canSave: boolean;
   onRevert: () => void;
   onSave: () => void;
   onHandleResend: () => void;
@@ -102,6 +104,7 @@ export default function ProgressCard(props: ProgressCardProps) {
     drafts,
     onDraftsChange,
     isDirty,
+    canSave,
     onRevert,
     onSave,
     onHandleResend,
@@ -200,7 +203,11 @@ export default function ProgressCard(props: ProgressCardProps) {
                 <Btn variant="secondary" disabled={!isDirty} onClick={onRevert}>
                   되돌리기
                 </Btn>
-                <Btn variant="primary" disabled={!isDirty} onClick={onSave}>
+                <Btn
+                  variant="primary"
+                  disabled={!isDirty || !canSave}
+                  onClick={onSave}
+                >
                   서명 현황 저장
                 </Btn>
               </div>

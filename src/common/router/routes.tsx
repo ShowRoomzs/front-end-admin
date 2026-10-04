@@ -31,6 +31,8 @@ import TermsVersionRegister from "@/features/terms/pages/TermsVersionRegister";
 import TermsVersionDetail from "@/features/terms/pages/TermsVersionDetail";
 import ContractManagement from "@/features/contract/pages/ContractManagement";
 import ContractDetail from "@/features/contract/pages/ContractDetail";
+import GroupBuyManagement from "@/features/groupBuy/pages/GroupBuyManagement";
+import GroupBuyDetail from "@/features/groupBuy/pages/GroupBuyDetail";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -136,10 +138,14 @@ export const mainRoutes: Array<RouteObject> = [
         path: "contract/:id",
         element: <ContractDetail />,
       },
-      // 공구 관리
+      // 공구 관리 — 목록 · 상세(B1~B6). 판정은 모두 상세의 모달을 거친다
       {
         path: "group-buy",
-        element: <PlaceholderPage title="공구 관리" />,
+        element: <GroupBuyManagement />,
+      },
+      {
+        path: "group-buy/:id",
+        element: <GroupBuyDetail />,
       },
       // 게시물·소통 모니터링
       {
