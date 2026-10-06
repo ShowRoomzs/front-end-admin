@@ -282,8 +282,9 @@ export default function GroupBuyManagement() {
           </div>
         ) : (
           <>
+            {/* 고정 열 합 778 + 공구명 최소 182 — 1280 화면 본문(974)에서도 가로 스크롤이 생기지 않는다 */}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1080px] table-fixed border-collapse">
+              <table className="w-full min-w-[960px] table-fixed border-collapse">
                 <colgroup>
                   <col />
                   <col style={{ width: 120 }} />
