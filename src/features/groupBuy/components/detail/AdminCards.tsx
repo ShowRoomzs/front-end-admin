@@ -63,7 +63,8 @@ export function OpenReviewCard(props: {
         const tone =
           gate.state === "DONE"
             ? "ok"
-            : gate.state === "MY_TURN" || gate.state === "REJECTED"
+            : // 시안 「내 차례인 줄만 경고 톤」 — 반려(REJECTED)는 인플루언서 차례라 회색
+              gate.state === "MY_TURN"
               ? "wait"
               : "idle";
         if (gate.key === "STOCK_CONFIRMED") {
@@ -89,7 +90,9 @@ export function OpenReviewCard(props: {
               sub={
                 gate.done
                   ? `인플루언서 제출 · ${dt(gate.doneAt)} · ${gate.doneByName ?? creator.name}`
-                  : "인플루언서 작성 대기"
+                  : gate.state === "REJECTED"
+                    ? "반려 · 인플루언서 재등록 대기"
+                    : "인플루언서 작성 대기"
               }
             />
           );
@@ -115,8 +118,10 @@ export function OpenReviewCard(props: {
                   >
                     기한 {d(openReview.dueAt)}
                   </B>
-                  ({dLabel(openReview.daysLeft)}) · 시작일 {d(timeline.startAt)}{" "}
-                  전까지 승인돼야 공구가 열린다
+                  ({dLabel(openReview.daysLeft)}) ·{" "}
+                  {timeline.startOverdue
+                    ? "시작 시각이 지나 승인하면 단축된 기간으로 바로 열린다"
+                    : `시작일 ${d(timeline.startAt)} 전까지 승인돼야 공구가 열린다`}
                 </>
               ) : gate.state === "REJECTED" ? (
                 "반려 · 인플루언서 재등록 대기"
@@ -1224,12 +1229,17 @@ export function ClosureCard(props: { detail: Detail; onGoSales: () => void }) {
             ` ${num(closure.acceptedOrderCount)}건`}
           의 배송·환불은 판매 관리에서 개별 처리
         </B>
-        해야 하고, 이미 지급된 고정 지급비
-        {detail.fixedFee.amount !== null && (
-          <B className="tabular-nums"> {won(detail.fixedFee.amount)}</B>
+        해야 합니다.
+        {/* 지급비가 없으면(0원) 회수 문장 자체가 의미 없다 */}
+        {detail.fixedFee.amount !== null && detail.fixedFee.amount > 0 && (
+          <>
+            {" "}
+            이미 지급된 고정 지급비{" "}
+            <B className="tabular-nums">{won(detail.fixedFee.amount)}</B>은{" "}
+            <B>플랫폼이 회수해 주지 않습니다</B> — 돈이 플랫폼을 지나가지
+            않으므로 되돌릴 대상이 없습니다.
+          </>
         )}
-        은 <B>플랫폼이 회수해 주지 않습니다</B> — 돈이 플랫폼을 지나가지
-        않으므로 되돌릴 대상이 없습니다.
       </MWarn>
       <FRow label="종결 유형">
         <GbBadge tone="DANGER">중단</GbBadge>{" "}

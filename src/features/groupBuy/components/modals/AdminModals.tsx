@@ -103,9 +103,19 @@ export function ApproveOpenModal(props: ModalBase & { onConfirm: () => void }) {
       }
     >
       <B>{detail.groupBuy.title}</B>의 게시물을 승인합니다 — 게이트 3개가 모두
-      채워지면 공구가 <B>준비완료</B>가 되고 시작일{" "}
-      <B className="tabular-nums">{dt(detail.timeline.startAt)}</B>에 자동으로
-      열립니다.
+      채워지면 공구가 <B>준비완료</B>가 되고{" "}
+      {detail.timeline.startOverdue ? (
+        // 시작 시각이 지났으면 준비완료 즉시 열린다(종료일은 그대로)
+        <>
+          시작 시각이 지나 <B>바로 열립니다</B> — 종료일은 그대로라 판매 기간이
+          그만큼 줄어듭니다.
+        </>
+      ) : (
+        <>
+          시작일 <B className="tabular-nums">{dt(detail.timeline.startAt)}</B>에
+          자동으로 열립니다.
+        </>
+      )}
       <MWarn info>
         승인 후에는 <B>인플루언서가 재승인 없이 본문을 수정</B>합니다. 문제가
         생기면 <B>게시물 숨김</B>으로 노출을 끊습니다. 고정 지급비는 브랜드 직접
@@ -174,9 +184,18 @@ export function RejectOpenModal(
       </MHint>
       <MWarn>
         반려하면 공구는 <B>준비중에서 멈추고</B> 게시물 상태가 <B>반려</B>가
-        됩니다 — 인플루언서가 재등록해야 열립니다. 시작일{" "}
-        <B className="tabular-nums">{d(detail.timeline.startAt)}</B>까지
-        재등록·재심사가 끝나지 않으면 공구가 열리지 않습니다.
+        됩니다 — 인플루언서가 재등록해야 열립니다.{" "}
+        {detail.timeline.startOverdue ? (
+          <>
+            시작 시각이 지나 재승인이 나는 즉시 열리지만, 종료일은 그대로라 판매
+            기간이 그만큼 줄어듭니다.
+          </>
+        ) : (
+          <>
+            시작일 <B className="tabular-nums">{d(detail.timeline.startAt)}</B>
+            까지 재등록·재심사가 끝나지 않으면 공구가 열리지 않습니다.
+          </>
+        )}
       </MWarn>
     </GbModal>
   );
@@ -298,6 +317,15 @@ export function UnhidePostModal(props: ModalBase & { onConfirm: () => void }) {
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
+/** 다음 영업일 — 시안 「08.13(목) → 08.14(금)」. 주말만 건너뛴다(공휴일 달력은 서버만 안다) */
+function nextBusinessDay(value: Dayjs): Dayjs {
+  let next = value.add(1, "day");
+  while (next.day() === 0 || next.day() === 6) {
+    next = next.add(1, "day");
+  }
+  return next;
+}
+
 function chipLabel(value: Dayjs, withTime?: boolean) {
   const base = `${value.format("MM.DD")} (${WEEKDAYS[value.day()]})`;
   return withTime ? `${base} ${value.format("HH:mm")}` : base;
@@ -340,7 +368,7 @@ export function NoticeModal(
       return defaultDeadline;
     }
     if (deadlineChoice === "plus1") {
-      return defaultDeadline.add(1, "day");
+      return nextBusinessDay(defaultDeadline);
     }
     return customDeadline ? dayjs(customDeadline) : null;
   }, [defaultDeadline, deadlineChoice, customDeadline]);
@@ -522,7 +550,7 @@ export function NoticeModal(
             on={deadlineChoice === "plus1"}
             onClick={() => setDeadlineChoice("plus1")}
           >
-            {chipLabel(defaultDeadline.add(1, "day"), true)}
+            {chipLabel(nextBusinessDay(defaultDeadline), true)}
           </DateChip>
           <DateChip
             on={deadlineChoice === "custom"}
@@ -891,12 +919,17 @@ export function DecideRequestModal(
             {accepted !== null && accepted !== undefined
               ? ` ${num(accepted)}건`
               : ""}
-            의 배송·환불 의무는 남고
-          </B>{" "}
-          이미 지급된 고정 지급비{fee !== null && ` ${won(fee)}`}는{" "}
-          <B>플랫폼이 회수해 주지 않습니다</B> — 돈이 플랫폼을 지나가지 않으므로
-          되돌릴 대상이 없습니다. 공구 상태가 <B>중단</B>(위험)으로 확정되며{" "}
-          <B>되돌릴 수 없습니다</B>.
+            의 배송·환불 의무는 남습니다
+          </B>
+          . {/* 지급비가 없으면(0원) 회수 문장 자체가 의미 없다 */}
+          {fee !== null && fee > 0 && (
+            <>
+              이미 지급된 고정 지급비 {won(fee)}은{" "}
+              <B>플랫폼이 회수해 주지 않습니다</B> — 돈이 플랫폼을 지나가지
+              않으므로 되돌릴 대상이 없습니다.{" "}
+            </>
+          )}
+          공구 상태가 <B>중단</B>(위험)으로 확정되며 <B>되돌릴 수 없습니다</B>.
         </MWarn>
       )}
       {approve && isEarly && (
@@ -1029,14 +1062,24 @@ function revisionLabel(revision: PostRevision): string {
   ].join(" · ");
 }
 
-/** 기본 대조 = 통지 기준 판 → 최신 판(서버 표지 그대로). 통지가 없으면 숨김 기준 · 승인 판 · 첫 판 순 */
+/**
+ * 기본 대조 = 통지 기준 판 → 최신 판(서버 표지 그대로). 통지가 없으면 숨김 기준 · 승인 판 순.
+ * 그 판이 곧 최신 판이면 같은 판끼리 비교가 되므로 건너뛴다 — 다 건너뛰면 직전 판과 비교한다.
+ */
 function defaultBaseNo(revisions: Array<PostRevision>): number | null {
+  const latest = revisions[revisions.length - 1];
+  if (!latest) {
+    return null;
+  }
   const base =
-    revisions.find((revision) => revision.noticeBasis) ??
-    revisions.find((revision) => revision.hiddenBasis) ??
-    revisions.find((revision) => revision.approved) ??
-    revisions[0];
-  return base?.revisionNo ?? null;
+    [
+      revisions.find((revision) => revision.noticeBasis),
+      revisions.find((revision) => revision.hiddenBasis),
+      revisions.find((revision) => revision.approved),
+    ].find(
+      (revision) => revision && revision.revisionNo !== latest.revisionNo
+    ) ?? revisions[revisions.length - 2];
+  return (base ?? latest).revisionNo;
 }
 
 /** 시안 `.dv` · `.dold` · `.dnew` */
