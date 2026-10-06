@@ -30,6 +30,25 @@ export function won(value: number | null | undefined): string {
 
 export const dt = (value: string | null | undefined) =>
   formatDateTimeShort(value ?? null);
+/** 숫자를 읽을 때 받침이 있는가 — 영·일·삼·육·칠·팔 */
+const DIGIT_HAS_FINAL = new Set(["0", "1", "3", "6", "7", "8"]);
+
+/**
+ * 목적격 조사 — 공구명 뒤 「을/를」. 공구명은 브랜드가 정하는 자유 문자열이라 고정 「를」이면
+ * 「…시작 전 중단를」처럼 틀린다. 마지막 글자가 한글·숫자가 아니면 「을(를)」로 둔다.
+ */
+export function objectParticle(word: string): string {
+  const last = word.trim().slice(-1);
+  const code = last.charCodeAt(0);
+  if (code >= 0xac00 && code <= 0xd7a3) {
+    return (code - 0xac00) % 28 === 0 ? "를" : "을";
+  }
+  if (/[0-9]/.test(last)) {
+    return DIGIT_HAS_FINAL.has(last) ? "을" : "를";
+  }
+  return "을(를)";
+}
+
 export const d = (value: string | null | undefined) =>
   formatDateOnly(value ?? null);
 
