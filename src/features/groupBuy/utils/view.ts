@@ -392,13 +392,13 @@ export function toHistoryItems(history: Detail["history"]): Array<HistoryItem> {
         label = `계약 이행 확인 — 미이행${fulfillmentDirection(entry.actorType)} · 정산 보류`;
         break;
       case "FULFILLMENT_AUTO_CONFIRMED":
-        // 서버 detail = 무응답이었던 쪽(SELLER · CREATOR)
+        // 서버 detail = 「인플루언서 무응답으로 자동 이행」 라벨. 그 전 기록은 무응답 측 enum 원문(SELLER · CREATOR)
         meta =
           detail === "SELLER"
             ? "브랜드 무응답으로 자동 이행"
             : detail === "CREATOR"
               ? "인플루언서 무응답으로 자동 이행"
-              : null;
+              : detail;
         break;
       case "FULFILLMENT_AGREED":
       case "FULFILLMENT_RESOLVED":
