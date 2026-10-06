@@ -23,6 +23,7 @@ export const GROUP_BUY_QUERY_KEYS = {
   SUMMARY: "adminGroupBuySummary",
   DETAIL: "adminGroupBuyDetail",
   NOTICE_OPTIONS: "adminGroupBuyNoticeOptions",
+  POST_REVISIONS: "adminGroupBuyPostRevisions",
 } as const;
 
 /**

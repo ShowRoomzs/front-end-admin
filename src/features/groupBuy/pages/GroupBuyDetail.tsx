@@ -30,6 +30,7 @@ import {
   HidePostModal,
   IssueModal,
   NoticeModal,
+  PostRevisionModal,
   RejectOpenModal,
   UnhidePostModal,
   WithdrawModal,
@@ -77,6 +78,7 @@ type ModalKind =
   | "rejectRequest"
   | "issue"
   | "settlement"
+  | "revisions"
   | null;
 
 /**
@@ -217,7 +219,11 @@ export default function GroupBuyDetail() {
             />
           )}
           {view === "notice" && (
-            <NoticeCard detail={detail} onOpenAttachment={openAttachment} />
+            <NoticeCard
+              detail={detail}
+              onOpenAttachment={openAttachment}
+              onOpenRevisions={() => setModal("revisions")}
+            />
           )}
           {view === "extension" && <ExtensionCard detail={detail} />}
           {view === "request" && <RequestCard detail={detail} />}
@@ -464,6 +470,9 @@ export default function GroupBuyDetail() {
             )
           }
         />
+      )}
+      {modal === "revisions" && (
+        <PostRevisionModal groupBuyId={groupBuyId} onClose={closeModal} />
       )}
       {modal === "settlement" && (
         <ConfirmSettlementModal

@@ -18,7 +18,10 @@ import {
   REJECT_REASON_OPTIONS,
   WITHDRAW_OPTIONS,
 } from "@/features/groupBuy/constants/params";
-import { useGetNoticeOptions } from "@/features/groupBuy/hooks/useAdminGroupBuy";
+import {
+  useGetNoticeOptions,
+  useGetPostRevisions,
+} from "@/features/groupBuy/hooks/useAdminGroupBuy";
 import type {
   EmergencySuspensionBody,
   EmergencySuspensionReason,
@@ -28,6 +31,7 @@ import type {
   PostHideBody,
   PostHideReason,
   PostRejectReason,
+  PostRevision,
   SuspensionNoticeBody,
   SuspensionReasonClause,
   SuspensionWithdrawBody,
@@ -42,6 +46,7 @@ import {
   num,
   won,
 } from "@/features/groupBuy/utils/view";
+import { type DiffPart, diffSentences } from "@/features/groupBuy/utils/diff";
 import { parseServerDateTime } from "@/common/utils/formatDate";
 import { cn } from "@/lib/utils";
 import dayjs, { type Dayjs } from "dayjs";
@@ -356,6 +361,30 @@ export function NoticeModal(
 
   const selectable = options?.executionDates ?? [];
 
+  /** 칩 날짜의 집행 시각 — 칩은 기본 시각(10:00)으로 집행한다 */
+  const chipAt = (date: string) => {
+    const [hour, minute] = executeTime.split(":").map(Number);
+    return dayjs(date).hour(hour).minute(minute).second(0);
+  };
+  // 소명 기한보다 앞서는 날짜도 잠근다 — 에러 문구 대신 고를 수 없게(시안 M6 규칙)
+  const isLocked = (item: { date: string; selectable: boolean }) =>
+    !item.selectable ||
+    (!!deadlineAt && !chipAt(item.date).isAfter(deadlineAt));
+
+  // 시안 M6 — 고를 수 있는 첫 날짜를 기본으로 켠다(소명 기한 기본값과 같은 처리).
+  // 소명 기한을 늦춰 고른 날짜가 잠기면 다음으로 열린 날짜로 옮긴다
+  const firstOpen = selectable.find((item) => !isLocked(item))?.date ?? null;
+  const selectedLocked = selectable.some(
+    (item) => item.date === executeDate && isLocked(item)
+  );
+  if (
+    !customExecute &&
+    (executeDate === null || selectedLocked) &&
+    executeDate !== firstOpen
+  ) {
+    setExecuteDate(firstOpen);
+  }
+
   return (
     <GbModal
       title="직권 중단 사전 통지를 발송할까요?"
@@ -427,7 +456,7 @@ export function NoticeModal(
             return (
               <DateChip
                 key={item.date}
-                locked={!item.selectable}
+                locked={isLocked(item)}
                 on={!customExecute && executeDate === item.date}
                 onClick={() => {
                   setCustomExecute(false);
@@ -449,24 +478,26 @@ export function NoticeModal(
           </DateChip>
         </div>
       )}
-      <div className="mt-2 flex items-center gap-2">
-        {customExecute && (
+      {/* 칩은 기본 시각(10:00)으로 집행한다 — 날짜·시각을 직접 고를 때만 입력칸을 연다 */}
+      {customExecute && (
+        <div className="mt-2 flex items-center gap-2">
           <input
             type="date"
+            aria-label="집행 날짜"
             className={cn(INPUT_CLASS, "h-8 w-[150px] px-2.5 py-1")}
             value={executeDate ?? ""}
-            min={selectable.find((item) => item.selectable)?.date}
+            min={selectable.find((item) => !isLocked(item))?.date}
             onChange={(event) => setExecuteDate(event.target.value || null)}
           />
-        )}
-        <input
-          type="time"
-          aria-label="집행 시각"
-          className={cn(INPUT_CLASS, "h-8 w-[110px] px-2.5 py-1")}
-          value={executeTime}
-          onChange={(event) => setExecuteTime(event.target.value || "10:00")}
-        />
-      </div>
+          <input
+            type="time"
+            aria-label="집행 시각"
+            className={cn(INPUT_CLASS, "h-8 w-[130px] px-2.5 py-1")}
+            value={executeTime}
+            onChange={(event) => setExecuteTime(event.target.value || "10:00")}
+          />
+        </div>
+      )}
       <MHint>
         오늘(
         <span className="tabular-nums">
@@ -474,8 +505,9 @@ export function NoticeModal(
         </span>
         )부터 <B>3영업일</B>이 지나지 않은 날짜는 고를 수 없습니다(제17조②) —
         주말은 영업일에서 빠집니다.
-        {latest &&
-          ` 공구 종료(${md(options?.latestExecutionBefore)}) 전이어야 합니다.`}
+        {customExecute &&
+          latest &&
+          ` 소명 기한 뒤, 공구 종료(${md(options?.latestExecutionBefore)}) 전이어야 합니다.`}
       </MHint>
       <MLabel required>소명 제출 기한</MLabel>
       {defaultDeadline && (
@@ -514,12 +546,6 @@ export function NoticeModal(
       <MHint>
         기본값은 <B>통지 수신일 +3영업일</B>입니다(제17조④). 기한 내 미제출 시
         기존 자료를 기준으로 최종 판정합니다.
-        {executeAt && deadlineAt && !executeAt.isAfter(deadlineAt) && (
-          <span className="text-sz-danger-text">
-            {" "}
-            집행 예정은 소명 기한보다 뒤여야 합니다.
-          </span>
-        )}
       </MHint>
       <MLabel required>통지 본문</MLabel>
       <MTextarea
@@ -845,17 +871,17 @@ export function DecideRequestModal(
       <MLabel required>
         {approve ? "양측에 전달할 결정 사유" : "요청자에게 전달할 사유"}
       </MLabel>
+      {/* 시안 M3 — 재요청 조건은 안내 줄 대신 입력칸 안에서 유도한다 */}
       <MTextarea
         maxLength={1000}
         value={reason}
+        placeholder={
+          approve
+            ? undefined
+            : "재요청 조건을 함께 적어 주세요 — 예: 동일 사례 5건 이상 접수 시"
+        }
         onChange={(event) => setReason(event.target.value)}
       />
-      {!approve && (
-        <MHint>
-          재요청 조건을 함께 적어주세요 — 반려만 하고 조건을 말하지 않으면 같은
-          요청이 반복됩니다.
-        </MHint>
-      )}
       {approve && !isEarly && (
         <MWarn>
           중단하면 <B>신규 주문이 즉시 차단</B>되고 게시물은 <B>종료</B>로
@@ -977,6 +1003,257 @@ export function ConfirmSettlementModal(
         확인 후 <B>영업일 5일 내 이체</B>되고, 이체가 끝나면 공구가{" "}
         <B>정산완료</B>가 됩니다.
       </MWarn>
+    </GbModal>
+  );
+}
+
+// ── 수정 전후 본문 대조(B2c 브랜드 소명 · 시안 ⑩ 변경 대조 표) ──
+
+/** 판본 표지 — 왜 이 판을 골라 봐야 하는지(통지 기준 · 승인 · 숨김 기준 · 최신) */
+function revisionTags(revision: PostRevision): Array<string> {
+  const tags: Array<string> = [];
+  if (revision.noticeBasis) tags.push("통지 기준");
+  if (revision.approved) tags.push("승인");
+  if (revision.hiddenBasis) tags.push("숨김 기준");
+  if (revision.unhiddenBasis) tags.push("해제 기준");
+  if (revision.latest) tags.push("최신");
+  return tags;
+}
+
+function revisionLabel(revision: PostRevision): string {
+  return [
+    `${revision.revisionNo}판`,
+    revision.kind === "SUBMITTED" ? "제출" : "승인 후 수정",
+    md(revision.createdAt),
+    ...revisionTags(revision),
+  ].join(" · ");
+}
+
+/** 기본 대조 = 통지 기준 판 → 최신 판(서버 표지 그대로). 통지가 없으면 숨김 기준 · 승인 판 · 첫 판 순 */
+function defaultBaseNo(revisions: Array<PostRevision>): number | null {
+  const base =
+    revisions.find((revision) => revision.noticeBasis) ??
+    revisions.find((revision) => revision.hiddenBasis) ??
+    revisions.find((revision) => revision.approved) ??
+    revisions[0];
+  return base?.revisionNo ?? null;
+}
+
+/** 시안 `.dv` · `.dold` · `.dnew` */
+const DIFF_PART_CLASS = {
+  same: "text-sz-n-900",
+  removed: "text-sz-n-500 line-through decoration-sz-n-400",
+  added: "font-semibold text-sz-accent-600",
+} as const;
+
+function DiffText(props: { parts: Array<DiffPart> }) {
+  return (
+    <span className="whitespace-pre-wrap break-words">
+      {props.parts.map((part, index) => (
+        <span key={index} className={DIFF_PART_CLASS[part.kind]}>
+          {part.text}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** 시안 `table.diff` 한 행 — 바뀐 행만 `.chg`(accent-50) */
+function DiffRow(props: {
+  label: string;
+  changed: boolean;
+  before: ReactNode;
+  after: ReactNode;
+}) {
+  return (
+    <tr className={cn("align-top", props.changed && "bg-sz-accent-50")}>
+      <td className="border-t border-sz-n-100 px-4 py-[11px] text-[11px] text-sz-n-500">
+        {props.label}
+      </td>
+      <td className="border-t border-sz-n-100 px-4 py-[11px] text-[12px] leading-[1.75]">
+        {props.before}
+      </td>
+      <td className="border-t border-sz-n-100 px-4 py-[11px] text-[12px] leading-[1.75]">
+        {props.after}
+      </td>
+    </tr>
+  );
+}
+
+/** 시안 `.dsame` */
+function Unchanged() {
+  return <span className="text-[11px] text-sz-n-400">변경 없음</span>;
+}
+
+export function PostRevisionModal(props: {
+  groupBuyId: number;
+  onClose: () => void;
+}) {
+  const { groupBuyId, onClose } = props;
+  const {
+    data: revisions,
+    isLoading,
+    isError,
+  } = useGetPostRevisions(groupBuyId, true);
+  // 고르기 전에는 서버 표지로 정한 기본 판(통지 기준 → 최신)을 쓴다
+  const [pickedBaseNo, setPickedBaseNo] = useState<number | null>(null);
+  const [pickedTargetNo, setPickedTargetNo] = useState<number | null>(null);
+
+  const list = useMemo(() => revisions ?? [], [revisions]);
+  const baseNo = pickedBaseNo ?? defaultBaseNo(list);
+  const targetNo = pickedTargetNo ?? list[list.length - 1]?.revisionNo ?? null;
+  const base = list.find((revision) => revision.revisionNo === baseNo) ?? null;
+  const target =
+    list.find((revision) => revision.revisionNo === targetNo) ?? null;
+
+  const titleChanged =
+    base !== null &&
+    target !== null &&
+    (base.title ?? "") !== (target.title ?? "");
+  const body = useMemo(
+    () =>
+      base && target
+        ? diffSentences(base.content ?? "", target.content ?? "")
+        : null,
+    [base, target]
+  );
+  const editedCount = list.filter(
+    (revision) => revision.kind === "EDITED"
+  ).length;
+
+  const revisionOptions = list.map((revision) => (
+    <option key={revision.revisionNo} value={revision.revisionNo}>
+      {revisionLabel(revision)}
+    </option>
+  ));
+
+  return (
+    <GbModal
+      title="수정 전후 본문 대조"
+      width={880}
+      onClose={onClose}
+      footer={
+        <Btn variant="secondary" onClick={onClose}>
+          닫기
+        </Btn>
+      }
+    >
+      {isLoading ? (
+        <div className="py-10 text-center text-sz-n-500">불러오는 중…</div>
+      ) : isError ? (
+        <div className="py-10 text-center text-sz-n-500">
+          판본을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.
+        </div>
+      ) : !base || !target ? (
+        <div className="py-10 text-center text-sz-n-500">
+          아직 제출된 게시물이 없어 대조할 판본이 없습니다.
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <MLabel>기준 판</MLabel>
+              <MSelect
+                value={base.revisionNo}
+                onChange={(event) =>
+                  setPickedBaseNo(Number(event.target.value))
+                }
+              >
+                {revisionOptions}
+              </MSelect>
+            </div>
+            <div>
+              <MLabel>비교 판</MLabel>
+              <MSelect
+                value={target.revisionNo}
+                onChange={(event) =>
+                  setPickedTargetNo(Number(event.target.value))
+                }
+              >
+                {revisionOptions}
+              </MSelect>
+            </div>
+          </div>
+          <MHint>
+            판본 {num(list.length)}개 · 승인 후 수정 {num(editedCount)}회 —
+            제출과 승인 후 수정만 판본으로 남고 임시저장은 남지 않습니다. 빠진
+            문장은 취소선, 새로 생긴 문장은 인디고로 표시합니다.
+          </MHint>
+
+          <table className="mt-4 w-full table-fixed border-separate border-spacing-0 overflow-hidden rounded-[6px] border border-sz-n-200">
+            <colgroup>
+              <col style={{ width: 180 }} />
+              <col />
+              <col />
+            </colgroup>
+            <thead>
+              <tr>
+                {["항목", revisionLabel(base), revisionLabel(target)].map(
+                  (head, index) => (
+                    <td
+                      key={index}
+                      className="border-b border-sz-n-200 bg-sz-n-100 px-4 py-2.5 text-[11px] font-medium text-sz-n-600"
+                    >
+                      {head}
+                    </td>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody className="[&>tr:first-child>td]:border-t-0">
+              <DiffRow
+                label="제목"
+                changed={titleChanged}
+                before={
+                  <span
+                    className={
+                      titleChanged
+                        ? DIFF_PART_CLASS.removed
+                        : DIFF_PART_CLASS.same
+                    }
+                  >
+                    {base.title ?? "—"}
+                  </span>
+                }
+                after={
+                  titleChanged ? (
+                    <span className={DIFF_PART_CLASS.added}>
+                      {target.title ?? "—"}
+                    </span>
+                  ) : (
+                    <Unchanged />
+                  )
+                }
+              />
+              <DiffRow
+                label="본문"
+                changed={body?.changed ?? false}
+                before={
+                  body?.changed ? (
+                    <DiffText parts={body.before} />
+                  ) : (
+                    <span className="whitespace-pre-wrap break-words text-sz-n-900">
+                      {base.content ?? "—"}
+                    </span>
+                  )
+                }
+                after={
+                  body?.changed ? (
+                    <DiffText parts={body.after} />
+                  ) : (
+                    <Unchanged />
+                  )
+                }
+              />
+            </tbody>
+          </table>
+          {base.revisionNo === target.revisionNo && (
+            <MWarn info className="mb-0">
+              같은 판을 골랐습니다 — 다른 판을 골라야 차이가 보입니다.
+            </MWarn>
+          )}
+        </>
+      )}
     </GbModal>
   );
 }
