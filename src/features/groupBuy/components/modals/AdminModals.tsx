@@ -44,6 +44,7 @@ import {
   dt,
   md,
   num,
+  objectParticle,
   won,
 } from "@/features/groupBuy/utils/view";
 import { type DiffPart, diffSentences } from "@/features/groupBuy/utils/diff";
@@ -207,6 +208,7 @@ export function HidePostModal(
   props: ModalBase & { onConfirm: (body: PostHideBody) => void }
 ) {
   const { detail, isPending, onClose, onConfirm } = props;
+  const beforeStart = detail.groupBuy.status === "READY";
   const [reasonCode, setReasonCode] = useState<PostHideReason | "">("");
   const [detailText, setDetailText] = useState("");
   const isValid = reasonCode !== "" && detailText.trim() !== "";
@@ -238,8 +240,20 @@ export function HidePostModal(
         />
       }
     >
-      <B>{detail.groupBuy.title}</B>의 게시물을 <B>소비자 화면에서 내립니다</B>{" "}
-      — 공구는 <B>진행중 그대로</B>이고 주문·배송은 계속됩니다.
+      {beforeStart ? (
+        // 준비완료에서도 숨길 수 있다 — 시작 전에 문제를 발견하면 숨긴 채로 열리게 한다
+        <>
+          <B>{detail.groupBuy.title}</B>의 게시물을 <B>숨긴 채로 시작</B>되게
+          합니다 — 공구는 <B>준비완료 그대로</B>이고 시작 시각에 열리지만
+          소비자에게 게시물이 보이지 않습니다.
+        </>
+      ) : (
+        <>
+          <B>{detail.groupBuy.title}</B>의 게시물을{" "}
+          <B>소비자 화면에서 내립니다</B> — 공구는 <B>진행중 그대로</B>이고
+          주문·배송은 계속됩니다.
+        </>
+      )}
       <MLabel required>숨김 사유</MLabel>
       <MSelect
         value={reasonCode}
@@ -265,13 +279,23 @@ export function HidePostModal(
         무엇을 고쳐야 다시 노출되는지 적습니다 — 이 글이 없으면 인플루언서가
         무엇을 고칠지 모른 채 게시물이 내려간 상태로 남습니다.
       </MHint>
-      <MWarn>
-        숨기면 소비자 화면에서 <B>즉시 내려가고</B> 게시물 상태가 <B>숨김</B>이
-        됩니다. <B>공구는 진행중 그대로</B>라 소비자가 이미 담은 주문과 배송은
-        영향받지 않지만, <B>새 소비자가 이 공구를 볼 경로가 사라집니다</B> —
-        판매가 사실상 멈추므로 오래 두지 마세요. 인플루언서가 본문을 고치면{" "}
-        <B>운영자가 숨김을 해제</B>해야 다시 노출됩니다.
-      </MWarn>
+      {beforeStart ? (
+        <MWarn>
+          숨기면 게시물 상태가 <B>숨김</B>이 되고, 시작 시각이 지나도{" "}
+          <B>소비자가 이 공구를 볼 경로가 없습니다</B> — 시작 전에 해제하지
+          않으면 판매가 사실상 열리지 않습니다. 인플루언서가 본문을 고치면{" "}
+          <B>운영자가 숨김을 해제</B>해야 노출됩니다.
+        </MWarn>
+      ) : (
+        <MWarn>
+          숨기면 소비자 화면에서 <B>즉시 내려가고</B> 게시물 상태가 <B>숨김</B>
+          이 됩니다. <B>공구는 진행중 그대로</B>라 소비자가 이미 담은 주문과
+          배송은 영향받지 않지만,{" "}
+          <B>새 소비자가 이 공구를 볼 경로가 사라집니다</B> — 판매가 사실상
+          멈추므로 오래 두지 마세요. 인플루언서가 본문을 고치면{" "}
+          <B>운영자가 숨김을 해제</B>해야 다시 노출됩니다.
+        </MWarn>
+      )}
     </GbModal>
   );
 }
@@ -624,7 +648,8 @@ export function ExecuteModal(
         />
       }
     >
-      <B>{detail.groupBuy.title}</B>를 <B>중단</B>합니다 —{" "}
+      <B>{detail.groupBuy.title}</B>
+      {objectParticle(detail.groupBuy.title)} <B>중단</B>합니다 —{" "}
       {dt(suspension?.noticedAt)} 사전 통지(
       {suspension?.clauseLabel ?? "직권 중단"})의 집행입니다.
       <div className="mt-2.5 rounded-[6px] bg-sz-n-50 px-3 py-2.5 text-[11px] leading-[1.8] text-sz-n-700">
@@ -788,8 +813,9 @@ export function EmergencyModal(
         />
       }
     >
-      <B>{detail.groupBuy.title}</B>를 <B>사전 통지 없이 즉시</B> 중단합니다 —{" "}
-      <B>파트너 이용약관 제17조③</B>의 긴급 예외 경로입니다.
+      <B>{detail.groupBuy.title}</B>
+      {objectParticle(detail.groupBuy.title)} <B>사전 통지 없이 즉시</B>{" "}
+      중단합니다 — <B>파트너 이용약관 제17조③</B>의 긴급 예외 경로입니다.
       <MLabel required>긴급 사유</MLabel>
       <MSelect
         value={reason}
@@ -840,6 +866,7 @@ export function DecideRequestModal(
     return null;
   }
   const isEarly = request.type === "EARLY_CLOSE";
+  const beforeStart = detail.groupBuy.status === "READY";
   const approve = decision === "approve";
   const accepted = request.decisionBasis?.ordersNow;
   const fee = detail.fixedFee.amount;
@@ -878,7 +905,8 @@ export function DecideRequestModal(
     >
       {approve ? (
         <>
-          <B>{detail.groupBuy.title}</B>를{" "}
+          <B>{detail.groupBuy.title}</B>
+          {objectParticle(detail.groupBuy.title)}{" "}
           {isEarly ? "조기 마감합니다" : "중단합니다"} —{" "}
           {actorText(request.requesterType, request.requesterName)}의 요청을
           승인하는 처리입니다.
@@ -912,16 +940,27 @@ export function DecideRequestModal(
       />
       {approve && !isEarly && (
         <MWarn>
-          중단하면 <B>신규 주문이 즉시 차단</B>되고 게시물은 <B>종료</B>로
-          내려갑니다.{" "}
-          <B>
-            접수분
-            {accepted !== null && accepted !== undefined
-              ? ` ${num(accepted)}건`
-              : ""}
-            의 배송·환불 의무는 남습니다
-          </B>
-          . {/* 지급비가 없으면(0원) 회수 문장 자체가 의미 없다 */}
+          {beforeStart ? (
+            // 준비완료(시작 전) 중단 — 주문이 없으니 차단·배송 의무 대신 「열리지 않는다」를 말한다
+            <>
+              <B>시작 전이라 접수된 주문이 없습니다</B> — 중단하면 공구가{" "}
+              <B>열리지 않고</B> 게시물은 <B>종료</B>로 내려갑니다.{" "}
+            </>
+          ) : (
+            <>
+              중단하면 <B>신규 주문이 즉시 차단</B>되고 게시물은 <B>종료</B>로
+              내려갑니다.{" "}
+              <B>
+                접수분
+                {accepted !== null && accepted !== undefined
+                  ? ` ${num(accepted)}건`
+                  : ""}
+                의 배송·환불 의무는 남습니다
+              </B>
+              .{" "}
+            </>
+          )}
+          {/* 지급비가 없으면(0원) 회수 문장 자체가 의미 없다 */}
           {fee !== null && fee > 0 && (
             <>
               이미 지급된 고정 지급비 {won(fee)}은{" "}
