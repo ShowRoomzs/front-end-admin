@@ -1,8 +1,6 @@
-import NotReady from "@/common/components/NotReady/NotReady";
 import Pagination from "@/common/components/Pagination/Pagination";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
-import { DEV_MOCK_ENABLED } from "@/common/utils/devMock";
 import ExceptionFilter, {
   type TypeOption,
 } from "@/features/exception/components/list/ExceptionFilter";
@@ -13,32 +11,23 @@ import {
   DELAY_COLUMNS,
   DELIVERY_COLUMNS,
 } from "@/features/exception/constants/columns";
-import {
-  DELAY_TYPE_OPTIONS,
-  DELIVERY_TYPE_OPTIONS,
-  EXCEPTION_INITIAL_PARAMS,
-} from "@/features/exception/constants/params";
+import { EXCEPTION_KINDS } from "@/features/exception/constants/labels";
+import { EXCEPTION_INITIAL_PARAMS } from "@/features/exception/constants/params";
 import {
   useGetExceptionList,
   useGetExceptionSummary,
 } from "@/features/exception/hooks/useExceptionQueries";
 import type {
-  DelayItem,
-  DeliveryItem,
+  ExceptionItem,
+  ExceptionKindFilter,
   ExceptionListParams,
-  ExceptionRow,
-  ExceptionSort,
   ExceptionTab,
-  ExceptionTypeFilter,
 } from "@/features/exception/types";
 import { openPath } from "@/features/exception/utils/format";
+import { normalizeExceptionParams } from "@/features/exception/utils/params";
 import { Loader2Icon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-
-const isDelay = (row: ExceptionRow): row is DelayItem => row.tab === "DELAY";
-const isDelivery = (row: ExceptionRow): row is DeliveryItem =>
-  row.tab === "DELIVERY";
 
 const EMPTY_TEXT: Record<ExceptionTab, { title: string; description: string }> =
   {
@@ -52,8 +41,12 @@ const EMPTY_TEXT: Record<ExceptionTab, { title: string; description: string }> =
     },
   };
 
+/** 행 키 — 한 주문의 하위주문 여럿이 같은 주문번호로 올 수 있어 대상번호만으로는 겹친다 */
+const rowKey = (row: ExceptionItem) =>
+  `${row.kind}-${row.deliveryGroupId}-${row.claimId ?? ""}`;
+
 /**
- * A1·A2 — 어드민 예외 관리(거래 관리).
+ * A1·A2 — 어드민 예외 관리(거래 관리 · `/v1/admin/order-exceptions`).
  *
  * 처리 지연(당사자 기한 경과)과 배송 예외(택배·추적 이상)를 탭 둘로 합친 **모니터 화면**이다 —
  * 둘 다 운영자가 지켜보다가 필요할 때만 대행하므로 MVP에서 페이지를 나눌 이유가 없다.
@@ -62,12 +55,24 @@ const EMPTY_TEXT: Record<ExceptionTab, { title: string; description: string }> =
  * 독촉 버튼도 없다(기한 경과 알림은 시스템 자동, 횟수만 보여준다).
  *
  * 제목 「예외 관리」는 셸(MainLayout)이 그린다 — 시안에도 제목 아래 설명 줄이 없다.
- * 백엔드 API가 아직 없어 개발 서버에서만 목업으로 채우고, 배포본은 「준비 중」을 띄운다.
  */
 export default function ExceptionManagement() {
   const navigate = useNavigate();
-  const { params, localParams, updateParam, updateParams, updateLocalParam } =
-    useParams<ExceptionListParams>(EXCEPTION_INITIAL_PARAMS);
+  const {
+    params: rawParams,
+    localParams,
+    updateParam,
+    updateParams,
+    updateLocalParam,
+  } = useParams<ExceptionListParams>(EXCEPTION_INITIAL_PARAMS);
+  // 주소의 값을 그대로 쓰면 ?tab=foo는 빈 상태 문구에서, ?keyword=null은 .trim()에서 터진다 —
+  // 조회와 화면 모두 바로잡은 값만 본다
+  const params = useMemo(
+    () => normalizeExceptionParams(rawParams),
+    [rawParams]
+  );
+  const localKeyword =
+    typeof localParams.keyword === "string" ? localParams.keyword : "";
 
   const {
     data: list,
@@ -78,83 +83,53 @@ export default function ExceptionManagement() {
   const { data: summary } = useGetExceptionSummary();
 
   const pageInfo = usePaginationInfo({
-    data: list?.pageInfo,
+    data: list?.page.pageInfo,
     onPageChange: (page) => updateParam("page", page),
   });
 
+  // 목적지는 서버 `link`가 정한다 — ORDER는 주문 상세, CLAIM은 반품·교환 상세
   const handleRowClick = useCallback(
-    (row: DelayItem | DeliveryItem) => navigate(openPath(row)),
+    (row: ExceptionItem) => navigate(openPath(row.link)),
     [navigate]
   );
 
-  // 탭마다 유형 집합이 달라 탭을 바꾸면 유형은 비운다
+  // 탭마다 유형 집합이 달라 탭을 바꾸면 유형은 비운다(다른 탭 유형은 서버 400)
   const handleTabChange = useCallback(
-    (tab: ExceptionTab) => updateParams({ tab, type: "", page: 1 }),
+    (tab: ExceptionTab) => updateParams({ tab, kind: "", page: 1 }),
     [updateParams]
   );
 
   // 유형은 고르는 즉시 적용한다 — 입력 중이던 검색어도 함께 확정한다
-  const handleTypeChange = useCallback(
-    (type: ExceptionTypeFilter) =>
-      updateParams({ type, keyword: localParams.keyword, page: 1 }),
-    [updateParams, localParams.keyword]
+  const handleKindChange = useCallback(
+    (kind: ExceptionKindFilter) =>
+      updateParams({ kind, keyword: localKeyword.trim(), page: 1 }),
+    [updateParams, localKeyword]
   );
 
   const handleSearch = useCallback(
-    () => updateParams({ keyword: localParams.keyword.trim(), page: 1 }),
-    [updateParams, localParams.keyword]
+    () => updateParams({ keyword: localKeyword.trim(), page: 1 }),
+    [updateParams, localKeyword]
   );
 
   // 초기화는 필터만 되돌린다 — 보고 있던 탭은 그대로 둔다
   const handleReset = useCallback(
-    () => updateParams({ type: "", keyword: "", page: 1 }),
+    () => updateParams({ kind: "", keyword: "", page: 1 }),
     [updateParams]
   );
 
-  const typeOptions = useMemo<TypeOption[]>(() => {
-    if (params.tab === "DELAY") {
-      return DELAY_TYPE_OPTIONS.map((option) => ({
-        ...option,
-        count: summary?.delayTypeCounts[option.value],
-      }));
-    }
-    return DELIVERY_TYPE_OPTIONS.map((option) => ({
-      ...option,
-      count: summary?.deliveryTypeCounts[option.value],
-    }));
-  }, [params.tab, summary]);
-
-  const filter = (
-    <ExceptionFilter
-      tab={params.tab}
-      tabCounts={summary?.tabCounts}
-      onTabChange={handleTabChange}
-      typeValue={params.type}
-      typeOptions={typeOptions}
-      onTypeChange={handleTypeChange}
-      keyword={localParams.keyword}
-      onKeywordChange={(keyword) => updateLocalParam("keyword", keyword)}
-      onSearch={handleSearch}
-      onReset={handleReset}
-    />
+  // 유형 셀렉트 — 서버 enum 순서대로 고른 탭의 유형만, 건수는 요약 `kindCounts`(0건 포함)
+  const typeOptions = useMemo<TypeOption[]>(
+    () =>
+      EXCEPTION_KINDS.filter((kind) => kind.tab === params.tab).map((kind) => ({
+        value: kind.value,
+        label: kind.label,
+        count: summary?.kindCounts[kind.value],
+      })),
+    [params.tab, summary]
   );
 
-  // 배포본 — 틀(탭 · 필터)은 두고 데이터 자리만 안내로 바꾼다. 가짜 값을 보여주지 않는다
-  if (!DEV_MOCK_ENABLED) {
-    return (
-      <div className="flex shrink-0 flex-col">
-        {filter}
-        <div className="overflow-hidden rounded-[8px] border border-sz-n-200 bg-white">
-          <NotReady title="예외 관리 화면은 준비 중입니다">
-            처리 지연 · 배송 예외 목록은 서버 연동이 끝나면 이곳에 표시됩니다.
-          </NotReady>
-        </div>
-      </div>
-    );
-  }
-
-  const rows = list?.content ?? [];
-  const isFiltered = Boolean(params.type || params.keyword);
+  const rows = list?.page.content ?? [];
+  const isFiltered = Boolean(params.kind || params.keyword);
 
   const body = (() => {
     if (isLoading) {
@@ -206,18 +181,11 @@ export default function ExceptionManagement() {
         </div>
       );
     }
-    return params.tab === "DELAY" ? (
+    return (
       <ExceptionTable
-        columns={DELAY_COLUMNS}
-        rows={rows.filter(isDelay)}
-        rowKey={(row) => row.id}
-        onRowClick={handleRowClick}
-      />
-    ) : (
-      <ExceptionTable
-        columns={DELIVERY_COLUMNS}
-        rows={rows.filter(isDelivery)}
-        rowKey={(row) => row.id}
+        columns={params.tab === "DELAY" ? DELAY_COLUMNS : DELIVERY_COLUMNS}
+        rows={rows}
+        rowKey={rowKey}
         onRowClick={handleRowClick}
       />
     );
@@ -225,18 +193,25 @@ export default function ExceptionManagement() {
 
   return (
     <div className="flex shrink-0 flex-col">
-      {filter}
+      <ExceptionFilter
+        tab={params.tab}
+        tabCounts={summary?.tabCounts}
+        onTabChange={handleTabChange}
+        typeValue={params.kind}
+        typeOptions={typeOptions}
+        onTypeChange={handleKindChange}
+        keyword={localKeyword}
+        onKeywordChange={(keyword) => updateLocalParam("keyword", keyword)}
+        onSearch={handleSearch}
+        onReset={handleReset}
+      />
 
       <div className="overflow-hidden rounded-[8px] border border-sz-n-200 bg-white">
         <ExceptionToolbar
           tab={params.tab}
-          total={list?.pageInfo.totalResults}
-          proxyAvailableCount={list?.proxyAvailableCount ?? 0}
-          sort={params.sort}
-          size={Number(params.size)}
-          onSortChange={(sort: ExceptionSort) =>
-            updateParams({ sort, page: 1 })
-          }
+          total={list?.page.pageInfo.totalResults}
+          actOnBehalfCount={summary?.actOnBehalfCount}
+          size={params.size}
           onSizeChange={(size) => updateParams({ size, page: 1 })}
         />
 

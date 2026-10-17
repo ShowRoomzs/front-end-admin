@@ -1,374 +1,568 @@
-import type { PageParams, PageResponse } from "@/common/types/page";
+import type { PageInfo, PageParams } from "@/common/types/page";
 
 /*
-  어드민 정산 관리 — 공구 정산(ui-admin-07a · 07b). 요구사항 §41 · §42 · §45.
+  어드민 정산 관리 — 공구 정산(ui-admin-07a · 07b). 서버 `/v1/admin/settlements`.
 
-  ⚠️ 백엔드에 어드민 정산 API가 없다. 아래 형태는 시안이 그린 값을 그대로 담도록 FE가 정한
-  계약 초안이고, API가 생기면 서버 DTO에 맞춰 이 파일을 고친다(services/adminSettlementService.ts).
-  금액은 전부 원 단위 정수, 날짜는 로컬 ISO 문자열(`2026-08-31` · `2026-08-31T09:02:00`)이다.
+  이름 · enum · nullable은 백엔드 `AdminSettlementDto`(api/admin/settlement/dto)와 도메인 enum
+  (domain/settlement/type)을 그대로 따른다. 금액은 원 단위 정수, 날짜는 로컬 ISO 문자열
+  (LocalDate `2026-08-31` · LocalDateTime `2026-08-31T09:02:00`), 요율(BigDecimal)은 숫자다
+  (0.03 = 3% · 명세 항목의 `rewardRate`만 퍼센트 값 10.0).
 */
 
-/** §41-2 상태 5종 — 분배 실패는 어드민 전용 */
+// ── 도메인 enum ──────────────────────────────────────
+
+/** SettlementStatus — 분배 실패는 어드민만 본다(수취자 화면은 지급 완료로 접는다) */
 export type SettlementStatus =
-  "CHECKING" | "ADJUSTING" | "SCHEDULED" | "PAID" | "FAILED";
+  "REVIEWING" | "ADJUSTING" | "PAYOUT_SCHEDULED" | "PAID" | "PAYOUT_FAILED";
 
-/** 07a 탭 6 — 지급 예정 · 지급 완료는 전체에서 본다 */
+/** SettlementTone — 배지 색은 서버 enum 한 곳이 정한다 */
+export type SettlementTone =
+  "NEUTRAL" | "INFO" | "WARNING" | "SUCCESS" | "DANGER";
+
+/** 화면 조각(StlBadge · 이력 점)이 쓰는 색 — 서버 톤과 같은 집합 */
+export type Tone = SettlementTone;
+
+export type CreatorBusinessType = "INDIVIDUAL" | "BUSINESS";
+
+/** PayoutStatus */
+export type PayoutStatus =
+  | "WAITING"
+  | "HELD"
+  | "BLOCKED"
+  | "SCHEDULED"
+  | "REQUESTED"
+  | "PAID"
+  | "FAILED"
+  | "NOT_APPLICABLE";
+
+/** SettlementPayee — PG 수수료는 행이 아니라 금액 칸이다 */
+export type SettlementPayee = "BRAND" | "CREATOR" | "PLATFORM";
+
+export type SettlementItemStatus =
+  | "CONFIRMED"
+  | "PARTIAL_RETURNED"
+  | "RETURNED"
+  | "CANCELLED"
+  | "DELIVERY_EXCEPTION";
+
+export type SettlementEventType =
+  | "CREATED"
+  | "ADJUSTMENT_REQUESTED"
+  | "ADJUSTMENT_COUNTERED"
+  | "ADJUSTMENT_REJECTED"
+  | "ADJUSTMENT_ACCEPTED"
+  | "ADJUSTMENT_DEADLINE_NOTICED"
+  | "ADJUSTMENT_EXPIRED"
+  | "AUTO_CONFIRMED"
+  | "CONFIRMED_BY_AGREEMENT"
+  | "CONFIRMED_BY_EXPIRY"
+  | "TAX_INVOICE_REQUESTED"
+  | "TAX_INVOICE_SUBMITTED"
+  | "TAX_INVOICE_VERIFIED"
+  | "TAX_INVOICE_REJECTED"
+  | "BRAND_INVOICE_ISSUED"
+  | "PAYOUT_REQUESTED"
+  | "PAYOUT_PAID"
+  | "PAYOUT_FAILED"
+  | "PAYOUT_RETRIED"
+  | "PAYOUT_BLOCKED"
+  | "PAYOUT_CHECK_REQUIRED"
+  | "WITHHOLDING_RECEIPT_GENERATED"
+  | "CLAWBACK_REGISTERED"
+  | "CLAWBACK_APPLIED"
+  | "CLAWBACK_UNRECOVERABLE";
+
+export type SettlementActorType =
+  "SYSTEM" | "PG" | "ADMIN" | "SELLER" | "CREATOR";
+
+export type SettlementConfirmReason = "AUTO" | "AGREED" | "EXPIRED";
+
+/** TaxDocumentType */
+export type TaxDocumentType =
+  | "WITHHOLDING_RECEIPT"
+  | "CREATOR_TAX_INVOICE"
+  | "BRAND_TAX_INVOICE"
+  | "BRAND_TAX_INVOICE_CREDIT";
+
+/** TaxDocumentStatus — 유형마다 쓰는 부분집합이 다르다 */
+export type TaxDocumentStatus =
+  | "PENDING_INPUT"
+  | "SUBMITTED"
+  | "VERIFIED"
+  | "REJECTED"
+  | "PENDING_ISSUE"
+  | "ISSUED"
+  | "GENERATED";
+
+/** ClawbackStatus — 이월 중이면 PENDING */
+export type ClawbackStatus = "PENDING" | "APPLIED" | "UNRECOVERABLE";
+
+// ── 목록 · 요약(7-1 ~ 7-3) ───────────────────────────
+
+/** AdminSettlementTab — 정산 탭 4개는 정산 1건이 행, 증빙 · 차감은 문서 · 차감 1건이 행 */
 export type SettlementTab =
-  "ALL" | "CHECKING" | "ADJUSTING" | "FAILED" | "EVIDENCE" | "CLAWBACK";
+  "ALL" | "REVIEWING" | "ADJUSTING" | "PAYOUT_FAILED" | "EVIDENCE" | "CLAWBACK";
 
-export type SettlementSort =
-  | "SCHEDULE_DESC"
-  | "SALES_DESC"
-  | "CHECK_DUE_ASC"
-  | "AGREE_DUE_ASC"
-  | "ELAPSED_DESC"
-  | "DUE_ASC"
-  | "TASK_TYPE"
-  | "OCCURRED_DESC";
-
-export type Tone = "INFO" | "SUCCESS" | "WARNING" | "DANGER" | "NEUTRAL";
+/** AdminSettlementSort — 전체 탭만 고른다(상태 · 증빙 · 차감 탭은 서버 고정 정렬) */
+export type SettlementSort = "SCHEDULE_DESC" | "SALES_DESC";
 
 export interface SettlementListParams extends PageParams {
   tab: SettlementTab;
   keyword: string;
-  sort: SettlementSort;
-  /**
-   * 개발 서버 목업 시나리오(`?mock=`) — 목록 조건을 바꿔도 주소에서 떨어지지 않게 들고 다닌다.
-   * 서비스는 이 값이 아니라 `mockScenario()`를 읽는다. 배포본에서는 항상 빈 문자열이다.
-   */
-  mock: string;
+  /** 고정 정렬 탭이면 빈 문자열(보내지 않는다) */
+  sort: SettlementSort | "";
 }
 
-/** 일정 열 — 단계마다 다음 날짜가 다르다(07a 규칙 「일정 열 하나」) */
 export type ScheduleKind =
-  "CHECK_DUE" | "AGREE_DUE" | "PAYOUT_PLANNED" | "PAID";
+  "REVIEW_DUE" | "AGREEMENT_DUE" | "PAYOUT_DUE" | "PAID_AT" | "FAILED_AT";
 
+/** AdminSettlementListItem */
 export interface SettlementListItem {
   settlementId: number;
-  settlementNo: string;
+  settlementNumber: string;
+  groupBuyId: number;
   groupBuyTitle: string;
+  marketId: number;
   brandName: string;
+  creatorId: number;
   showroomName: string;
-  influencerBusiness: boolean;
-  periodStart: string;
-  periodEnd: string;
-  confirmedSales: number;
-  brandPayout: number;
-  influencerPayout: number;
+  creatorBusinessType: CreatorBusinessType;
+  periodStartAt: string;
+  periodEndAt: string;
+  confirmedSalesAmount: number;
+  brandPayoutAmount: number;
+  creatorPayoutAmount: number;
   status: SettlementStatus;
-  schedule: { kind: ScheduleKind; date: string };
-}
-
-/** 표 하단 합계 행 — 지급 예정 · 지급 완료 · 분배 실패만(전체 탭) */
-export interface SettlementTotals {
-  count: number;
-  confirmedSales: number;
-  brandPayout: number;
-  influencerPayout: number;
-  pgFee: number;
-  withholding: number;
-  businessVat: number;
-  rewardVat: number;
-  platformFee: number;
-  platformFeeLabel: string;
-}
-
-export interface SettlementListStats {
-  total: number;
-  adjustingCount: number;
-  failedCount: number;
-  heldAmount: number;
-  nearestAgreeDue: string | null;
-  undeliveredAmount: number;
-  /** 분배 실패 행이 모두 같은 몫이면 그 이름(「인플루언서」) */
-  returnedShareLabel: string | null;
-  maxElapsedDays: number | null;
-}
-
-export interface SettlementListResponse extends PageResponse<SettlementListItem> {
-  stats: SettlementListStats;
-  totals: SettlementTotals | null;
-}
-
-// ── 증빙 처리 탭(L5) ─────────────────────────────────
-
-export type EvidenceTaskType =
-  "INVOICE_CHECK" | "BRAND_INVOICE" | "RRN_MISSING";
-
-export interface EvidenceTask {
-  taskId: string;
-  settlementId: number;
-  settlementNo: string;
-  groupBuyTitle: string;
-  targetName: string;
-  /** 인플루언서 대상이면 사업자 구분 */
-  targetBusiness: boolean | null;
-  type: EvidenceTaskType;
-  dateKind: "INPUT" | "DUE" | null;
-  date: string | null;
   statusLabel: string;
-  statusTone: Tone;
-  payoutHold: boolean;
-  /** GNB 배지에 세는 운영자 조치인가(주민번호 미등록 · 반려 후 재입력 대기는 세지 않는다) */
-  operatorAction: boolean;
+  statusTone: SettlementTone;
+  /** 「일정」 열 — 상태별 다음 날짜 */
+  scheduleAt: string | null;
+  scheduleKind: ScheduleKind;
 }
 
-export interface EvidenceListResponse extends PageResponse<EvidenceTask> {
-  stats: {
-    total: number;
-    operatorActionCount: number;
-    checkCount: number;
-    issueCount: number;
-    payoutHoldCount: number;
-  };
+/** AdminSettlementFooter — 전체 탭만 · 지급 예정 · 지급 완료 · 분배 실패만 합산 */
+export interface SettlementFooter {
+  count: number;
+  confirmedSalesAmount: number;
+  brandPayoutAmount: number;
+  pgFeeAmount: number;
+  creatorPayoutAmount: number;
+  withholdingAmount: number;
+  creatorVatAmount: number;
+  rewardVatAmount: number;
+  platformFeeAmount: number;
 }
 
-// ── 차감 탭(L6) ──────────────────────────────────────
-
-export type ClawbackStatus = "PENDING" | "APPLIED" | "UNRECOVERED";
-
-export interface ClawbackShare {
-  amount: number;
-  state: ClawbackStatus;
-  appliedSettlementNo: string | null;
+/** AdminSettlementToolbar — 값이 있는 칸만 내려온다(NON_NULL) */
+export interface SettlementToolbar {
+  /** [조정 협의] 보류 합계 = 확정 거래액 합 */
+  heldAmount?: number;
+  /** [조정 협의] 가장 이른 합의 기한 */
+  earliestDeadlineAt?: string;
+  /** [분배 실패] 미지급 합계 */
+  undeliveredAmount?: number;
+  /** [분배 실패] 「인플루언서 2 · 브랜드 1」 */
+  failedPayeeLabel?: string;
+  /** [분배 실패] 최장 경과일 */
+  elapsedDays?: number;
+  /** [증빙 · 차감] 건수 */
+  count?: number;
+  /** [증빙] 운영자 조치 필요(확인 대기 + 발행 대기) */
+  operatorActionCount?: number;
+  /** [증빙] 지급을 막는 문서 수 */
+  payoutBlockedCount?: number;
+  /** [차감] 미회수 건수 */
+  unrecoverableCount?: number;
+  /** [차감] 미회수 금액 */
+  unrecoverableAmount?: number;
 }
 
-export interface Clawback {
-  clawbackId: number;
-  clawbackNo: string;
-  originSettlementNo: string;
-  /** 원 정산 상세로 이동 — 목록에 없는 회차면 null(행 클릭 없음) */
-  originSettlementId: number | null;
-  productTitle: string;
-  orderNo: string;
-  brandName: string;
-  showroomName: string;
-  reason: string;
-  occurredAt: string;
-  brand: ClawbackShare;
-  reward: ClawbackShare;
-  status: ClawbackStatus;
-  appliedSettlementNo: string | null;
-  /** 미회수 사유(「인플루언서 탈퇴」) */
-  unrecoveredReason: string | null;
+/** AdminSettlementListResponse<T> */
+export interface SettlementListResponse<T> {
+  content: Array<T>;
+  pageInfo: PageInfo;
+  footer: SettlementFooter | null;
+  toolbar: SettlementToolbar | null;
 }
 
-export interface ClawbackListResponse extends PageResponse<Clawback> {
-  stats: { total: number; unrecoveredCount: number; unrecoveredAmount: number };
-}
+/** 증빙 탭 행의 유형 — 문서 4종 + 주민번호 미등록 가상 행 */
+export type EvidenceType = TaxDocumentType | "RESIDENT_NUMBER_MISSING";
 
-// ── 요약(탭 건수 · GNB 배지) ─────────────────────────
-
-export interface SettlementSummary {
-  tabCounts: Record<SettlementTab, number>;
-  /** GNB 배지 = 분배 실패 + 차감 미회수 + 대조 대기 + 발행 대기 */
-  operatorActionCount: number;
-}
-
-// ── 상세(07b) ────────────────────────────────────────
-
-export interface Breakdown {
-  totalPayment: number;
-  /** 총 결제에서 빠지는 줄 — 라벨은 서버가 정한다(시안: 반품 · 교환 · 배송비 차감) */
-  deductions: Array<{ label: string; amount: number }>;
-  confirmedSales: number;
-  pgFee: number;
-  pgRateLabel: string;
-  platformFee: number;
-  platformRateLabel: string;
-  reward: number;
-  rewardRateLabel: string;
-  rewardVat: number;
-  rewardVatLabel: string;
-  brandPayout: number;
-  influencer: {
-    business: boolean;
-    reward: number;
-    withholding: number;
-    withholdingRateLabel: string;
-    vat: number;
-    vatLabel: string;
-    payout: number;
-  };
-}
-
-export type DistributionRole = "BRAND" | "INFLUENCER" | "PLATFORM" | "PG";
-
-export interface DistributionRow {
-  role: DistributionRole;
-  name: string;
-  amount: number;
-  account: string;
-  /** 배지(지급 완료 · 분배 실패 …) 또는 회색 글(자동 차감) */
-  status:
-    | { kind: "BADGE"; label: string; tone: Tone }
-    | { kind: "TEXT"; label: string };
-}
-
-export interface Distribution {
-  rows: Array<DistributionRow>;
-  total: number;
-  withholding: number;
-}
-
-export interface DistributionFailure {
-  shareLabel: string;
-  recipientName: string;
-  amount: number;
-  reason: string;
-  returnedAt: string;
-  elapsedDays: number;
-  account: string;
-  /** 인플루언서가 회원 정보에서 바꾼 계좌 — 없으면 기존 계좌 재시도만 고를 수 있다 */
-  updatedAccount: string | null;
-  /** 재분배를 PG에 재지시한 뒤(목업) */
-  redistributionRequestedAt: string | null;
-}
-
-export interface Adjustment {
-  requesterName: string;
-  requestedAt: string;
-  originalReward: number;
-  originalInfluencerPayout: number;
-  originalBrandPayout: number;
-  requestedReward: number;
-  requestReason: string;
-  counter: {
-    proposerName: string;
-    proposedAt: string;
-    reward: number;
-    reason: string;
-  } | null;
-  progressLabel: string;
-  agreeDueAt: string;
-}
-
-export type EvidenceKind =
-  "WITHHOLDING_RECEIPT" | "INFLUENCER_INVOICE" | "BRAND_INVOICE";
-
-export type EvidenceState =
-  | "ISSUED"
-  | "NOT_YET"
-  | "RRN_MISSING"
-  | "CHECK_PENDING"
-  | "CHECKED"
-  | "REJECTED"
-  | "ISSUE_PENDING";
-
-export interface EvidenceItem {
-  kind: EvidenceKind;
-  state: EvidenceState;
-  supply: number;
-  vat: number;
-  withholding: number;
-  approvalNo: string | null;
+/** AdminSettlementEvidenceItem — 행 = 문서 1건 · 처리 끝(확인 · 발행 · 생성 완료)은 빠진다 */
+export interface EvidenceListItem {
+  /** 가상 행(주민번호 미등록)은 null */
+  documentId: number | null;
+  settlementId: number;
+  settlementNumber: string;
+  groupBuyTitle: string;
+  /** 인플루언서 건은 쇼룸명 · 브랜드 건은 브랜드명 */
+  counterpartyName: string;
+  creatorBusinessType: CreatorBusinessType;
+  type: EvidenceType;
+  typeLabel: string;
+  direction: string;
   inputAt: string | null;
   dueAt: string | null;
-  processedAt: string | null;
-  processorName: string | null;
-  rejectReason: string | null;
+  /** 문서 상태 · 가상 행은 WAITING_CREATOR */
+  status: TaxDocumentStatus | "WAITING_CREATOR";
+  statusLabel: string;
+  payoutImpact: "BLOCKING" | "NONE";
+}
+
+/** AdminSettlementClawbackItem — 행 = 차감 번호 1건(측별 행을 한 줄로) */
+export interface ClawbackListItem {
+  clawbackNumber: string;
+  originSettlementId: number;
+  originSettlementNumber: string | null;
+  orderNumber: string | null;
+  productName: string | null;
+  brandName: string | null;
+  showroomName: string | null;
+  reasonLabel: string;
+  refundAmount: number;
+  brandAmount: number;
+  creatorAmount: number;
+  brandStatus: ClawbackStatus | null;
+  brandStatusLabel: string | null;
+  creatorStatus: ClawbackStatus | null;
+  creatorStatusLabel: string | null;
+  appliedSettlementNumber: string | null;
+  unrecoverableReasonLabel: string | null;
+  createdAt: string;
+}
+
+/** AdminSettlementSummary */
+export interface SettlementSummary {
+  /** ALL · REVIEWING · ADJUSTING · PAYOUT_FAILED · EVIDENCE · CLAWBACK */
+  tabCounts: Record<string, number>;
+  /** GNB 배지 = 분배 실패 + 차감 미회수 + 증빙 확인 대기 · 발행 대기 */
+  gnbBadge: number;
+}
+
+// ── 상세(7-4) ────────────────────────────────────────
+
+export interface AmountCount {
+  amount: number;
+  count: number;
+}
+
+export interface RateAmount {
+  rate: number;
+  amount: number;
+}
+
+export interface SettlementOverview {
+  groupBuyId: number;
+  groupBuyNumber: string;
+  groupBuyTitle: string;
+  contractId: number;
+  marketId: number;
+  brandName: string;
+  creatorId: number;
+  showroomName: string;
+  creatorBusinessType: CreatorBusinessType;
+  periodStartAt: string;
+  periodEndAt: string;
+  ordersClosedAt: string;
+  createdAt: string;
+  orderCount: number;
+  closedCount: number;
+}
+
+export interface SettlementStage {
+  current: "REVIEW" | "ADJUSTMENT" | "CONFIRMED" | "PAID";
+  /** 조정 없이 확정 — 「조정」 칸을 건너뜀으로 */
+  adjustmentSkipped: boolean;
+}
+
+export interface BrandAxis {
+  grossOrderAmount: number;
+  cancel: AmountCount;
+  /** 서버 JSON 키가 `return`이다(@JsonProperty) */
+  return: AmountCount;
+  deliveryException: AmountCount;
+  confirmedSalesAmount: number;
+  pgFee: RateAmount;
+  platformFee: RateAmount;
+  /** 원래 리워드 — rewardAmount와 다르면 합의로 바뀐 것 */
+  originalRewardAmount: number;
+  rewardAmount: number;
+  rewardVat: RateAmount;
+  reshipFee: AmountCount;
+  consumerDeliveryFee: number;
+  payoutBeforeClawback: number;
+  clawbackAmount: number;
+  payoutAmount: number;
+}
+
+export interface CreatorAxis {
+  businessType: CreatorBusinessType;
+  rewardAmount: number;
+  clawbackAmount: number;
+  /** 비사업자만 — 사업자는 null */
+  withholding: { amount: number; incomeRate: number; localRate: number } | null;
+  vatAmount: number;
+  payoutAmount: number;
+}
+
+export interface Breakdown {
+  brand: BrandAxis;
+  creator: CreatorAxis;
+  platformShareAmount: number;
 }
 
 export interface AppliedClawback {
-  clawbackNo: string;
-  productTitle: string;
-  orderNo: string;
-  reason: string;
-  originSettlementNo: string;
+  clawbackNumber: string;
+  originSettlementNumber: string | null;
+  orderNumber: string | null;
+  productName: string | null;
+  reasonLabel: string;
   brandAmount: number;
+  creatorAmount: number;
+}
+
+export interface AdjustmentProposal {
+  proposalId: number;
+  seq: number;
+  proposerType: "SELLER" | "CREATOR";
+  proposerName: string;
+  proposedAt: string;
+  rewardAmount: number;
+  reason: string | null;
+  status: "PENDING" | "ACCEPTED" | "REJECTED" | "COUNTERED" | "CLOSED";
+  statusLabel: string;
+  respondedAt: string | null;
+  /** 이 금액으로 확정했다면 */
+  preview: { creatorNetAmount: number; brandPayoutAmount: number };
+}
+
+export interface Adjustment {
+  adjustmentId: number;
+  /** 20b 이슈 스레드 — 어드민 소통 스레드 화면이 아직 없다 */
+  threadId: number;
+  status: "OPEN" | "AGREED" | "EXPIRED";
+  statusLabel: string;
+  requesterType: "SELLER" | "CREATOR";
+  openedAt: string;
+  deadlineAt: string;
+  remainingBusinessDays: number | null;
+  originalRewardAmount: number;
+  maxRewardAmount: number;
+  agreedRewardAmount: number | null;
+  finalRewardAmount: number | null;
+  closedAt: string | null;
+  proposals: Array<AdjustmentProposal>;
+}
+
+export interface Payout {
+  payoutId: number;
+  payee: SettlementPayee;
+  payeeLabel: string;
+  payeeName: string;
+  amount: number;
+  bankName: string | null;
+  /** 계좌 전체(어드민 기본정보 정책) */
+  accountNumber: string | null;
+  accountHolder: string | null;
+  accountSource: "SNAPSHOT" | "CURRENT_PROFILE" | "NONE";
+  status: PayoutStatus;
+  statusLabel: string;
+  statusTone: SettlementTone;
+  dueDate: string | null;
+  requestedAt: string | null;
+  paidAt: string | null;
+  failedAt: string | null;
+  failCode: string | null;
+  failReason: string | null;
+  pgReference: string | null;
+  /** 재분배 횟수 */
+  attempt: number;
+}
+
+export interface Payouts {
+  rows: Array<Payout>;
+  pgFeeAmount: number;
+  /** 수취자 합 + PG 수수료 + 원천징수 = 확정 거래액 + 재발송비 + 소비자 배송비 */
+  check: {
+    total: number;
+    inflowAmount: number;
+    confirmedSalesAmount: number;
+    withholdingAmount: number;
+    balanced: boolean;
+  };
+}
+
+export interface TaxDocument {
+  documentId: number;
+  type: TaxDocumentType;
+  typeLabel: string;
+  direction: string;
+  counterpartyName: string;
+  supplyAmount: number;
+  vatAmount: number;
+  totalAmount: number;
+  status: TaxDocumentStatus;
+  statusLabel: string;
+  /** 앞 8 · 뒤 4 마스킹 */
+  approvalNumber: string | null;
+  issuedDate: string | null;
+  dueDate: string | null;
+  submittedAt: string | null;
+  verifiedAt: string | null;
+  rejectReason: string | null;
+  rejectReasonLabel: string | null;
+  fileName: string | null;
+  actions: { canVerify: boolean; canRegister: boolean };
+}
+
+export interface FixedFee {
+  contractId: number;
+  amount: number | null;
+  trigger: string | null;
+  triggerLabel: string | null;
+}
+
+export interface SettlementItem {
+  itemId: number;
+  orderId: number;
+  deliveryGroupId: number;
+  orderNumber: string;
+  subOrderNumber: string | null;
+  consumerNameMasked: string;
+  productName: string;
+  optionName: string | null;
+  quantity: number;
+  returnedQuantity: number;
+  settledQuantity: number;
+  unitPrice: number;
+  paidAmount: number;
+  status: SettlementItemStatus;
+  statusLabel: string;
+  settledAmount: number;
+  /** 퍼센트 값(10.0 = 10%) */
+  rewardRate: number;
   rewardAmount: number;
 }
 
-export interface StatementRow {
-  orderNo: string;
-  consumerMasked: string;
-  itemLabel: string;
-  quantity: number;
-  payment: number;
-  statusLabel: string;
-  statusTone: Tone;
-  applied: number;
-  reward: number;
-}
-
-export interface Statement {
-  totalCount: number;
-  rows: Array<StatementRow>;
-  totalPayment: number;
-  totalApplied: number;
-  totalReward: number;
+export interface SettlementItems {
+  total: number;
   returnCount: number;
+  /** 교환 재발송 건수 */
   exchangeCount: number;
+  /** 최근 5건 — 주문번호 내림차순 */
+  rows: Array<SettlementItem>;
+  footer: {
+    paidAmount: number;
+    settledAmount: number;
+    itemRewardTotal: number;
+    /** 정산 리워드 — 합의로 바뀌었으면 항목 합과 다르다 */
+    rewardAmount: number;
+  };
 }
 
-export type HistoryTone = Tone;
-
-export interface SettlementHistoryEntry {
+export interface BlockReason {
+  code: string;
   label: string;
-  at: string;
-  actor: string;
-  note: string | null;
-  tone: HistoryTone;
 }
 
-/** 공급받는자(플랫폼) · 브랜드 세금계산서 수신 정보 — M4 · M5 */
-export interface TaxParties {
-  platformName: string;
-  platformBizNo: string;
-  brandBizNoMasked: string;
-  brandTaxEmail: string;
+export interface FailedPayout {
+  payoutId: number;
+  payee: SettlementPayee;
+  payeeLabel: string;
+  amount: number;
+  failedAt: string;
+  failCode: string | null;
+  failReason: string | null;
+  attempt: number;
+  /** 재분배 상한 */
+  retryLimit: number;
 }
 
-export interface SettlementDetail extends SettlementListItem {
-  /** 주문 종결 시각(정산 생성) — 정산 확인 중 개요에 쓴다 */
-  ordersClosedAt: string;
-  lastPurchaseConfirmedAt: string;
-  checkDueAt: string;
-  /** 자동 확정일 — 조정 협의 · 정산 확인 중이면 null */
+export interface SettlementRail {
+  status: SettlementStatus;
+  statusLabel: string;
+  statusTone: SettlementTone;
+  confirmedSalesAmount: number;
+  brandPayoutAmount: number;
+  creatorPayoutAmount: number;
+  reviewDueAt: string;
+  deadlineAt: string | null;
   confirmedAt: string | null;
-  /** 지급일(예정 포함) — 브랜드 몫 기준 */
-  payoutAt: string | null;
-  /** 인플루언서 몫만 다른 날 나갈 때(사업자 대조 확인일 + 3영업일) */
-  influencerPayoutAt: string | null;
-  /** 조정 요청이 있었던 회차(단계 줄의 「조정 협의」 취소선 여부) */
-  adjusted: boolean;
-  adjustment: Adjustment | null;
+  confirmReason: SettlementConfirmReason | null;
+  confirmReasonLabel: string | null;
+  payoutDueDate: string | null;
+  /** 지급 예정일 근거 — 「자동 확정 10.06 + 3영업일 · 10.09 한글날 제외」 */
+  payoutBasis: string | null;
+  paidAt: string | null;
+  /** 지급 보류 사유 — 확정 전 · 보류 없음이면 [] */
+  blockReasons: Array<BlockReason>;
+  /** PAYOUT_FAILED일 때 첫 실패 행 */
+  failedPayout: FailedPayout | null;
+}
+
+export interface SettlementActions {
+  canRedistribute: boolean;
+  canVerifyInvoice: boolean;
+  canRegisterBrandInvoice: boolean;
+  canDownloadStatement: boolean;
+}
+
+export interface SettlementHistory {
+  eventType: SettlementEventType;
+  label: string;
+  actorType: SettlementActorType;
+  actorLabel: string;
+  detail: string | null;
+  occurredAt: string;
+}
+
+/** AdminSettlementDetail */
+export interface SettlementDetail {
+  settlementId: number;
+  settlementNumber: string;
+  status: SettlementStatus;
+  statusLabel: string;
+  statusTone: SettlementTone;
+  overview: SettlementOverview;
+  stage: SettlementStage;
   breakdown: Breakdown;
-  distribution: Distribution | null;
-  failure: DistributionFailure | null;
-  evidence: Array<EvidenceItem>;
   clawbacksApplied: Array<AppliedClawback>;
-  fixedFee: {
-    amount: number;
-    timingLabel: string;
-    /** 없으면 계약 목록을 공구명으로 검색해 연다 */
-    contractId: number | null;
-  } | null;
-  statement: Statement | null;
-  /** §41-5 계정 정지 연동 지급 정지 — 07b는 표시만 */
-  payoutStop: { party: "BRAND" | "INFLUENCER" } | null;
-  taxParties: TaxParties;
-  history: Array<SettlementHistoryEntry>;
-  navigation: { prevId: number | null; nextId: number | null };
+  adjustment: Adjustment | null;
+  /** 확정 전(REVIEWING · ADJUSTING) null */
+  payouts: Payouts | null;
+  taxDocuments: Array<TaxDocument>;
+  fixedFee: FixedFee | null;
+  items: SettlementItems;
+  rail: SettlementRail;
+  actions: SettlementActions;
+  /** 최신순 */
+  history: Array<SettlementHistory>;
 }
 
-export interface DetailNavParams {
-  tab?: string;
-  keyword?: string;
-  sort?: string;
-}
+// ── 액션(7-5 ~ 7-7) ──────────────────────────────────
 
-// ── 액션(목업) ───────────────────────────────────────
+/** AdminPayoutAccountSource — 운영자는 계좌를 입력하지 않고 출처만 고른다 */
+export type PayoutAccountSource = "CURRENT_PROFILE" | "PREVIOUS";
 
 export interface RedistributePayload {
-  account: "UPDATED" | "EXISTING";
+  payoutId: number;
+  accountSource: PayoutAccountSource;
 }
 
-export type InvoiceCheckResult =
-  "MATCH" | "AMOUNT_MISMATCH" | "RECIPIENT_ERROR" | "NOT_FOUND";
+/** AdminTaxInvoiceVerifyResult */
+export type InvoiceVerifyResult =
+  "MATCH" | "AMOUNT_MISMATCH" | "RECIPIENT_MISMATCH" | "NOT_FOUND";
+
+export interface VerifyPayload {
+  documentId: number;
+  result: InvoiceVerifyResult;
+}
 
 export interface BrandInvoicePayload {
+  documentId: number;
   file: File;
-  approvalNo: string;
-  issuedAt: string;
+  /** 서버 형식 `00000000-00000000-00000000` */
+  approvalNumber: string;
+  /** YYYY-MM-DD */
+  issuedDate: string;
 }

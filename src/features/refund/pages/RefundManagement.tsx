@@ -1,9 +1,7 @@
 import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper";
-import NotReady from "@/common/components/NotReady/NotReady";
 import Table from "@/common/components/Table/Table";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
-import { DEV_MOCK_ENABLED } from "@/common/utils/devMock";
 import RefundFilterCard from "@/features/refund/components/list/RefundFilterCard";
 import RefundTableBar from "@/features/refund/components/list/RefundTableBar";
 import ExecuteModal from "@/features/refund/components/modals/ExecuteModal";
@@ -15,47 +13,43 @@ import {
   useExecuteRefund,
   useGetRefundList,
   useGetRefundSummary,
-  useRetryRefund,
 } from "@/features/refund/hooks/useAdminRefund";
 import type {
   RefundDetail,
-  RefundListItem,
+  RefundItem,
   RefundListParams,
   RefundRouteFilter,
   RefundSort,
-  RefundStatus,
+  RefundTab,
 } from "@/features/refund/types";
-import { formatWon } from "@/features/refund/utils/format";
 import { normalizeRefundParams } from "@/features/refund/utils/params";
-import { useCallback, useMemo, useState } from "react";
-import toast from "react-hot-toast";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 /** 다이얼로그 — 집행 재확인(M1) · 재시도(M2). 둘 다 행 버튼에서만 연다 */
 type Dialog = { kind: "execute" | "retry"; refundId: number } | null;
 
-const EMPTY_COPY: Record<RefundStatus, { title: string; description: string }> =
-  {
-    PENDING: {
-      title: "집행 대기 중인 환불이 없습니다",
-      description:
-        "반품·교환 관리와 주문 조회에서 [환불 대기 편입]한 운영자 사유 환불이 여기에 모입니다.",
-    },
-    FAILED: {
-      title: "실패한 환불이 없습니다",
-      description: "PG 자동 환불이 재시도 후에도 실패하면 여기에 올라옵니다.",
-    },
-    DONE: {
-      title: "완료된 환불이 없습니다",
-      description:
-        "PG 자동 환불과 운영자 사유 환불이 모두 여기에서 조회됩니다.",
-    },
-  };
+const EMPTY_COPY: Record<RefundTab, { title: string; description: string }> = {
+  PENDING: {
+    title: "집행 대기 중인 환불이 없습니다",
+    description:
+      "반품·교환 관리와 주문 조회에서 [환불 대기 편입]한 운영자 사유 환불이 여기에 모입니다.",
+  },
+  FAILED: {
+    title: "실패한 환불이 없습니다",
+    description: "PG 자동 환불이 재시도 후에도 실패하면 여기에 올라옵니다.",
+  },
+  DONE: {
+    title: "완료된 환불이 없습니다",
+    description: "PG 자동 환불과 운영자 사유 환불이 모두 여기에서 조회됩니다.",
+  },
+};
 
 /**
  * 어드민 환불 관리 — 운영자 사유 환불의 집행 · PG 자동 환불 실패 재시도 · 전체 환불 조회.
  *
  * 환불은 자동이 기본이라 이 화면은 예외만 다룬다. 탭이 셋이다 — 집행 대기(경고) · 실패(위험) · 완료(성공).
  * 목록에는 행 상세가 없다: 돈이 움직이는 행동은 행 버튼 → 다이얼로그에서만 일어난다.
+ * 집행과 재시도는 서버에서 같은 `POST /execute`다.
  * 제목(h1)은 셸(MainLayout)이 그린다.
  */
 export default function RefundManagement() {
@@ -70,10 +64,13 @@ export default function RefundManagement() {
   const listParams = useMemo(() => normalizeRefundParams(params), [params]);
   const [dialog, setDialog] = useState<Dialog>(null);
 
-  const { data: list, isLoading } = useGetRefundList(listParams);
+  const {
+    data: list,
+    isLoading,
+    isPlaceholderData,
+  } = useGetRefundList(listParams);
   const { data: summary } = useGetRefundSummary();
   const executeMutation = useExecuteRefund();
-  const retryMutation = useRetryRefund();
 
   const pageInfo = usePaginationInfo({
     data: list?.pageInfo,
@@ -81,13 +78,13 @@ export default function RefundManagement() {
   });
 
   const handleExecute = useCallback(
-    (record: RefundListItem) =>
-      setDialog({ kind: "execute", refundId: record.refundId }),
+    (record: RefundItem) =>
+      setDialog({ kind: "execute", refundId: record.refundTaskId }),
     []
   );
   const handleRetry = useCallback(
-    (record: RefundListItem) =>
-      setDialog({ kind: "retry", refundId: record.refundId }),
+    (record: RefundItem) =>
+      setDialog({ kind: "retry", refundId: record.refundTaskId }),
     []
   );
   const columns = useMemo(
@@ -97,43 +94,37 @@ export default function RefundManagement() {
   );
 
   const closeDialog = useCallback(() => setDialog(null), []);
+  /**
+   * 요청을 보낸 그 건의 다이얼로그일 때만 닫는다 — 응답이 오는 사이 다른 행의 다이얼로그가
+   * 열려 있으면 그건 운영자가 아직 읽는 중이라 건드리지 않는다. 결과 토스트는 훅이 띄운다.
+   */
+  const closeDialogFor = useCallback(
+    (refundId: number) =>
+      setDialog((current) => (current?.refundId === refundId ? null : current)),
+    []
+  );
 
-  const confirmExecute = (detail: RefundDetail) => {
+  /**
+   * 결과(DONE · FAILED · UNKNOWN · SKIPPED)가 무엇이든 응답이 오면 닫는다 — 결과는 토스트로 알리고
+   * 행은 서버가 정한 탭으로 옮겨진다. HTTP 실패(409 등)면 열어 둔 채 상세를 다시 읽는다.
+   */
+  const confirm = (detail: RefundDetail, retry: boolean) => {
     executeMutation.mutate(
-      {
-        refundId: detail.refundId,
-        body: { confirmedAmount: detail.amount },
-      },
-      {
-        onSuccess: () => {
-          toast.success(
-            `${formatWon(detail.amount)} 환불을 집행했습니다 — ${detail.refundNumber}`
-          );
-          closeDialog();
-        },
-        onError: (error) =>
-          toast.error(error.message || "환불을 집행하지 못했습니다."),
-      }
+      { refundTaskId: detail.refundTaskId, refundNo: detail.refundNo, retry },
+      { onSuccess: () => closeDialogFor(detail.refundTaskId) }
     );
   };
 
-  const confirmRetry = (refundId: number) => {
-    retryMutation.mutate(refundId, {
-      onSuccess: (result) => {
-        if (result.result === "SUCCEEDED") {
-          toast.success("재시도했습니다 — PG 취소가 완료되었습니다.");
-        } else {
-          // 다시 실패하면 행은 실패 탭에 그대로 남는다
-          toast.error(
-            `${result.failureLabel ?? "PG 오류"}로 다시 실패했습니다. 잠시 후 다시 시도해 주세요.`
-          );
-        }
-        closeDialog();
-      },
-      onError: (error) =>
-        toast.error(error.message || "재시도하지 못했습니다."),
-    });
-  };
+  // 집행·재시도로 마지막 쪽이 비면 한 쪽 앞으로 옮긴다 — 서버가 쪽 번호를 맞춰 준다고 믿지 않는다.
+  // 이전 결과를 들고 있는 동안(isPlaceholderData)은 그 쪽수가 지금 조건의 것이 아니라 보지 않는다.
+  const totalPages = list?.pageInfo.totalPages;
+  useEffect(() => {
+    if (isPlaceholderData || totalPages === undefined) return;
+    const lastPage = Math.max(1, totalPages);
+    if (listParams.page > lastPage) {
+      updateParam("page", lastPage);
+    }
+  }, [isPlaceholderData, totalPages, listParams.page, updateParam]);
 
   const handleReset = useCallback(() => {
     // 탭은 지키고 검색 조건만 비운다 — 탭까지 바뀌면 보던 곳을 잃는다
@@ -162,11 +153,15 @@ export default function RefundManagement() {
     );
   }, [listParams.keyword, listParams.route, listParams.tab, handleReset]);
 
+  const pendingFor = (refundId: number) =>
+    executeMutation.isPending &&
+    executeMutation.variables?.refundTaskId === refundId;
+
   return (
     <ListViewWrapper>
       <RefundFilterCard
         tab={listParams.tab}
-        counts={summary?.tabCounts}
+        tabs={summary?.tabs}
         route={localParams.route}
         keyword={localParams.keyword}
         onTabChange={(tab) => updateParams({ tab, page: 1 })}
@@ -179,62 +174,52 @@ export default function RefundManagement() {
       />
 
       <div className="flex flex-col overflow-hidden rounded-[8px] border border-sz-n-200 bg-white">
-        {DEV_MOCK_ENABLED ? (
-          <>
-            <RefundTableBar
-              tab={listParams.tab}
-              summary={list?.summary}
-              sort={listParams.sort}
-              size={listParams.size}
-              onSortChange={(sort: RefundSort) =>
-                updateParams({ sort, page: 1 })
-              }
-              onSizeChange={(size) => updateParams({ size, page: 1 })}
+        <RefundTableBar
+          tab={listParams.tab}
+          stat={summary?.tabs[listParams.tab]}
+          sort={listParams.sort}
+          size={listParams.size}
+          onSortChange={(sort: RefundSort) => updateParams({ sort, page: 1 })}
+          onSizeChange={(size) => updateParams({ size, page: 1 })}
+        />
+        {/*
+          1280px 노트북(본문 976px)에서도 [집행]·[재시도] 버튼이 가로 스크롤 뒤로 숨지 않아야 한다 —
+          그래서 열을 비율로 줄이고(보조 문구는 셀 여백 안으로 번진다), 그보다 좁아질 때만 카드 안에서 가로로 민다.
+        */}
+        <div className="overflow-x-auto">
+          <div className="min-w-[960px]">
+            <Table
+              columns={columns}
+              data={list?.content ?? []}
+              rowKey="refundTaskId"
+              // 시안은 한 페이지에 다 들어가 페이저를 그리지 않는다 — 쪽이 둘 이상일 때만 붙인다
+              pageInfo={pageInfo.totalPages > 1 ? pageInfo : undefined}
+              isLoading={isLoading}
+              emptyState={emptyState}
+              fitWidth
+              autoHeight
+              maxRows={14}
+              bodyClassName="whitespace-nowrap"
+              headerClassName="whitespace-nowrap"
             />
-            {/*
-              1280px 노트북(본문 976px)에서도 [집행]·[재시도] 버튼이 가로 스크롤 뒤로 숨지 않아야 한다 —
-              그래서 열을 비율로 줄이고(보조 문구는 셀 여백 안으로 번진다), 그보다 좁아질 때만 카드 안에서 가로로 민다.
-            */}
-            <div className="overflow-x-auto">
-              <div className="min-w-[960px]">
-                <Table
-                  columns={columns}
-                  data={list?.content ?? []}
-                  // 시안은 한 페이지에 다 들어가 페이저를 그리지 않는다 — 쪽이 둘 이상일 때만 붙인다
-                  pageInfo={pageInfo.totalPages > 1 ? pageInfo : undefined}
-                  isLoading={isLoading}
-                  emptyState={emptyState}
-                  fitWidth
-                  autoHeight
-                  maxRows={14}
-                  bodyClassName="whitespace-nowrap"
-                  headerClassName="whitespace-nowrap"
-                />
-              </div>
-            </div>
-          </>
-        ) : (
-          <NotReady title="환불 관리 화면은 준비 중입니다">
-            환불 API가 연결되면 집행 대기 · 실패 · 완료 환불이 이곳에
-            표시됩니다.
-          </NotReady>
-        )}
+          </div>
+        </div>
       </div>
 
       {dialog?.kind === "execute" && (
         <ExecuteModal
           refundId={dialog.refundId}
-          isPending={executeMutation.isPending}
+          isPending={pendingFor(dialog.refundId)}
           onClose={closeDialog}
-          onConfirm={confirmExecute}
+          onConfirm={(detail) => confirm(detail, false)}
         />
       )}
       {dialog?.kind === "retry" && (
         <RetryModal
           refundId={dialog.refundId}
-          isPending={retryMutation.isPending}
+          isPending={pendingFor(dialog.refundId)}
           onClose={closeDialog}
-          onConfirm={confirmRetry}
+          onConfirm={(detail) => confirm(detail, true)}
         />
       )}
     </ListViewWrapper>

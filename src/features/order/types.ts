@@ -1,335 +1,468 @@
 /*
-  주문 조회(거래 관리 › 주문 조회) 타입 — 시안 ui-admin-06a-orders.html rev.4에서 뽑은 잠정 타입.
-
-  백엔드에 어드민 주문 API가 아직 없다. 이 파일은 서버 응답이 아니라 **시안이 보여주는 값**에서
-  거꾸로 만든 것이라, API가 생기면 *Dto.java를 먼저 읽고 이 파일을 맞춘다(필드명·열거값 추측 금지).
-  `Rich`로 표현한 줄(배송·정산·상태 카드)은 시안의 문장 조각을 그대로 옮긴 표시용 구조이고,
-  실제 API에서는 구조화된 필드(택배사 · 송장 · 일시 · 출처 …)로 내려받아 화면에서 문장으로 조립한다.
+  주문 조회(거래 관리 › 주문 조회 · 06a) 타입 — 백엔드 `AdminOrderDto`(api/admin/transaction/dto)와 1:1.
+  열거값은 `domain/order/type/*` · `domain/payment/type/PaymentMethod`의 상수 이름을 그대로 옮겼다.
+  LocalDateTime은 시간대 표기 없는 ISO 문자열(`2026-10-03T10:12:00`)로 온다.
+  화면 전용 타입(URL 조건 · 표시 배지)은 맨 아래에 따로 둔다.
 */
 
 import type { BaseParams } from "@/common/types/page";
 
-// ── 공통 ────────────────────────────────────────────────
+// ── 열거값 ──────────────────────────────────────────────
 
-/** 상태색 4원칙: 조치 필요=경고 · 반송·추적 정지=위험 · 정상 진행=정보 · 완료=성공 · 취소·환불=중립 */
-export type OrderTone = "INFO" | "SUCCESS" | "WARNING" | "DANGER" | "NEUTRAL";
+/** `AdminOrderTab` */
+export type AdminOrderTab = "ALL" | "DELIVERY_ISSUE" | "CANCEL";
 
-/** 탭 3종 — 상태 6종은 탭이 아니라 상태 셀렉트가 맡는다(DS §6 탭은 4~5개까지) */
-export type OrderTab = "ALL" | "ANOMALY" | "CANCELED";
+/** `AdminOrderSearchType` */
+export type AdminOrderSearchType =
+  | "ALL"
+  | "ORDER_NUMBER"
+  | "SUB_ORDER_NUMBER"
+  | "RECIPIENT"
+  | "BRAND"
+  | "TRACKING_NUMBER"
+  | "PG_TX_ID";
 
-/** 상태 셀렉트(전체 탭) — 혼합 주문은 서버가 대표 단계 하나로 묶어 센다 */
-export type OrderStatusGroup =
-  "PAID" | "PREPARING" | "SHIPPING" | "DELIVERED" | "CONFIRMED" | "CANCELED";
+/** `AdminOrderSort` */
+export type AdminOrderSort =
+  "PAID_DESC" | "PAID_ASC" | "AMOUNT_DESC" | "ISSUE_OLDEST";
 
-/** 이상 유형 셀렉트(배송 이상 탭) */
-export type OrderAnomalyType =
-  "COLLECT_CHECK" | "TRACKING_STOPPED" | "RETURNING";
+/** `FulfillmentStatus` — PENDING(결제 대기)은 목록에 오지 않는다 */
+export type FulfillmentStatus =
+  | "PENDING"
+  | "NEW"
+  | "PREPARING"
+  | "SHIPPING"
+  | "RETURNING"
+  | "DELIVERED"
+  | "CONFIRMED"
+  | "CANCELLED";
 
-/** 취소 유형 셀렉트(취소 탭) — 시안에 없어 추가한 축 */
-export type OrderCancelType = "CONSUMER" | "FORCED" | "RETURNED";
+/** `TrackingAlert` */
+export type TrackingAlert = "PICKUP_UNCONFIRMED" | "STALLED";
 
-export type OrderSearchType =
-  "ORDER_NO" | "CONSUMER" | "INVOICE_NO" | "PG_TX_NO";
+/** `OrderBadgeTone` */
+export type OrderBadgeTone =
+  "NEUTRAL" | "INFO" | "WARNING" | "SUCCESS" | "DANGER";
+
+/** `PaymentMethod` */
+export type PaymentMethod = "CARD" | "EASY_PAY";
+
+/** `DeliveryCarrier` */
+export type DeliveryCarrier =
+  | "CJ"
+  | "EPOST"
+  | "HANJIN"
+  | "LOTTE"
+  | "LOGEN"
+  | "KYUNGDONG"
+  | "DAESIN"
+  | "ILYANG"
+  | "CU"
+  | "GS25"
+  | "HAPDONG"
+  | "WOORI"
+  | "COUPANG";
+
+/** `RefundTaskSource` */
+export type RefundTaskSource =
+  | "CANCEL_REQUEST_APPROVED"
+  | "SELLER_DIRECT_CANCEL"
+  | "RETURN_COMPLETED"
+  | "CLAIM_RETURN_PASSED"
+  | "OPERATOR_REASON"
+  | "USER_CANCEL_BEFORE_PREPARE"
+  | "CLAIM_PAYMENT_CANCELLED"
+  | "LOST_IN_TRANSIT";
+
+/** `RefundTaskOrigin` */
+export type RefundTaskOrigin = "PG_AUTO" | "OPERATOR";
+
+/** `RefundTaskStatus` */
+export type RefundTaskStatus =
+  "PENDING" | "EXECUTING" | "DONE" | "FAILED" | "VOID";
+
+/** `OperatorRefundReason` — 06a는 RECALL · POST_CONFIRM_DEFECT만 받는다(나머지 둘은 06b 전용) */
+export type OperatorRefundReason =
+  | "DISPUTE_ACCEPTED"
+  | "POST_CONFIRM_DEFECT"
+  | "RECALL"
+  | "INSPECTION_UNANSWERED";
+
+/** `SellerCancelReason` */
+export type SellerCancelReason =
+  "SOLD_OUT" | "DEFECT" | "UNDELIVERABLE_AREA" | "ETC";
+
+/** `ClaimReason` — B6은 DAMAGED_OR_DEFECTIVE · WRONG_OR_LATE_DELIVERY만 받는다 */
+export type ClaimReason =
+  | "CHANGE_OF_MIND"
+  | "ORDER_MISTAKE"
+  | "SIZE_MISMATCH"
+  | "DAMAGED_OR_DEFECTIVE"
+  | "WRONG_OR_LATE_DELIVERY"
+  | "OTHER";
+
+/** `ClaimType` */
+export type ClaimType = "RETURN" | "EXCHANGE";
+
+/** `ClaimStatus` */
+export type ClaimStatus =
+  | "PAYMENT_PENDING"
+  | "REQUESTED"
+  | "COLLECTING"
+  | "ARRIVED"
+  | "RECEIVED"
+  | "REFUND_PENDING"
+  | "RESHIP_READY"
+  | "RESHIPPING"
+  | "REJECT_HOLD"
+  | "COMPLETED";
+
+// ── 목록 ────────────────────────────────────────────────
+
+/** `GET /v1/admin/orders` 쿼리 — 빈 값은 보내지 않는다 */
+export interface AdminOrderListQuery extends BaseParams {
+  tab?: AdminOrderTab;
+  status?: FulfillmentStatus;
+  marketId?: number;
+  groupBuyId?: number;
+  creatorId?: number;
+  paymentMethod?: PaymentMethod;
+  trackingAlert?: TrackingAlert;
+  searchType?: AdminOrderSearchType;
+  keyword?: string;
+  sort?: AdminOrderSort;
+  /** 결제일 시작(포함) — yyyy-MM-dd */
+  from?: string;
+  /** 결제일 끝(포함) — yyyy-MM-dd */
+  to?: string;
+}
+
+/** `GET /v1/admin/orders/summary` 쿼리 — 탭 · 상태 · 이상 유형 · 정렬은 받지 않는다 */
+export type AdminOrderSummaryQuery = Omit<
+  AdminOrderListQuery,
+  "tab" | "status" | "trackingAlert" | "sort" | "page" | "size"
+>;
+
+/** `AdminOrderGroupSummary` */
+export interface AdminOrderGroupSummary {
+  deliveryGroupId: number;
+  subOrderNumber: string;
+  brandName: string;
+  status: FulfillmentStatus;
+  statusLabel: string;
+  statusTone: OrderBadgeTone;
+  trackingAlert: TrackingAlert | null;
+  trackingAlertLabel: string | null;
+  /** 발송 기한 — 공구 진행 중이면 null */
+  shipDueAt: string | null;
+  shipOverdue: boolean;
+  cancelRequested: boolean;
+}
+
+/** `AdminOrderListItem` */
+export interface AdminOrderListItem {
+  orderId: number;
+  orderNumber: string;
+  paidAt: string;
+  recipientName: string;
+  totalAmount: number;
+  groups: Array<AdminOrderGroupSummary>;
+  /** 운영자가 볼 것이 있는 하위주문 수 */
+  attentionCount: number;
+}
+
+/** `AdminOrderSummaryResponse` — ALL · DELIVERY_ISSUE · CANCEL 세 키가 항상 있다 */
+export interface AdminOrderSummary {
+  tabCounts: Record<AdminOrderTab, number>;
+}
+
+// ── 상세 ────────────────────────────────────────────────
+
+/** `AdminOrderConsumer` */
+export interface AdminOrderConsumer {
+  userId: number;
+  name: string | null;
+  email: string | null;
+}
+
+/** `AdminOrderRecipient` */
+export interface AdminOrderRecipient {
+  name: string;
+  phone: string;
+  zipCode: string;
+  address: string;
+  detailAddress: string;
+  memo: string | null;
+}
+
+/** `AdminOrderPayment` */
+export interface AdminOrderPayment {
+  paymentId: string;
+  /** `PaymentStatus` 이름 — PAID · CANCELLED … */
+  status: string;
+  methodLabel: string;
+  amount: number;
+  /** 부분 취소 누적액 */
+  cancelledAmount: number;
+  paidAt: string;
+}
+
+/** `AdminOrderShipping` */
+export interface AdminOrderShipping {
+  shipDueAt: string | null;
+  shipDueBusinessDays: number;
+  shipOverdue: boolean;
+  overdueNoticeCount: number;
+  prepareStartedAt: string | null;
+  shippedAt: string | null;
+  carrier: DeliveryCarrier | null;
+  carrierLabel: string | null;
+  trackingNumber: string | null;
+  trackingAlert: TrackingAlert | null;
+  trackingAlertLabel: string | null;
+  lastTrackingAt: string | null;
+  returnDetectedAt: string | null;
+  returnCompletedAt: string | null;
+  deliveredAt: string | null;
+  /** 「자동 확인」 · 「운영자 정정」 · 「운영자 처리 · 추적 정지」 */
+  deliveredSourceLabel: string | null;
+}
+
+/** `AdminOrderPurchaseConfirm` */
+export interface AdminOrderPurchaseConfirm {
+  paused: boolean;
+  remainingDays: number | null;
+  /** 확정 예정 — 정지 중이면 null */
+  dueAt: string | null;
+  confirmedAt: string | null;
+}
+
+/** `AdminOrderCancel` */
+export interface AdminOrderCancel {
+  cancelledAt: string;
+  cancelTypeLabel: string;
+  reasonLabel: string | null;
+  reasonDetail: string | null;
+}
+
+/** `AdminOrderCancelRequest` */
+export interface AdminOrderCancelRequest {
+  cancelRequestId: number;
+  reasonLabel: string;
+  reasonDetail: string | null;
+  requestedAt: string;
+  respondDueAt: string;
+  orderProductIds: Array<number>;
+}
+
+/** `AdminOrderItem` */
+export interface AdminOrderItem {
+  orderProductId: number;
+  productName: string;
+  optionName: string | null;
+  quantity: number;
+  returnedQuantity: number;
+  /** 주문 단가 */
+  price: number;
+  /** `OrderProductStatus` 이름 — PENDING · PAID · PURCHASE_CONFIRMED · CANCELLED · RETURNED */
+  status: string;
+  cancelTypeLabel: string | null;
+}
+
+/** `AdminOrderRefund` */
+export interface AdminOrderRefund {
+  refundTaskId: number;
+  refundNo: string;
+  source: RefundTaskSource;
+  origin: RefundTaskOrigin;
+  originLabel: string;
+  amount: number;
+  status: RefundTaskStatus;
+  lastError: string | null;
+  executedAt: string | null;
+  createdAt: string;
+}
+
+/** `AdminOrderActiveClaim` */
+export interface AdminOrderActiveClaim {
+  claimId: number;
+  claimNumber: string;
+  type: ClaimType;
+  status: ClaimStatus;
+  statusLabel: string;
+}
+
+/** `AdminOrderHistory` */
+export interface AdminOrderHistory {
+  eventType: string;
+  label: string;
+  /** `FulfillmentActorType` 이름 — SYSTEM · SELLER · ADMIN · CONSUMER · TRACKER */
+  actorType: string;
+  detail: string | null;
+  occurredAt: string;
+}
+
+/** `AdminOrderSettlementClawback` */
+export interface AdminOrderSettlementClawback {
+  clawbackNumber: string;
+  /** BRAND · CREATOR */
+  side: string;
+  /** PENDING · APPLIED · UNRECOVERABLE */
+  status: string;
+  statusLabel: string;
+  amount: number;
+}
+
+/** `AdminOrderSettlement` */
+export interface AdminOrderSettlement {
+  settlementId: number;
+  settlementNumber: string;
+  status: string;
+  statusLabel: string;
+  confirmedAt: string | null;
+  settledAmount: number;
+  rewardAmount: number;
+  clawbacks: Array<AdminOrderSettlementClawback>;
+}
+
+/** `AdminOrderActions` — 버튼 노출의 정본. 거짓이면 그리지 않는다 */
+export interface AdminOrderActions {
+  canCorrectDeliveredAt: boolean;
+  canRegisterShipment: boolean;
+  canCancel: boolean;
+  canEnqueueRefund: boolean;
+  canOpenDefectClaim: boolean;
+  canMarkLost: boolean;
+  canMarkDelivered: boolean;
+}
+
+/** `AdminOrderGroupDetail` */
+export interface AdminOrderGroupDetail {
+  deliveryGroupId: number;
+  subOrderNumber: string;
+  marketId: number;
+  brandName: string;
+  groupBuyNumber: string | null;
+  status: FulfillmentStatus;
+  statusLabel: string;
+  statusTone: OrderBadgeTone;
+  shipping: AdminOrderShipping;
+  purchaseConfirm: AdminOrderPurchaseConfirm | null;
+  cancel: AdminOrderCancel | null;
+  cancelRequest: AdminOrderCancelRequest | null;
+  items: Array<AdminOrderItem>;
+  refunds: Array<AdminOrderRefund>;
+  activeClaims: Array<AdminOrderActiveClaim>;
+  /** 오래된순 */
+  history: Array<AdminOrderHistory>;
+  settlement: AdminOrderSettlement | null;
+  actions: AdminOrderActions;
+}
+
+/** `AdminOrderDetailResponse` */
+export interface AdminOrderDetail {
+  orderId: number;
+  orderNumber: string;
+  orderStatus: string;
+  paidAt: string;
+  consumer: AdminOrderConsumer;
+  recipient: AdminOrderRecipient;
+  payment: AdminOrderPayment | null;
+  inquiryCount: number;
+  groups: Array<AdminOrderGroupDetail>;
+}
+
+// ── 조치 요청 ───────────────────────────────────────────
+
+/** `AdminMarkLostRequest` */
+export interface MarkLostRequest {
+  reason: string;
+}
+
+/** `AdminMarkDeliveredRequest` */
+export interface MarkDeliveredRequest {
+  /** yyyy-MM-ddTHH:mm:ss */
+  deliveredAt: string;
+  reason: string;
+}
+
+/** `AdminCorrectDeliveredAtRequest` */
+export interface CorrectDeliveredAtRequest {
+  /** yyyy-MM-ddTHH:mm:ss */
+  deliveredAt: string;
+  reason: string;
+}
+
+/** `AdminShipmentRequest` */
+export interface ShipmentRequest {
+  carrier: DeliveryCarrier;
+  trackingNumber: string;
+  note: string;
+}
+
+/** `AdminCancelRequest` */
+export interface CancelCommand {
+  reasonCode: SellerCancelReason;
+  consumerMessage: string;
+}
+
+/** `AdminOperatorRefundRequest` */
+export interface OperatorRefundRequest {
+  reason: OperatorRefundReason;
+  amount: number;
+  detail: string;
+}
+
+/** `AdminDefectClaimItem` */
+export interface DefectItem {
+  orderProductId: number;
+  quantity: number;
+}
+
+/** `AdminDefectClaimRequest` */
+export interface DefectClaimRequest {
+  items: Array<DefectItem>;
+  reasonCode: ClaimReason;
+  detail: string;
+  evidenceImageUrls: Array<string>;
+}
+
+/** `AdminDefectClaimResponse` */
+export interface DefectClaimResponse {
+  requestId: number;
+  claimIds: Array<number>;
+}
+
+// ── 화면 전용 ───────────────────────────────────────────
 
 export type OrderPeriod =
   "TODAY" | "WEEK" | "MONTH" | "QUARTER" | "CUSTOM" | "ALL";
 
-export type OrderSort =
-  "PAID_DESC" | "PAID_ASC" | "AMOUNT_DESC" | "ANOMALY_OLDEST";
-
-export type OrderPayMethod = "CARD" | "KAKAOPAY" | "NAVERPAY" | "TRANSFER";
-
-/** 표시용 문장 조각 — 굵게·흐리게·경고색·숫자 정렬·배지·태그를 한 줄 안에 섞는다 */
-export type RichSeg =
-  | string
-  | {
-      t: string;
-      /** b 굵게 · dim 흐림(n-400) · bdim 굵은 흐림 · sub 보조(n-500) · warn 경고색 · bwarn 굵은 경고색 · num 숫자 정렬 */
-      k?: "b" | "dim" | "sub" | "warn" | "num" | "bwarn" | "bdim";
-    }
-  | { badge: string; tone: OrderTone }
-  | { tag: string };
-export type Rich = Array<RichSeg>;
-
-// ── 목록 ────────────────────────────────────────────────
-
+/**
+ * 주소창 조건 — 전부 문자열로 읽힌다(`normalizeOrderParams`가 바로잡는다).
+ * `status`는 탭마다 다른 축이다: 전체 탭은 `FulfillmentStatus`, 배송 이상 탭은 이상 유형
+ * (`TrackingAlert` 둘 + 반송 중 = `RETURNING` 상태). 취소 탭은 셀렉트가 없다.
+ */
 export interface OrderListParams extends BaseParams {
-  tab: OrderTab;
-  /** 탭에 따라 상태(전체) · 이상 유형(배송 이상) · 취소 유형(취소) 중 하나 */
+  tab: AdminOrderTab;
   status: string;
-  searchType: OrderSearchType;
+  searchType: AdminOrderSearchType;
   keyword: string;
   period: OrderPeriod;
   /** period=CUSTOM일 때만 쓴다 — yyyy-MM-dd */
   from: string;
   to: string;
-  brandId: string;
+  marketId: string;
   groupBuyId: string;
-  influencerId: string;
-  payMethod: string;
-  sort: OrderSort;
-}
-
-/** 서버로 나가는 조회 조건 — 기간은 화면이 yyyy-MM-dd로 풀어서 보낸다(빈 문자열이면 전체 기간) */
-export interface OrderListQuery extends Omit<
-  OrderListParams,
-  "period" | "from" | "to"
-> {
-  paidFrom: string;
-  paidTo: string;
+  /** 고르는 셀렉트가 없다 — 다른 화면에서 넘어온 값만 칩으로 보인다 */
+  creatorId: string;
+  paymentMethod: string;
+  sort: AdminOrderSort;
+  /** 상세 모달로 바로 연다(예외 관리 「열기」 · `?orderId=`) */
+  orderId: string;
 }
 
 export interface OrderBadgeData {
   label: string;
-  tone: OrderTone;
-}
-
-export interface OrderSubSummary {
-  /** `-01` */
-  suffix: string;
-  brandName: string;
-  /** "글로우 크림 50ml · 1건" */
-  itemSummary: string;
-  amount: number;
-  status: OrderBadgeData;
-  /** "CJ 6512****8823" · "송장 미등록" */
-  shipNote: string;
-}
-
-export interface OrderListItem {
-  orderNo: string;
-  /** 결제일시 — yyyy-MM-ddTHH:mm:ss */
-  paidAt: string;
-  consumerMasked: string;
-  /** 단일 브랜드명 또는 "2개 브랜드" */
-  brandLabel: string;
-  groupBuyTitle: string;
-  payAmount: number;
-  status: OrderBadgeData;
-  /** 상태 배지 아래 한 줄 — "배송중 · 상품준비중" · "PG 자동 환불" */
-  statusNote: string | null;
-  statusGroup: OrderStatusGroup;
-  /** 배송 이상 열 — 상태와 다른 축(진행 단계 vs 그 단계에서 벌어진 사고) */
-  anomaly: (OrderBadgeData & { note: string }) | null;
-  /** 하위주문이 둘 이상이면 행 확장을 연다 — 1단에서 끊는다 */
-  subOrders: Array<OrderSubSummary>;
-}
-
-export interface OrderListSummary {
-  /** 총 N건 옆에 붙는 건수 — 조건이 걸리면 그 조건 안에서 센다 */
-  anomalyCount: number;
-  delayedCount: number;
-  /** 배송 이상 탭 · 취소 탭의 유형별 건수 */
-  typeCounts: Array<{ label: string; count: number }>;
-}
-
-export interface OrderListResponse {
-  content: Array<OrderListItem>;
-  pageInfo: {
-    currentPage: number;
-    totalPages: number;
-    totalResults: number;
-    limit: number;
-    hasNext: boolean;
-  };
-  summary: OrderListSummary;
-}
-
-/** 탭·셀렉트 건수 — 필터에 영향을 받지 않는 전체 기준 */
-export interface OrderTabSummary {
-  tabCounts: Record<OrderTab, number>;
-  statusCounts: Record<OrderStatusGroup, number>;
-  anomalyCounts: Record<OrderAnomalyType, number>;
-  cancelCounts: Record<OrderCancelType, number>;
-}
-
-export interface OrderFilterOptions {
-  brands: Array<{ id: string; name: string }>;
-  /** 공구는 브랜드에 종속 — brandId 없이는 비어 있다 */
-  groupBuys: Array<{ id: string; title: string; brandId: string }>;
-  influencers: Array<{ id: string; name: string }>;
-  payMethods: Array<{ value: OrderPayMethod; label: string }>;
-}
-
-// ── 상세 ────────────────────────────────────────────────
-
-export interface OrderItemLine {
-  id: string;
-  name: string;
-  option: string;
-  /** 교환 — 새 옵션 */
-  optionTo?: string;
-  qty: number;
-  status: OrderBadgeData;
-  /** 항목 배지 옆에 하나 더 붙는 배지(환불 대기 등) */
-  extraBadge?: OrderBadgeData;
-  price: number;
-  /** 정산 확정 여부 — 환불·반품 시 클로백 */
-  settled: boolean;
-}
-
-export interface OrderSubOrder {
-  suffix: string;
-  brandName: string;
-  status: OrderBadgeData;
-  amount: number;
-  items: Array<OrderItemLine>;
-}
-
-export interface OrderPayment {
-  kind: "ORIGINAL" | "EXTRA";
-  pgTxNo: string;
-  /** "카드 · 신한 (일시불)" */
-  method: string;
-  amount: number;
-  /** yyyy-MM-ddTHH:mm:ss */
-  paidAt: string;
-  /** 추가 결제 사유 — "교환 재발송비" */
-  purpose?: string;
-  cancelable: number;
-}
-
-export interface OrderShippingCard {
-  brandName?: string;
-  status?: OrderBadgeData;
-  /** 카드 머리 오른쪽 — 택배사 · 송장 · 출처 */
-  head?: Rich;
-  rows: Array<{
-    label: string;
-    main: Rich;
-    side?: Rich;
-    tone?: "warn";
-  }>;
-}
-
-export interface OrderHistoryEntry {
-  tone: OrderTone;
-  title: string;
-  /** "시스템 · 택배사 상태 코드 09.12 13:40" — 행위자 · 근거 · 일시 */
-  meta: string;
-}
-
-export interface OrderMetaRow {
-  label: string;
-  value: Rich;
-  tone?: "warn";
-}
-
-export type OrderBannerData =
-  | { kind: "RETURN_REFUNDED"; refundAmount: number; refundAt: string }
-  | { kind: "PROXY_AVAILABLE"; alertCount: number; lastAlertAt: string };
-
-export type OrderRailNotice =
-  | "RETURNED"
-  | "CANCEL_REQUESTED"
-  | "EXCHANGING"
-  | "RETURN_OPENED"
-  | "CANCELED"
-  | "NO_ACTION";
-
-export interface OrderActions {
-  /** 운영자 사유 환불 — 이 화면은 환불 대기 편입까지, 집행은 환불 관리 */
-  refund: boolean;
-  /** 직권 취소 — 배송 전 하위주문만 대상 */
-  forceCancel: { targetBrandNames: Array<string>; clawback: boolean } | null;
-  /** 발송 기한 경과 + 자동 알림 3회 무응답일 때만 열린다 */
-  proxyInvoice: { overdueBrandName: string } | null;
-  /** 소비자 수령일 이의 접수 시 — 배송완료일 정정 */
-  correctDeliveredAt: {
-    currentDate: string;
-    sourceLabel: string;
-    claimedDate: string;
-    evidenceOptions: Array<string>;
-    /** 배송완료일 + N일 = 구매확정 예정일 */
-    confirmDays: number;
-  } | null;
-  /** 구매확정 후 하자 — 반품 대신 열기 */
-  openReturn: {
-    itemIds: Array<string>;
-    evidenceOptions: Array<string>;
-    suggestedNoticeDate: string;
-    withdrawalDeadline: string;
-    expired: boolean;
-    settledRoundLabel: string | null;
-  } | null;
-}
-
-export interface OrderCancelRequestBlock {
-  requestedAt: string;
-  reason: string;
-  /** 응답 마감 · 영업일 */
-  respondBy: string;
-  respondBusinessDays: number;
-  autoApproveText: Rich;
-}
-
-export interface OrderDetail {
-  orderNo: string;
-  /** 기준 시각 — 이력에 새 줄을 남길 때의 시각(yyyy-MM-ddTHH:mm:ss) */
-  asOf: string;
-  inquiryCount: number;
-  banner: OrderBannerData | null;
-  groupBuyTitle: string;
-  influencerName: string;
-  /** 하위주문 블록 머리 오른쪽에 덧붙는 한 줄 — 교환 사유 · 귀책 */
-  claimNote: string | null;
-
-  payments: Array<OrderPayment>;
-  paymentStatus: OrderBadgeData;
-  /** 취소 가능 잔액 옆 보조 — "부분 환불 없음" · "전액 환불 09.16" */
-  cancelableNote: string | null;
-
-  subOrders: Array<OrderSubOrder>;
-  shipping: {
-    title: string | null;
-    cards: Array<OrderShippingCard>;
-    hint: Rich | null;
-  };
-  /** 정산 반영 블록 — 취소 요청이 걸린 주문은 이 자리에 취소 요청 블록이 온다 */
-  settlement: Array<{ label: string; value: Rich }> | null;
-  cancelRequest: OrderCancelRequestBlock | null;
-  history: Array<OrderHistoryEntry>;
-
-  statusCard: {
-    label: string;
-    tone: OrderTone;
-    rows: Array<OrderMetaRow>;
-  };
-  actions: OrderActions;
-  railNotice: OrderRailNotice | null;
-  /** 반품·교환 상세로 가는 링크 — 교환 진행 중 */
-  claimLink: boolean;
-}
-
-// ── 쓰기 ────────────────────────────────────────────────
-
-export interface OrderProxyInvoiceRequest {
-  carrier: string;
-  invoiceNo: string;
-  reason: string;
-}
-
-export interface OrderCorrectDeliveredAtRequest {
-  evidence: string;
-  evidenceText: string;
-  /** yyyy-MM-dd */
-  deliveredAt: string;
-}
-
-export interface OrderRefundRequest {
-  items: Array<{ itemId: string; qty: number }>;
-  category: "RECALL" | "OBJECTION_ACCEPTED" | "OTHER";
-  reason: string;
-}
-
-export interface OrderOpenReturnRequest {
-  itemIds: Array<string>;
-  defectType: "DEFECT" | "MISMATCH" | "WRONG_ITEM";
-  evidence: string;
-  /** yyyy-MM-dd */
-  noticedAt: string;
-}
-
-export interface OrderForceCancelRequest {
-  reason: string;
+  tone: OrderBadgeTone;
 }

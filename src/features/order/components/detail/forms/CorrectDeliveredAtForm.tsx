@@ -1,7 +1,6 @@
 import OrderBtn from "@/features/order/components/shared/OrderBtn";
 import {
   FORM_INPUT_CLASS,
-  FORM_SELECT_CLASS,
   FORM_TEXTAREA_CLASS,
 } from "@/features/order/components/shared/styles";
 import {
@@ -10,91 +9,129 @@ import {
   FormLabel,
   FormShell,
   FormWarn,
+  TargetGroupField,
 } from "@/features/order/components/detail/forms/FormParts";
 import { RailCard, RailText } from "@/features/order/components/detail/parts";
-import { MODAL_SELECT_CHEVRON_STYLE } from "@/features/order/constants/params";
 import { useCorrectDeliveredAt } from "@/features/order/hooks/useOrderMutations";
-import type { OrderActions } from "@/features/order/types";
-import { parseDotDate, toDotDate } from "@/features/order/utils/format";
+import type {
+  AdminOrderDetail,
+  AdminOrderGroupDetail,
+} from "@/features/order/types";
+import {
+  parseDotDate,
+  toDotDate,
+  toLocalDateTime,
+} from "@/features/order/utils/format";
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
 /**
- * 시안 B3 — 배송완료일 정정. 직권 배송완료를 지우고 이것으로 바꿨다: 택배사가 추적 연동 목록 하나로
- * 묶여 추적이 원래 없는 건이 생기지 않으므로, 남는 개입은 「이미 찍힌 날짜가 틀렸다는 이의」 하나다.
- * 근거 필수 · 정정하면 구매확정 예정일과 반품·교환 가능 기간이 함께 움직인다는 사실을 버튼 바로 위에 적는다.
+ * 시안 B3 — 배송완료일 정정(배송완료 상태만 · `actions.canCorrectDeliveredAt`). 소비자 수령일 이의를
+ * 받아들일 때만 쓴다. 정정 사유 필수(300자) · 정정하면 구매확정 예정일과 반품·교환 가능 기간이
+ * 함께 움직인다는 사실을 버튼 바로 위에 적는다.
+ * 서버는 수령 「일시」를 받는다 — 날짜만 고치고 시각은 원래 값을 그대로 쓰되, 지금보다 뒤가 되면 지금으로 맞춘다
+ * (발송 이후 · 지금 이전이 아니면 400).
+ * 시안의 「근거」 셀렉트(1:1 문의 · 스레드 · 증빙 사진)는 받을 필드가 없어 사유 입력 하나로 합쳤다.
  */
 export default function CorrectDeliveredAtForm(props: {
-  orderNo: string;
-  config: NonNullable<OrderActions["correctDeliveredAt"]>;
+  detail: AdminOrderDetail;
+  groups: Array<AdminOrderGroupDetail>;
+  onClose: () => void;
 }) {
-  const { orderNo, config } = props;
-  const [evidence, setEvidence] = useState(config.evidenceOptions[0] ?? "");
-  const [evidenceText, setEvidenceText] = useState("");
-  // 소비자가 주장하는 수령일에서 출발한다 — 운영자가 이의를 받아들일 때 그 값이 대개 정답이다
-  const [dateText, setDateText] = useState(toDotDate(config.claimedDate));
+  const { detail, groups, onClose } = props;
+  const [groupId, setGroupId] = useState(groups[0]?.deliveryGroupId ?? 0);
+  const group = groups.find((g) => g.deliveryGroupId === groupId);
+  const currentAt = group?.shipping.deliveredAt ?? null;
+  const [dateText, setDateText] = useState(
+    currentAt ? toDotDate(currentAt) : ""
+  );
+  const [reason, setReason] = useState("");
   const { mutateAsync, isPending } = useCorrectDeliveredAt();
 
+  const current = currentAt ? dayjs(currentAt) : null;
   const parsed = parseDotDate(dateText);
-  const current = dayjs(config.currentDate);
-  const unchanged = parsed?.isSame(current, "day") ?? false;
+  const unchanged = (current && parsed?.isSame(current, "day")) ?? false;
   const formatInvalid = dateText.length > 0 && !parsed;
   const canSubmit =
-    evidenceText.trim().length > 0 && parsed !== null && !unchanged;
+    groupId > 0 && reason.trim().length > 0 && parsed !== null && !unchanged;
 
-  const before = current.add(config.confirmDays, "day").format("MM.DD");
-  const after = (parsed ?? dayjs(config.claimedDate))
-    .add(config.confirmDays, "day")
-    .format("MM.DD");
+  const target = (() => {
+    if (!parsed || !current) return null;
+    const withTime = parsed
+      .hour(current.hour())
+      .minute(current.minute())
+      .second(current.second());
+    return withTime.isAfter(dayjs()) ? dayjs() : withTime;
+  })();
+
+  // 구매확정 예정도 같은 만큼 움직인다(정지 중 · 확정 후면 예정이 없다)
+  const dueAt = group?.purchaseConfirm?.dueAt ?? null;
+  const shiftedDue =
+    dueAt && target && current
+      ? dayjs(dueAt).add(target.diff(current, "day"), "day")
+      : null;
+  const periodChange =
+    target && current && target.isAfter(current, "day")
+      ? "늘어납니다"
+      : "줄어듭니다";
 
   const handleSubmit = async () => {
-    if (!parsed) return;
+    if (!target) return;
     try {
       await mutateAsync({
-        orderNo,
-        body: {
-          evidence,
-          evidenceText: evidenceText.trim(),
-          deliveredAt: parsed.format("YYYY-MM-DD"),
-        },
+        orderId: detail.orderId,
+        deliveryGroupId: groupId,
+        body: { deliveredAt: toLocalDateTime(target), reason: reason.trim() },
       });
-      toast.success(
-        "배송완료일을 정정했습니다 — 브랜드와 소비자에게 통지됩니다"
-      );
+      toast.success("배송완료일을 정정했습니다");
+      onClose();
     } catch {
-      toast.error(
-        "배송완료일 정정에 실패했습니다. 잠시 후 다시 시도해 주세요."
-      );
+      // 날짜 범위 · 상태 변경은 apiInstance가 서버 문구로 알린다
     }
   };
 
   return (
-    <RailCard title="배송완료일 정정">
-      <FormShell>
-        <FormLabel required htmlFor="correct-evidence">
-          근거
-        </FormLabel>
-        <select
-          id="correct-evidence"
-          className={FORM_SELECT_CLASS}
-          style={MODAL_SELECT_CHEVRON_STYLE}
-          value={evidence}
-          onChange={(event) => setEvidence(event.target.value)}
+    <RailCard
+      title="배송완료일 정정"
+      action={
+        <button
+          type="button"
+          onClick={onClose}
+          className="cursor-pointer text-[10px] font-normal text-sz-n-500 hover:text-sz-n-700"
         >
-          {config.evidenceOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
+          접기
+        </button>
+      }
+    >
+      <FormShell>
+        {groups.length > 1 && (
+          <TargetGroupField
+            id="correct-group"
+            groups={groups}
+            value={groupId}
+            onChange={(id) => {
+              setGroupId(id);
+              const next = groups.find((g) => g.deliveryGroupId === id);
+              setDateText(
+                next?.shipping.deliveredAt
+                  ? toDotDate(next.shipping.deliveredAt)
+                  : ""
+              );
+            }}
+          />
+        )}
+        <FormLabel required htmlFor="correct-reason">
+          정정 사유
+        </FormLabel>
         <textarea
-          aria-label="근거 내용"
-          className={cn(FORM_TEXTAREA_CLASS, "mt-[5px]")}
-          placeholder="정정 근거를 적습니다"
-          value={evidenceText}
-          onChange={(event) => setEvidenceText(event.target.value)}
+          id="correct-reason"
+          maxLength={300}
+          className={FORM_TEXTAREA_CLASS}
+          placeholder="이의 경로(1:1 문의 번호 등)와 확인한 근거를 적습니다"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
         />
 
         <FormLabel required htmlFor="correct-date">
@@ -113,21 +150,28 @@ export default function CorrectDeliveredAtForm(props: {
           onChange={(event) => setDateText(event.target.value)}
         />
         {formatInvalid && (
-          <FormError>
-            날짜 형식이 올바르지 않습니다(예: {toDotDate(config.claimedDate)}).
-          </FormError>
+          <FormError>날짜 형식이 올바르지 않습니다(예: 2026.09.18).</FormError>
         )}
-        <FormHint>
-          현재 값 {toDotDate(config.currentDate)} ({config.sourceLabel})
-        </FormHint>
+        {currentAt && (
+          <FormHint>
+            현재 값 {toDotDate(currentAt)}
+            {group?.shipping.deliveredSourceLabel &&
+              ` (${group.shipping.deliveredSourceLabel})`}
+          </FormHint>
+        )}
 
         <FormWarn>
           정정하면{" "}
-          <b>
-            구매확정 예정일이 {before} → {after}
-          </b>
-          로 바뀌고 <b>반품·교환 가능 기간</b>도 함께 늘어납니다. 브랜드와
-          소비자에게 통지됩니다.
+          {shiftedDue && dueAt ? (
+            <b>
+              구매확정 예정일이 {dayjs(dueAt).format("MM.DD")} →{" "}
+              {shiftedDue.format("MM.DD")}
+            </b>
+          ) : (
+            <b>구매확정 예정일</b>
+          )}
+          {shiftedDue ? "로 바뀌고 " : "과 "}
+          <b>반품·교환 가능 기간</b>도 함께 {periodChange}.
         </FormWarn>
         <OrderBtn
           variant="primary"

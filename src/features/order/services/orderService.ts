@@ -1,93 +1,139 @@
-import { ApiNotReadyError, DEV_MOCK_ENABLED } from "@/common/utils/devMock";
-import {
-  mockCorrectDeliveredAt,
-  mockForceCancel,
-  mockGetDetail,
-  mockGetFilterOptions,
-  mockGetList,
-  mockGetSummary,
-  mockOpenReturn,
-  mockProxyInvoice,
-  mockRefund,
-  mockToday,
-} from "@/features/order/services/orderMock";
+import { apiInstance } from "@/common/lib/apiInstance";
+import type { PageResponse } from "@/common/types/page";
+import { paramsToSearchParams } from "@/common/utils/paramsToSearchParams";
 import type {
-  OrderCorrectDeliveredAtRequest,
-  OrderDetail,
-  OrderFilterOptions,
-  OrderForceCancelRequest,
-  OrderListQuery,
-  OrderListResponse,
-  OrderOpenReturnRequest,
-  OrderProxyInvoiceRequest,
-  OrderRefundRequest,
-  OrderTabSummary,
+  AdminOrderDetail,
+  AdminOrderListItem,
+  AdminOrderListQuery,
+  AdminOrderSummary,
+  AdminOrderSummaryQuery,
+  CancelCommand,
+  CorrectDeliveredAtRequest,
+  DefectClaimRequest,
+  DefectClaimResponse,
+  MarkDeliveredRequest,
+  MarkLostRequest,
+  OperatorRefundRequest,
+  ShipmentRequest,
 } from "@/features/order/types";
 
-const FEATURE = "주문 조회";
+const BASE = "/admin/orders";
+const groupPath = (deliveryGroupId: number, action: string) =>
+  `${BASE}/groups/${deliveryGroupId}/${action}`;
 
 /**
- * 어드민 주문 API — **백엔드에 아직 없다.** 개발 서버에서만 목업이 채우고 배포본은 「준비 중」이다.
- * API가 생기면 각 함수의 본문만 `apiInstance` 호출로 바꾼다(엔드포인트 후보는 각 함수 주석).
+ * 어드민 주문 API — 백엔드 `AdminOrderController`와 1:1.
+ * 조치는 전부 하위주문(`deliveryGroupId`) 단위이고, 성공하면 갱신된 주문 상세를 돌려준다(B6만 생성 id).
  */
 export const orderService = {
-  /** 결제일 프리셋의 기준일 — 목업은 시안 기준일(2026.09.16)로 고정한다 */
-  getToday: (): Date => (DEV_MOCK_ENABLED ? mockToday() : new Date()),
-
-  /** GET /admin/orders — 탭·상태·검색·기간·상세 조건·정렬·페이지 */
-  getList: async (query: OrderListQuery): Promise<OrderListResponse> => {
-    if (!DEV_MOCK_ENABLED) throw new ApiNotReadyError(FEATURE);
-    return mockGetList(query);
+  getList: async (query: AdminOrderListQuery) => {
+    const { data } = await apiInstance.get<PageResponse<AdminOrderListItem>>(
+      BASE,
+      { params: paramsToSearchParams(query) }
+    );
+    return data;
   },
 
-  /** GET /admin/orders/summary — 탭 · 상태 셀렉트 건수(필터와 무관한 전체 기준) */
-  getSummary: async (): Promise<OrderTabSummary> => {
-    if (!DEV_MOCK_ENABLED) throw new ApiNotReadyError(FEATURE);
-    return mockGetSummary();
+  /** 탭 건수 — 목록과 같은 조건(탭 · 상태 · 이상 유형 · 정렬 제외) */
+  getSummary: async (query: AdminOrderSummaryQuery) => {
+    const { data } = await apiInstance.get<AdminOrderSummary>(
+      `${BASE}/summary`,
+      { params: paramsToSearchParams(query) }
+    );
+    return data;
   },
 
-  /** GET /admin/orders/filter-options — 브랜드 · 공구(브랜드 종속) · 인플루언서 · 결제수단 */
-  getFilterOptions: async (): Promise<OrderFilterOptions> => {
-    if (!DEV_MOCK_ENABLED) throw new ApiNotReadyError(FEATURE);
-    return mockGetFilterOptions();
+  getDetail: async (orderId: number) => {
+    const { data } = await apiInstance.get<AdminOrderDetail>(
+      `${BASE}/${orderId}`
+    );
+    return data;
   },
 
-  /** GET /admin/orders/{orderNo} */
-  getDetail: async (orderNo: string): Promise<OrderDetail> => {
-    if (!DEV_MOCK_ENABLED) throw new ApiNotReadyError(FEATURE);
-    return mockGetDetail(orderNo);
+  /**
+   * 툴바 「처리 지연 N건」 — 06d가 소유하는 숫자라 예외 관리 요약의 `tabCounts.DELAY`만 읽는다.
+   * 필터와 무관한 전체 건수다.
+   */
+  getDelayCount: async () => {
+    const { data } = await apiInstance.get<{
+      tabCounts: Record<string, number>;
+    }>("/admin/order-exceptions/summary");
+    return data.tabCounts.DELAY ?? 0;
   },
 
-  /** POST /admin/orders/{orderNo}/proxy-invoice — 송장 대행 등록 */
-  proxyInvoice: async (orderNo: string, body: OrderProxyInvoiceRequest) => {
-    if (!DEV_MOCK_ENABLED) throw new ApiNotReadyError(FEATURE);
-    return mockProxyInvoice(orderNo, body);
+  /** 추적 정지 종결 — 분실 처리(화면 진입점은 아직 없다) */
+  markLost: async (deliveryGroupId: number, body: MarkLostRequest) => {
+    const { data } = await apiInstance.post<AdminOrderDetail>(
+      groupPath(deliveryGroupId, "lost"),
+      body
+    );
+    return data;
   },
 
-  /** POST /admin/orders/{orderNo}/delivered-at — 배송완료일 정정 */
-  correctDeliveredAt: async (
-    orderNo: string,
-    body: OrderCorrectDeliveredAtRequest
+  /** 추적 정지 종결 — 배송완료 처리(화면 진입점은 아직 없다) */
+  markDelivered: async (
+    deliveryGroupId: number,
+    body: MarkDeliveredRequest
   ) => {
-    if (!DEV_MOCK_ENABLED) throw new ApiNotReadyError(FEATURE);
-    return mockCorrectDeliveredAt(orderNo, body);
+    const { data } = await apiInstance.post<AdminOrderDetail>(
+      groupPath(deliveryGroupId, "delivered"),
+      body
+    );
+    return data;
   },
 
-  /** POST /admin/orders/{orderNo}/refund-requests — 운영자 사유 환불(환불 대기 편입) */
-  refund: async (orderNo: string, body: OrderRefundRequest) => {
-    if (!DEV_MOCK_ENABLED) throw new ApiNotReadyError(FEATURE);
-    return mockRefund(orderNo, body);
+  /** B3 배송완료일 정정 */
+  correctDeliveredAt: async (
+    deliveryGroupId: number,
+    body: CorrectDeliveredAtRequest
+  ) => {
+    const { data } = await apiInstance.patch<AdminOrderDetail>(
+      groupPath(deliveryGroupId, "delivered-at"),
+      body
+    );
+    return data;
   },
 
-  /** POST /admin/orders/{orderNo}/open-return — 구매확정 후 하자 · 반품 대신 열기 */
-  openReturn: async (orderNo: string, body: OrderOpenReturnRequest) => {
-    if (!DEV_MOCK_ENABLED) throw new ApiNotReadyError(FEATURE);
-    return mockOpenReturn(orderNo, body);
+  /** B4 운영자 대행 송장 등록 — 송장 형식 · 중복은 폼이 직접 그려서 토스트를 끈다 */
+  registerShipment: async (deliveryGroupId: number, body: ShipmentRequest) => {
+    const { data } = await apiInstance.post<AdminOrderDetail>(
+      groupPath(deliveryGroupId, "shipment"),
+      body,
+      { suppressErrorToast: true }
+    );
+    return data;
   },
 
-  /** POST /admin/orders/{orderNo}/force-cancel — 직권 취소(배송 전 하위주문) */
-  forceCancel: async (orderNo: string, body: OrderForceCancelRequest) => {
-    if (!DEV_MOCK_ENABLED) throw new ApiNotReadyError(FEATURE);
-    return mockForceCancel(orderNo, body);
+  /** B4 · B5 운영자 대행 직권 취소(미발송분) */
+  cancel: async (deliveryGroupId: number, body: CancelCommand) => {
+    const { data } = await apiInstance.post<AdminOrderDetail>(
+      groupPath(deliveryGroupId, "cancel"),
+      body
+    );
+    return data;
+  },
+
+  /** B5 운영자 사유 환불 편입 — 집행은 환불 관리 */
+  enqueueRefund: async (
+    deliveryGroupId: number,
+    body: OperatorRefundRequest
+  ) => {
+    const { data } = await apiInstance.post<AdminOrderDetail>(
+      groupPath(deliveryGroupId, "refund-tasks"),
+      body
+    );
+    return data;
+  },
+
+  /** B6 구매확정 후 하자 · 반품 대신 열기 */
+  openDefectClaim: async (
+    deliveryGroupId: number,
+    body: DefectClaimRequest
+  ) => {
+    const { data } = await apiInstance.post<DefectClaimResponse>(
+      groupPath(deliveryGroupId, "defect-claims"),
+      body
+    );
+    return data;
   },
 };

@@ -1,12 +1,10 @@
 import type {
-  OrderAnomalyType,
-  OrderCancelType,
+  AdminOrderSearchType,
+  AdminOrderSort,
+  AdminOrderTab,
   OrderListParams,
   OrderPeriod,
-  OrderSearchType,
-  OrderSort,
-  OrderStatusGroup,
-  OrderTab,
+  PaymentMethod,
 } from "@/features/order/types";
 
 /** 라우터가 이 경로로 주문 조회를 연다(`common/router`) */
@@ -16,54 +14,57 @@ export const ORDER_CLAIM_PATH = "/order/claim";
 export const ORDER_EXCEPTION_PATH = "/order/exception";
 export const THREAD_PATH = "/monitoring/threads";
 
-/** 탭 3종 — 반품 환불은 반품·교환, 환불 실패는 환불 관리 소관이라 「취소」만 남는다 */
-export const ORDER_TABS: Array<{ value: OrderTab; label: string }> = [
+/** 탭 3종(`AdminOrderTab`) — 라벨은 enum 라벨 그대로 */
+export const ORDER_TABS: Array<{ value: AdminOrderTab; label: string }> = [
   { value: "ALL", label: "전체" },
-  { value: "ANOMALY", label: "배송 이상" },
-  { value: "CANCELED", label: "취소" },
+  { value: "DELIVERY_ISSUE", label: "배송 이상" },
+  { value: "CANCEL", label: "취소" },
 ];
 
-/** 상태 셀렉트(전체 탭) — 옵션 라벨 뒤에 건수가 붙는다 */
-export const ORDER_STATUS_OPTIONS: Array<{
-  value: OrderStatusGroup;
-  label: string;
-}> = [
-  { value: "PAID", label: "결제완료" },
+/**
+ * 상태 셀렉트(전체 탭) — `FulfillmentStatus`에서 PENDING(목록 밖)을 뺀 7종.
+ * 셀렉트 옵션에는 서버 라벨이 없어 enum 라벨을 옮겼다. 건수 API가 없어 건수는 붙이지 않는다.
+ */
+export const ORDER_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "NEW", label: "신규(준비 대기)" },
   { value: "PREPARING", label: "상품준비중" },
   { value: "SHIPPING", label: "배송중" },
+  { value: "RETURNING", label: "반송중" },
   { value: "DELIVERED", label: "배송완료" },
   { value: "CONFIRMED", label: "구매확정" },
-  { value: "CANCELED", label: "취소·환불" },
+  { value: "CANCELLED", label: "취소" },
 ];
 
-/** 이상 유형 셀렉트 — 탭이 축을 바꾸면 같은 자리의 셀렉트가 따라 바뀐다 */
-export const ORDER_ANOMALY_OPTIONS: Array<{
-  value: OrderAnomalyType;
-  label: string;
-}> = [
-  { value: "COLLECT_CHECK", label: "집화 확인 필요" },
-  { value: "TRACKING_STOPPED", label: "추적 정지" },
+/**
+ * 이상 유형 셀렉트(배송 이상 탭) — 집화 확인 필요 · 추적 정지는 `trackingAlert`,
+ * 반송 중은 이상 유형 파라미터가 없어 `status=RETURNING`으로 보낸다.
+ */
+export const ORDER_ISSUE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "PICKUP_UNCONFIRMED", label: "집화 확인 필요" },
+  { value: "STALLED", label: "추적 정지" },
   { value: "RETURNING", label: "반송 중" },
 ];
 
-/** 취소 유형 셀렉트(취소 탭) — 시안에 없는 탭의 축이라 같은 규칙으로 추가했다 */
-export const ORDER_CANCEL_OPTIONS: Array<{
-  value: OrderCancelType;
+export const ORDER_SEARCH_TYPES: Array<{
+  value: AdminOrderSearchType;
   label: string;
 }> = [
-  { value: "CONSUMER", label: "소비자 취소" },
-  { value: "FORCED", label: "직권 취소" },
-  { value: "RETURNED", label: "반송 환불" },
+  { value: "ORDER_NUMBER", label: "주문번호" },
+  { value: "SUB_ORDER_NUMBER", label: "하위주문번호" },
+  { value: "RECIPIENT", label: "수취인" },
+  { value: "BRAND", label: "브랜드" },
+  { value: "TRACKING_NUMBER", label: "송장번호" },
+  { value: "PG_TX_ID", label: "PG 거래번호" },
+  { value: "ALL", label: "전체" },
 ];
 
-export const ORDER_SEARCH_TYPES: Array<{
-  value: OrderSearchType;
+/** 결제수단(`PaymentMethod`) */
+export const ORDER_PAYMENT_METHODS: Array<{
+  value: PaymentMethod;
   label: string;
 }> = [
-  { value: "ORDER_NO", label: "주문번호" },
-  { value: "CONSUMER", label: "소비자" },
-  { value: "INVOICE_NO", label: "송장번호" },
-  { value: "PG_TX_NO", label: "PG 거래번호" },
+  { value: "CARD", label: "카드" },
+  { value: "EASY_PAY", label: "간편결제" },
 ];
 
 export const ORDER_PERIOD_PRESETS: Array<{
@@ -79,24 +80,27 @@ export const ORDER_PERIOD_PRESETS: Array<{
   { value: "CUSTOM", label: "직접 입력" },
 ];
 
-export const ORDER_SORT_LABEL: Record<OrderSort, string> = {
+export const ORDER_SORT_LABEL: Record<AdminOrderSort, string> = {
   PAID_DESC: "결제일시 최신순",
   PAID_ASC: "결제일시 오래된순",
   AMOUNT_DESC: "결제금액 높은순",
-  ANOMALY_OLDEST: "이상 지속 오래된순",
+  ISSUE_OLDEST: "이상 지속 오래된순",
 };
 
 /** 조치 탭에서는 정렬 기본값과 선택지가 바뀐다 — 설명문은 UI에 쓰지 않는다(DS §8) */
-export const ORDER_SORT_OPTIONS: Record<OrderTab, Array<OrderSort>> = {
+export const ORDER_SORT_OPTIONS: Record<
+  AdminOrderTab,
+  Array<AdminOrderSort>
+> = {
   ALL: ["PAID_DESC", "PAID_ASC", "AMOUNT_DESC"],
-  ANOMALY: ["ANOMALY_OLDEST", "PAID_DESC"],
-  CANCELED: ["PAID_DESC", "PAID_ASC", "AMOUNT_DESC"],
+  DELIVERY_ISSUE: ["ISSUE_OLDEST", "PAID_DESC"],
+  CANCEL: ["PAID_DESC", "PAID_ASC", "AMOUNT_DESC"],
 };
 
-export const ORDER_DEFAULT_SORT: Record<OrderTab, OrderSort> = {
+export const ORDER_DEFAULT_SORT: Record<AdminOrderTab, AdminOrderSort> = {
   ALL: "PAID_DESC",
-  ANOMALY: "ANOMALY_OLDEST",
-  CANCELED: "PAID_DESC",
+  DELIVERY_ISSUE: "ISSUE_OLDEST",
+  CANCEL: "PAID_DESC",
 };
 
 export const ORDER_PAGE_SIZES = [20, 50, 100];
@@ -104,16 +108,17 @@ export const ORDER_PAGE_SIZES = [20, 50, 100];
 export const ORDER_INITIAL_PARAMS: OrderListParams = {
   tab: "ALL",
   status: "",
-  searchType: "ORDER_NO",
+  searchType: "ORDER_NUMBER",
   keyword: "",
   period: "MONTH",
   from: "",
   to: "",
-  brandId: "",
+  marketId: "",
   groupBuyId: "",
-  influencerId: "",
-  payMethod: "",
+  creatorId: "",
+  paymentMethod: "",
   sort: "PAID_DESC",
+  orderId: "",
   page: 1,
   size: 20,
 };

@@ -9,26 +9,81 @@ import {
 } from "@/features/refund/components/modals/DialogParts";
 import Btn from "@/features/refund/components/shared/Btn";
 import { useGetRefundDetail } from "@/features/refund/hooks/useAdminRefund";
-import type { RefundCancelTarget, RefundDetail } from "@/features/refund/types";
+import type {
+  RefundAdditionalPayment,
+  RefundDetail,
+  RefundSettlement,
+} from "@/features/refund/types";
 import { formatMonthDayTime, formatWon } from "@/features/refund/utils/format";
 
 interface ExecuteModalProps {
   refundId: number;
   isPending: boolean;
   onClose: () => void;
-  /** 확인한 금액을 함께 올린다 — 그 사이 금액이 바뀌었으면 서버가 거절한다 */
   onConfirm: (detail: RefundDetail) => void;
 }
 
-/** 「원래 결제 · 카드 tosspay_9c41e0b2 · 27,200원 전액」 — 결제 건별 한 줄 */
-function TargetLine(props: { kind: string; target: RefundCancelTarget }) {
-  const { kind, target } = props;
+const KIND_LABEL = { ORIGINAL: "원래 결제", ADDITIONAL: "추가 결제" } as const;
+
+/** 「반려 재발송비 3,000원 · 결제 취소」 + 서버 note */
+function AdditionalLine(props: { charge: RefundAdditionalPayment }) {
+  const { charge } = props;
+  return (
+    <div>
+      {charge.typeLabel}{" "}
+      <b className="tabular-nums">{formatWon(charge.amount)}</b> ·{" "}
+      {charge.statusLabel}
+      {charge.note && <Sub>{` · ${charge.note}`}</Sub>}
+    </div>
+  );
+}
+
+/**
+ * 추가 결제 — 결제까지 된 청구(`claimPaymentId`)만 「추가 결제」로 적는다.
+ * 결제되지 않은 청구(편입 · 인용 때 소멸 등)뿐이면 시안처럼 「없음 · {사유}」로 적는다.
+ */
+function AdditionalPayments(props: {
+  charges: Array<RefundAdditionalPayment>;
+}) {
+  const paid = props.charges.filter((charge) => charge.claimPaymentId !== null);
+  if (paid.length > 0) {
+    return (
+      <>
+        {paid.map((charge) => (
+          <AdditionalLine key={charge.chargeId} charge={charge} />
+        ))}
+      </>
+    );
+  }
+  const notes = props.charges
+    .map((charge) => charge.note)
+    .filter((note): note is string => Boolean(note));
   return (
     <>
-      {kind} · {target.methodLabel}{" "}
-      <span className="tabular-nums">{target.pgTransactionId}</span> ·{" "}
-      <b className="tabular-nums">{formatWon(target.amount)}</b>{" "}
-      {target.partial ? "부분" : "전액"}
+      <Dim>없음</Dim>
+      {notes.length > 0 && <Sub>{` · ${notes.join(" · ")}`}</Sub>}
+    </>
+  );
+}
+
+function SettlementLine(props: { settlement: RefundSettlement }) {
+  const { settlement } = props;
+  if (!settlement.clawback) return <Dim>{settlement.stateLabel}</Dim>;
+  // 이미 정산된 돈 — 다음 정산에서 차감한다
+  return (
+    <>
+      <span className="font-medium text-sz-warning-text">
+        {settlement.stateLabel}
+      </span>
+      <Sub>
+        {[
+          settlement.settlementNumber,
+          `${settlement.clawback.clawbackNumber} ${settlement.clawback.statusLabel}`,
+        ]
+          .filter(Boolean)
+          .map((part) => ` · ${part}`)
+          .join("")}
+      </Sub>
     </>
   );
 }
@@ -42,24 +97,33 @@ function TargetLine(props: { kind: string; target: RefundCancelTarget }) {
 export default function ExecuteModal(props: ExecuteModalProps) {
   const { refundId, isPending, onClose, onConfirm } = props;
   const { data: detail, isLoading, isError } = useGetRefundDetail(refundId);
+  // 요청이 나간 뒤에는 닫지 못한다(X · Esc · [취소]) — 결과를 보기 전에 창이 사라지면
+  // 돈이 나갔는지 알 수 없다. 바깥 클릭은 ModalShell이 원래 막는다.
+  const handleClose = () => {
+    if (!isPending) onClose();
+  };
+  const amount = detail?.target?.amount;
+  const canExecute = Boolean(detail?.executable && detail.target);
 
   return (
     <ModalShell
       isOpen
       title="환불 집행 — 재확인"
       width={520}
-      onClose={onClose}
+      onClose={handleClose}
       bodyClassName={DIALOG_BODY_CLASS}
       footer={
         <>
-          <Btn onClick={onClose}>취소</Btn>
+          <Btn disabled={isPending} onClick={handleClose}>
+            취소
+          </Btn>
           <Btn
             variant="primary"
-            disabled={!detail}
+            disabled={!canExecute}
             isLoading={isPending}
             onClick={() => detail && onConfirm(detail)}
           >
-            {detail ? `${formatWon(detail.amount)} 집행` : "집행"}
+            {amount !== undefined ? `${formatWon(amount)} 집행` : "집행"}
           </Btn>
         </>
       }
@@ -73,17 +137,23 @@ export default function ExecuteModal(props: ExecuteModalProps) {
       {detail && (
         <>
           <DialogRow label="환불번호">
-            <span className="tabular-nums">{detail.refundNumber}</span> ·{" "}
-            {detail.orderNumber}
+            <span className="tabular-nums">{detail.refundNo}</span> ·{" "}
+            {detail.order.orderNumber}
           </DialogRow>
           <DialogRow label="사유">
-            {detail.routeLabel}
-            {(detail.routeDetail || detail.enrollment) && (
+            {detail.reason?.label ?? detail.source.label}
+            {(detail.source.ref || detail.reason) && (
               <Sub>
                 {[
-                  detail.routeDetail,
-                  detail.enrollment &&
-                    `편입 ${detail.enrollment.enrolledBy} ${formatMonthDayTime(detail.enrollment.enrolledAt)}`,
+                  detail.source.ref,
+                  detail.reason &&
+                    [
+                      "편입",
+                      detail.reason.requestedByName,
+                      formatMonthDayTime(detail.reason.requestedAt),
+                    ]
+                      .filter(Boolean)
+                      .join(" "),
                 ]
                   .filter(Boolean)
                   .map((part) => ` · ${part}`)
@@ -91,36 +161,37 @@ export default function ExecuteModal(props: ExecuteModalProps) {
               </Sub>
             )}
           </DialogRow>
-          <DialogRow label="근거">{detail.enrollment?.ground ?? "—"}</DialogRow>
+          <DialogRow label="근거">{detail.reason?.detail ?? "—"}</DialogRow>
           <DialogRow label="취소 대상">
-            <TargetLine kind="원래 결제" target={detail.originalPayment} />
+            {detail.target ? (
+              <>
+                {KIND_LABEL[detail.target.paymentKind]} ·{" "}
+                {detail.target.methodLabel}{" "}
+                {detail.target.pgTxId && (
+                  <span className="tabular-nums">{detail.target.pgTxId}</span>
+                )}{" "}
+                ·{" "}
+                <b className="tabular-nums">
+                  {formatWon(detail.target.amount)}
+                </b>{" "}
+                {detail.target.partial ? "부분" : "전액"}
+              </>
+            ) : (
+              // 결제가 없는 주문 — PG로 돌려줄 길이 없어 서버가 집행을 막는다
+              <Dim>결제 없음</Dim>
+            )}
           </DialogRow>
           <DialogRow label="추가 결제">
-            {detail.additionalPayment ? (
-              <TargetLine kind="추가 결제" target={detail.additionalPayment} />
-            ) : (
-              <>
-                <Dim>없음</Dim>
-                {detail.additionalPaymentNote && (
-                  <Sub>{` · ${detail.additionalPaymentNote}`}</Sub>
-                )}
-              </>
-            )}
+            <AdditionalPayments charges={detail.additionalPayments} />
           </DialogRow>
           <DialogRow label="정산">
-            {detail.settlement.clawback ? (
-              // 정산 확정 건 — 이미 정산된 돈이라 다음 정산에서 차감한다(시안은 법률 자문 대기)
-              <span className="font-medium text-sz-warning-text">
-                정산 확정 · 클로백{" "}
-                {detail.settlement.clawbackAmount !== null
-                  ? formatWon(detail.settlement.clawbackAmount)
-                  : ""}{" "}
-                (다음 정산 차감)
-              </span>
-            ) : (
-              <Dim>정산 전 · 클로백 없음</Dim>
-            )}
+            <SettlementLine settlement={detail.settlement} />
           </DialogRow>
+          {!detail.executable && (
+            <p className="mb-0 mt-2.5 text-[11px] leading-[1.7] text-sz-n-500">
+              지금은 집행할 수 없습니다 — {detail.statusLabel}
+            </p>
+          )}
           <DialogWarn>
             집행하면 <b>PG 취소가 즉시 요청</b>되고 되돌릴 수 없습니다.
             소비자·브랜드에게 통지되며 이력에 <b>집행자 · 시각</b>이 남습니다.

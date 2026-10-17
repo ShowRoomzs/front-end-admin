@@ -9,17 +9,24 @@ import {
   WaitBox,
 } from "@/features/settlement/components/shared/StlParts";
 import {
-  STATUS_LABEL,
-  STATUS_TONE,
+  CONFIRM_REASON_TEXT,
+  HISTORY_TONE,
+  RESIDENT_NUMBER_MISSING,
+  TAX_INVOICE_UNVERIFIED,
 } from "@/features/settlement/constants/params";
-import type {
-  EvidenceItem,
-  SettlementDetail,
-} from "@/features/settlement/types";
-import { md, won, ymd, ymdhm } from "@/features/settlement/utils/format";
+import type { SettlementDetail } from "@/features/settlement/types";
 import {
-  isInfluencerHeld,
-  isPendingEvidence,
+  elapsedDays,
+  md,
+  won,
+  ymd,
+  ymdhm,
+} from "@/features/settlement/utils/format";
+import {
+  brandInvoicesOf,
+  creatorInvoiceOf,
+  hasPendingEvidence,
+  isResidentNumberMissing,
 } from "@/features/settlement/utils/view";
 import type { ReactNode } from "react";
 
@@ -27,120 +34,135 @@ type Detail = SettlementDetail;
 
 export interface RailActions {
   onRedistribute: () => void;
-  onAccountCheck: () => void;
-  onCheckInvoice: () => void;
+  onVerifyInvoice: () => void;
   onRegisterInvoice: () => void;
   onDownloadStatement: () => void;
-  accountCheckPending: boolean;
+  isDownloading: boolean;
 }
 
-function findEvidence(detail: Detail, kind: EvidenceItem["kind"]) {
-  return detail.evidence.find((item) => item.kind === kind);
+function payoutRow(detail: Detail, payee: "BRAND" | "CREATOR") {
+  return detail.payouts?.rows.find((row) => row.payee === payee);
 }
 
-/** 지급(예정)일 — 사업자 대조 · 주민번호가 남으면 인플루언서 몫만 뒤로 밀린다(§41-5) */
+/** 지급(예정)일 — 인플루언서 몫이 보류되거나 다른 날 나가면 몫별로 적는다(§41-5) */
 function payoutDateText(detail: Detail): ReactNode {
-  if (detail.status !== "SCHEDULED") return ymd(detail.payoutAt);
-  if (isInfluencerHeld(detail)) {
+  const { rail } = detail;
+  if (detail.status === "PAID") return ymd(rail.paidAt);
+  if (detail.status !== "PAYOUT_SCHEDULED") return ymd(rail.payoutDueDate);
+  const brand = payoutRow(detail, "BRAND");
+  const creator = payoutRow(detail, "CREATOR");
+  const brandDate = brand?.dueDate ?? rail.payoutDueDate;
+  if (creator?.status === "BLOCKED") {
     return (
       <>
-        브랜드 <span className="tabular-nums">{md(detail.payoutAt)}</span> ·
-        인플루언서 {detail.influencerBusiness ? "대조 후" : "주민번호 등록 후"}
+        브랜드 <span className="tabular-nums">{md(brandDate)}</span> ·
+        인플루언서 보류 해제 후
       </>
     );
   }
-  if (
-    detail.influencerPayoutAt &&
-    detail.influencerPayoutAt !== detail.payoutAt
-  ) {
+  if (creator?.dueDate && brandDate && creator.dueDate !== brandDate) {
     return (
       <>
-        브랜드 <span className="tabular-nums">{md(detail.payoutAt)}</span> ·
-        인플루언서{" "}
-        <span className="tabular-nums">{md(detail.influencerPayoutAt)}</span>{" "}
+        브랜드 <span className="tabular-nums">{md(brandDate)}</span> ·
+        인플루언서 <span className="tabular-nums">{md(creator.dueDate)}</span>{" "}
         (예정)
       </>
     );
   }
-  return <span className="tabular-nums">{ymd(detail.payoutAt)} (예정)</span>;
+  return <span className="tabular-nums">{ymd(rail.payoutDueDate)} (예정)</span>;
 }
 
 function dateRows(detail: Detail): Array<{ label: string; value: ReactNode }> {
+  const { rail } = detail;
   switch (detail.status) {
-    case "CHECKING":
+    case "REVIEWING":
       return [
-        { label: "확인 마감", value: ymdhm(detail.checkDueAt) },
+        { label: "확인 마감", value: ymdhm(rail.reviewDueAt) },
         { label: "지급(예정)일", value: "확정 후 계산" },
       ];
     case "ADJUSTING":
       return [
-        { label: "합의 기한", value: ymdhm(detail.adjustment?.agreeDueAt) },
+        { label: "합의 기한", value: ymdhm(rail.deadlineAt) },
         { label: "지급(예정)일", value: "—" },
       ];
     default:
       return [
-        { label: "자동 확정일", value: ymd(detail.confirmedAt) },
-        { label: "지급(예정)일", value: payoutDateText(detail) },
+        {
+          // 지급 예정은 확정 사유를 앞말로(「자동 확정일」), 지급이 끝난 회차는 「정산 확정일」
+          label:
+            detail.status === "PAYOUT_SCHEDULED"
+              ? `${rail.confirmReasonLabel ?? "자동 확정"}일`
+              : "정산 확정일",
+          value: ymd(rail.confirmedAt),
+        },
+        {
+          label: detail.status === "PAID" ? "지급일" : "지급(예정)일",
+          value: (
+            <>
+              {payoutDateText(detail)}
+              {rail.payoutBasis && detail.status === "PAYOUT_SCHEDULED" && (
+                <span className="mt-0.5 block text-[11px] font-normal text-sz-n-500">
+                  {rail.payoutBasis}
+                </span>
+              )}
+            </>
+          ),
+        },
       ];
   }
-}
-
-/** §41-5 계정 정지 연동 지급 정지 — 「정지됐는데 돈은 들어오나요」에 한 줄로 답한다(표시만) */
-function payoutStopRows(detail: Detail) {
-  if (!detail.payoutStop) return [];
-  const stopped = (
-    <span className="font-semibold text-sz-warning-text">지급 정지</span>
-  );
-  const kept = "유지 · 사유가 정산 정보와 무관";
-  return detail.payoutStop.party === "BRAND"
-    ? [
-        { label: "브랜드 몫 지급", value: stopped },
-        { label: "리워드 지급", value: kept },
-      ]
-    : [
-        { label: "리워드 지급", value: stopped },
-        { label: "브랜드 몫 지급", value: kept },
-      ];
 }
 
 /** D7 지급 보류 조건 목록 — ✕ 막는 것 · ✓ 끝난 것 · ○ 지급과 무관한 것 */
 function HoldConditions(props: { detail: Detail }) {
   const { detail } = props;
-  const invoice = findEvidence(detail, "INFLUENCER_INVOICE");
-  const receipt = findEvidence(detail, "WITHHOLDING_RECEIPT");
-  const brand = findEvidence(detail, "BRAND_INVOICE");
-
+  const invoice = creatorInvoiceOf(detail);
   const lines: Array<ReactNode> = [];
-  if (detail.influencerBusiness) {
-    if (invoice?.state === "CHECK_PENDING") {
-      lines.push("✕ 세금계산서 대조 대기 — 인플루언서 지급 보류");
-    } else if (invoice?.state === "REJECTED") {
-      lines.push("✕ 세금계산서 반려 · 재입력 대기 — 인플루언서 지급 보류");
-    } else {
-      lines.push(<TDim>✓ 세금계산서 대조 확인</TDim>);
+  if (detail.overview.creatorBusinessType === "BUSINESS") {
+    switch (invoice?.status) {
+      case "SUBMITTED":
+        lines.push("✕ 세금계산서 확인 대기 — 인플루언서 지급 보류");
+        break;
+      case "REJECTED":
+        lines.push("✕ 세금계산서 반려 · 재입력 대기 — 인플루언서 지급 보류");
+        break;
+      case "PENDING_INPUT":
+        lines.push("✕ 세금계산서 입력 대기 — 인플루언서 지급 보류");
+        break;
+      default:
+        lines.push(<TDim>✓ 세금계산서 확인</TDim>);
     }
     lines.push(<TDim>✓ 주민번호 — 해당 없음(사업자)</TDim>);
   } else {
     lines.push(<TDim>✓ 세금계산서 — 해당 없음(비사업자)</TDim>);
     lines.push(
-      receipt?.state === "RRN_MISSING" ? (
+      isResidentNumberMissing(detail) ? (
         "✕ 주민번호 미등록 — 인플루언서 지급 보류"
       ) : (
         <TDim>✓ 주민번호 등록</TDim>
       )
     );
   }
-  if (brand) {
+  // PG 파트너 등록 대기 · 예금주 불일치 등(포트원 설계서 4-3) — 서버 라벨을 그대로
+  detail.rail.blockReasons
+    .filter(
+      (reason) =>
+        reason.code !== RESIDENT_NUMBER_MISSING &&
+        reason.code !== TAX_INVOICE_UNVERIFIED
+    )
+    .forEach((reason) => lines.push(`✕ ${reason.label} — 지급 보류`));
+  brandInvoicesOf(detail).forEach((doc) =>
     lines.push(
-      brand.state === "ISSUE_PENDING" ? (
+      doc.status === "PENDING_ISSUE" ? (
         <TDim>
-          ○ 브랜드 세금계산서 발행 대기 — 지급과 무관 · 기한 {md(brand.dueAt)}
+          ○ {doc.typeLabel} 발행 대기 — 지급과 무관 · 기한 {md(doc.dueDate)}
         </TDim>
       ) : (
-        <TDim>✓ 브랜드 세금계산서 발행 완료</TDim>
+        <TDim>
+          ✓ {doc.typeLabel} {doc.statusLabel}
+        </TDim>
       )
-    );
-  }
+    )
+  );
   return (
     <WaitBox>
       <b>지급 보류 조건</b>
@@ -154,136 +176,153 @@ function HoldConditions(props: { detail: Detail }) {
 /**
  * 우측 레일 「현재 상태」 — 배지 · 금액 3종 · 날짜 2 · 안내 · 액션(§45-5).
  * 돈은 이 화면에서 나가지 않는다 — 확정 · 보류 · 보류 해제 · 지급 앞당기기 버튼이 없고,
- * 운영자 액션은 재분배 · 승인번호 대조 · 브랜드 세금계산서 등록뿐이다.
+ * 운영자 액션은 재분배 · 승인번호 대조 · 브랜드 세금계산서 등록뿐이다(판정은 서버 `actions`).
  */
 export function CurrentStateCard(props: {
   detail: Detail;
   actions: RailActions;
 }) {
   const { detail, actions } = props;
+  const { rail } = detail;
   const rows = [
-    { label: "확정 거래액", value: `${won(detail.confirmedSales)}원` },
-    { label: "브랜드 수취액", value: `${won(detail.brandPayout)}원` },
-    { label: "인플루언서 실지급", value: `${won(detail.influencerPayout)}원` },
+    { label: "확정 거래액", value: `${won(rail.confirmedSalesAmount)}원` },
+    { label: "브랜드 수취액", value: `${won(rail.brandPayoutAmount)}원` },
+    { label: "인플루언서 실지급", value: `${won(rail.creatorPayoutAmount)}원` },
     ...dateRows(detail),
-    ...payoutStopRows(detail),
   ];
 
-  const download = (disabled = false) => (
+  const download = (
     <Btn
       variant="secondary"
       className="w-full flex-1"
-      disabled={disabled}
+      disabled={!detail.actions.canDownloadStatement}
+      isLoading={actions.isDownloading}
       onClick={actions.onDownloadStatement}
     >
       정산 명세 다운로드
     </Btn>
   );
 
+  // 증빙 액션은 상태와 무관하게 서버 판정을 따른다(지급 완료 뒤 브랜드 발행 대기도 있다)
+  const evidenceButtons =
+    detail.actions.canVerifyInvoice ||
+    detail.actions.canRegisterBrandInvoice ? (
+      <>
+        {detail.actions.canVerifyInvoice && (
+          <Btn
+            variant="primary"
+            className="w-full flex-1"
+            onClick={actions.onVerifyInvoice}
+          >
+            승인번호 대조
+          </Btn>
+        )}
+        {detail.actions.canRegisterBrandInvoice && (
+          <Btn
+            variant="secondary"
+            className="w-full flex-1"
+            onClick={actions.onRegisterInvoice}
+          >
+            브랜드 세금계산서 등록
+          </Btn>
+        )}
+      </>
+    ) : null;
+
   let notice: ReactNode = null;
-  let buttons: ReactNode = null;
+  let primary: ReactNode = null;
 
   switch (detail.status) {
-    case "CHECKING":
+    case "REVIEWING":
       notice = (
         <WaitBox>
           <b>정산 확인 기간</b>입니다 —{" "}
-          <b className="tabular-nums">
-            {md(detail.checkDueAt)} {ymdhm(detail.checkDueAt).slice(-5)}
-          </b>
+          <b className="tabular-nums">{md(rail.reviewDueAt)}</b>
           까지 양측이 금액을 보고 <b>정산 조정</b>을 요청할 수 있습니다. 요청이
           없으면 다음 날 <b>자동 확정</b>됩니다.
         </WaitBox>
       );
-      buttons = download(true);
+      primary = download;
       break;
     case "ADJUSTING": {
       const adjustment = detail.adjustment;
+      const proposals = adjustment
+        ? [...adjustment.proposals].sort((a, b) => a.seq - b.seq)
+        : [];
+      const latest = proposals[proposals.length - 1];
+      const requester =
+        adjustment?.requesterType === "SELLER"
+          ? detail.overview.brandName
+          : detail.overview.showroomName;
       notice = adjustment && (
         <>
           <WaitBox>
-            <b>정산 조정 요청</b> — {adjustment.requesterName} ·{" "}
-            {ymd(adjustment.requestedAt)} · 리워드{" "}
-            {won(adjustment.originalReward)} →{" "}
-            <b>{won(adjustment.requestedReward)}원</b>
+            <b>정산 조정 요청</b> — {requester} · {ymd(adjustment.openedAt)} ·
+            리워드 {won(adjustment.originalRewardAmount)}
+            {latest && (
+              <>
+                {" "}
+                → <b>{won(latest.rewardAmount)}원</b>
+              </>
+            )}
             <br />
             보류 <b>전액</b> · 합의 기한{" "}
-            <b className="tabular-nums">{md(adjustment.agreeDueAt)}</b> · 협의는{" "}
+            <b className="tabular-nums">{md(adjustment.deadlineAt)}</b> · 협의는{" "}
             <b>이슈 스레드</b>에서 양측이 합니다.
           </WaitBox>
           <Hint className="mt-0">
             양측이 이슈 스레드에서 <b>금액에 합의</b>하면 합의 금액으로 바뀌고{" "}
             <b>보류가 자동 해제</b>됩니다. 합의 기한(
-            <b className="tabular-nums">{md(adjustment.agreeDueAt)}</b>)까지
+            <b className="tabular-nums">{md(adjustment.deadlineAt)}</b>)까지
             합의가 없으면 <b>원래 금액</b>으로 확정됩니다 — 이 화면에서 해제하지
             않습니다.
           </Hint>
         </>
       );
-      // 이슈 스레드 화면이 아직 없다 — 자리만 두고 막는다
-      buttons = (
+      // 어드민 이슈 스레드 화면이 아직 없다 — 자리만 두고 막는다
+      primary = (
         <Btn
           variant="secondary"
           className="w-full flex-1"
           disabled
-          title="이슈 스레드 화면 준비 중"
+          title="어드민 소통 스레드(이슈 스레드) 화면 준비 중"
         >
           이슈 스레드 열기 ↗ · 준비 중
         </Btn>
       );
       break;
     }
-    case "SCHEDULED": {
-      const hasPending = detail.evidence.some(isPendingEvidence);
-      const checkPending =
-        findEvidence(detail, "INFLUENCER_INVOICE")?.state === "CHECK_PENDING";
-      const issuePending =
-        findEvidence(detail, "BRAND_INVOICE")?.state === "ISSUE_PENDING";
-      if (hasPending) {
-        notice = <HoldConditions detail={detail} />;
-      } else {
-        notice = (
+    case "PAYOUT_SCHEDULED":
+      notice =
+        hasPendingEvidence(detail) || rail.blockReasons.length > 0 ? (
+          <HoldConditions detail={detail} />
+        ) : (
           <Hint className="mt-0">
-            확인 기간에 조정 요청이 없어 <b>자동 확정</b>됐습니다. 지급은
-            예정일에 <b>PG가 자동 분배</b>합니다.
+            {(rail.confirmReason && CONFIRM_REASON_TEXT[rail.confirmReason]) ??
+              "정산이 확정됐습니다."}{" "}
+            지급은 예정일에 <b>PG가 자동 분배</b>합니다.
           </Hint>
         );
-      }
-      buttons =
-        checkPending || issuePending ? (
-          <>
-            {checkPending && (
-              <Btn
-                variant="primary"
-                className="w-full flex-1"
-                onClick={actions.onCheckInvoice}
-              >
-                승인번호 대조
-              </Btn>
-            )}
-            {issuePending && (
-              <Btn
-                variant="secondary"
-                className="w-full flex-1"
-                onClick={actions.onRegisterInvoice}
-              >
-                브랜드 세금계산서 등록
-              </Btn>
-            )}
-          </>
-        ) : (
-          download()
-        );
+      primary = evidenceButtons ? null : download;
       break;
-    }
-    case "PAID":
+    case "PAID": {
+      const invoice = creatorInvoiceOf(detail);
+      const checkedAt =
+        invoice?.status === "VERIFIED" && invoice.verifiedAt
+          ? md(invoice.verifiedAt)
+          : null;
       notice = (
         <Hint className="mt-0">
-          {detail.influencerBusiness ? (
+          {detail.overview.creatorBusinessType === "BUSINESS" ? (
             <>
               사업자 건은 <b>원천징수영수증이 없습니다</b> — 증빙은 인플루언서가{" "}
-              <b>플랫폼 앞으로</b> 발행한 세금계산서와 플랫폼이 브랜드에게
-              발행한 세금계산서입니다.
+              <b>플랫폼 앞으로</b> 발행한 세금계산서
+              {checkedAt && (
+                <>
+                  (대조 확인 <span className="tabular-nums">{checkedAt}</span>)
+                </>
+              )}
+              와 플랫폼이 브랜드에게 발행한 세금계산서입니다.
             </>
           ) : (
             <>
@@ -293,54 +332,71 @@ export function CurrentStateCard(props: {
           )}
         </Hint>
       );
-      buttons = download();
+      primary = evidenceButtons ? null : download;
       break;
-    case "FAILED": {
-      const failure = detail.failure;
-      notice = failure && (
+    }
+    case "PAYOUT_FAILED": {
+      const failed = rail.failedPayout;
+      const days = elapsedDays(failed?.failedAt);
+      const othersSettled =
+        detail.payouts?.rows
+          .filter((row) => row.payoutId !== failed?.payoutId)
+          .every(
+            (row) => row.status === "PAID" || row.status === "NOT_APPLICABLE"
+          ) ?? false;
+      const exhausted = failed ? failed.attempt >= failed.retryLimit : false;
+      notice = failed && (
         <>
           <WaitBox danger>
             <b>
-              {failure.shareLabel} 몫 {won(failure.amount)}원 미전달
+              {failed.payeeLabel} 몫 {won(failed.amount)}원 미전달
             </b>{" "}
-            — PG 반환 사유 <b>{failure.reason}</b> · {ymd(failure.returnedAt)} ·{" "}
-            <b>{failure.elapsedDays}일 경과</b>
-            <br />
-            {failure.shareLabel === "인플루언서"
-              ? "브랜드·플랫폼"
-              : "나머지"}{" "}
-            몫은 <b>정상 지급</b>됐습니다.
+            — PG 반환 사유 <b>{failed.failReason ?? failed.failCode ?? "—"}</b>{" "}
+            · {ymd(failed.failedAt)}
+            {days !== null && (
+              <>
+                {" "}
+                · <b>{days}일 경과</b>
+              </>
+            )}
+            {othersSettled && (
+              <>
+                <br />
+                나머지 몫은 <b>정상 지급</b>됐습니다.
+              </>
+            )}
           </WaitBox>
           <Hint className="mt-0">
             재분배는 <b>확정 금액을 그대로</b> 다시 보냅니다 — 금액 재계산이
-            아닙니다.
-            {failure.redistributionRequestedAt && (
+            아닙니다. 재분배{" "}
+            <b className="tabular-nums">
+              {failed.attempt}/{failed.retryLimit}회
+            </b>
+            {exhausted && (
               <>
                 {" "}
-                <b className="tabular-nums">
-                  {ymdhm(failure.redistributionRequestedAt)}
-                </b>{" "}
-                재지시 — PG 처리 중입니다(즉시 입금되지 않습니다).
+                — 상한에 닿아 <b>수동 이체 절차</b>로 처리합니다.
               </>
             )}
           </Hint>
         </>
       );
-      buttons = (
+      primary = (
         <>
           <Btn
             variant="primary"
             className="w-full flex-1"
-            disabled={Boolean(failure?.redistributionRequestedAt)}
+            disabled={!detail.actions.canRedistribute}
             onClick={actions.onRedistribute}
           >
             재분배
           </Btn>
+          {/* 알림 모듈 전이라 서버 엔드포인트가 없다(44 어드민 설계서 7-5 · 12절 #4) */}
           <Btn
             variant="secondary"
             className="w-full flex-1"
-            isLoading={actions.accountCheckPending}
-            onClick={actions.onAccountCheck}
+            disabled
+            title="계좌 확인 요청은 알림 기능이 생기면 열립니다"
           >
             계좌 확인 요청
           </Btn>
@@ -355,9 +411,7 @@ export function CurrentStateCard(props: {
       <div className="p-4">
         <div className="flex items-center justify-between gap-2.5 border-b border-sz-n-100 pb-3">
           <span className="shrink-0 text-[12px] text-sz-n-500">정산</span>
-          <StlBadge tone={STATUS_TONE[detail.status]}>
-            {STATUS_LABEL[detail.status]}
-          </StlBadge>
+          <StlBadge tone={rail.statusTone}>{rail.statusLabel}</StlBadge>
         </div>
         <div className="pt-2">
           {rows.map((row) => (
@@ -366,26 +420,42 @@ export function CurrentStateCard(props: {
         </div>
         {notice && <div className="mt-2">{notice}</div>}
         <div className="mt-2 border-t border-sz-n-100 pt-2">
-          <div className="mt-4 flex gap-2">{buttons}</div>
+          <div className="mt-4 flex flex-col gap-2">
+            {primary && <div className="flex gap-2">{primary}</div>}
+            {evidenceButtons && (
+              <div className="flex gap-2">{evidenceButtons}</div>
+            )}
+          </div>
         </div>
       </div>
     </StlCard>
   );
 }
 
+/** 처리 이력 — 서버가 최신순으로 내린다 · 운영자는 「이름(운영자)」 */
 export function HistoryCard(props: { detail: Detail }) {
-  const items = [...props.detail.history]
-    .sort((a, b) => b.at.localeCompare(a.at))
-    .map((entry) => ({
+  const items = props.detail.history.map((entry) => {
+    const actor =
+      entry.actorType === "ADMIN" && entry.actorLabel !== "운영자"
+        ? `${entry.actorLabel}(운영자)`
+        : entry.actorLabel;
+    return {
       label: entry.label,
-      meta: [ymdhm(entry.at), entry.actor, entry.note]
+      meta: [ymdhm(entry.occurredAt), actor, entry.detail]
         .filter(Boolean)
         .join(" · "),
-      tone: entry.tone,
-    }));
+      tone: HISTORY_TONE[entry.eventType] ?? "NEUTRAL",
+    };
+  });
   return (
     <StlCard title="처리 이력" note="최신순">
-      <HistoryTimeline items={items} />
+      {items.length > 0 ? (
+        <HistoryTimeline items={items} />
+      ) : (
+        <div className="px-4 py-3 text-[12px] text-sz-n-500">
+          이력이 없습니다.
+        </div>
+      )}
     </StlCard>
   );
 }

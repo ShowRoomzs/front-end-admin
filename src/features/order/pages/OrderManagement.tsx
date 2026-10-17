@@ -1,9 +1,7 @@
-import NotReady from "@/common/components/NotReady/NotReady";
 import Notice from "@/common/components/Notice/Notice";
 import Pagination from "@/common/components/Pagination/Pagination";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
-import { DEV_MOCK_ENABLED } from "@/common/utils/devMock";
 import OrderDetailModal from "@/features/order/components/detail/OrderDetailModal";
 import OrderEmpty from "@/features/order/components/list/OrderEmpty";
 import OrderFilter from "@/features/order/components/list/OrderFilter";
@@ -18,34 +16,36 @@ import {
   SELECT_CHEVRON_STYLE,
 } from "@/features/order/constants/params";
 import {
-  useGetOrderFilterOptions,
+  useGetOrderBrandOptions,
+  useGetOrderDelayCount,
   useGetOrderList,
   useGetOrderSummary,
 } from "@/features/order/hooks/useOrderQueries";
-import { orderService } from "@/features/order/services/orderService";
 import type {
+  AdminOrderSort,
+  AdminOrderTab,
   OrderListParams,
-  OrderListQuery,
-  OrderSort,
-  OrderTab,
 } from "@/features/order/types";
+import {
+  normalizeOrderParams,
+  toListQuery,
+  toSummaryQuery,
+} from "@/features/order/utils/params";
 import { resolvePeriod } from "@/features/order/utils/period";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 /**
- * 주문 조회 — 전 브랜드·전 공구 주문의 조회 입구(시안 ui-admin-06a-orders A1~A5).
+ * 주문 조회 — 전 브랜드·전 공구 주문의 조회 입구(시안 ui-admin-06a-orders A1~A5 · `AdminOrderController`).
  *
- * 단위는 주문(결제 1건)이고 목록에는 액션이 없다 — 체크박스도 일괄 처리도 없다. 송장 대행 ·
- * 배송완료일 정정 · 직권 취소 · 운영자 사유 환불 · 반품 대신 열기는 남의 거래에 개입하는 일이라
- * 행을 눌러 상세 모달 우측 레일에서 근거를 읽고 시작한다.
+ * 단위는 주문(결제 1건)이고 행 확장이 하위주문(브랜드)이다. 목록에는 액션이 없다 — 송장 대행 ·
+ * 배송완료일 정정 · 직권 취소 · 운영자 사유 환불 · 반품 대신 열기는 상세 모달 우측 레일에서
+ * 하위주문(`deliveryGroupId`) 단위로 시작하고, 버튼 노출은 서버 `actions`가 정한다.
+ * `?orderId=`로 들어오면(예외 관리 · 반품·교환의 「열기」) 그 주문의 상세를 바로 연다.
  * 제목 「주문 조회」는 셸(MainLayout)이 그린다 — 이 화면은 설명 줄이 없다.
- *
- * 백엔드 API가 아직 없다: 개발 서버에서는 목업(`?mock=empty|recall|error`)이 채우고,
- * 배포본에서는 화면 골격만 두고 데이터 자리를 「준비 중」으로 비운다.
  */
 export default function OrderManagement() {
   const {
-    params,
+    params: rawParams,
     localParams,
     updateParam,
     updateParams,
@@ -54,40 +54,69 @@ export default function OrderManagement() {
     reset,
   } = useParams<OrderListParams>(ORDER_INITIAL_PARAMS);
 
-  const today = useMemo(() => orderService.getToday(), []);
+  // 주소에서 읽은 값은 한 번만 바로잡고 조회·필터·렌더 모두 이 값을 쓴다 — ?tab=foo 하나로 화면이 비면 안 된다
+  const params = useMemo(() => normalizeOrderParams(rawParams), [rawParams]);
+
+  const today = useMemo(() => new Date(), []);
   const range = useMemo(() => resolvePeriod(params, today), [params, today]);
+  const listQuery = useMemo(() => toListQuery(params, range), [params, range]);
+  const summaryQuery = useMemo(
+    () => toSummaryQuery(params, range),
+    [params, range]
+  );
 
-  // 탭마다 정렬 선택지가 다르다 — 주소에서 들어온 값이 이 탭에 없으면 기본값으로 읽는다
-  const sort: OrderSort = ORDER_SORT_OPTIONS[params.tab]?.includes(params.sort)
-    ? params.sort
-    : ORDER_DEFAULT_SORT[params.tab];
+  const [filterExpanded, setFilterExpanded] = useState(false);
+  const hasChips = Boolean(
+    params.marketId ||
+    params.groupBuyId ||
+    params.creatorId ||
+    params.paymentMethod
+  );
 
-  const query = useMemo<OrderListQuery>(() => {
-    const { period, from, to, ...rest } = params;
-    void period;
-    void from;
-    void to;
-    return {
-      ...rest,
-      sort,
-      page: Number(params.page),
-      size: Number(params.size),
-      paidFrom: range.from,
-      paidTo: range.to,
-    };
-  }, [params, range, sort]);
-
-  const { data: list, isLoading, isError, refetch } = useGetOrderList(query);
-  const { data: summary } = useGetOrderSummary();
-  const { data: options } = useGetOrderFilterOptions();
+  const {
+    data: list,
+    isLoading,
+    isError,
+    refetch,
+    isPlaceholderData,
+  } = useGetOrderList(listQuery);
+  const { data: summary } = useGetOrderSummary(summaryQuery);
+  // 「처리 지연」은 필터와 무관한 06d 전체 숫자라 조건이 걸리지 않은 전체 탭에서만 보인다
+  const showDelay = params.tab === "ALL" && !hasChips && !params.keyword;
+  const { data: delayCount } = useGetOrderDelayCount(showDelay);
+  // 브랜드 이름은 칩에도 쓰이므로 브랜드가 걸려 있으면 접혀 있어도 받는다
+  const { data: brands } = useGetOrderBrandOptions(
+    filterExpanded || Boolean(params.marketId)
+  );
 
   const pageInfo = usePaginationInfo({
     data: list?.pageInfo,
     onPageChange: (page) => updateParam("page", page),
   });
 
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
-  const [selectedOrderNo, setSelectedOrderNo] = useState<string | null>(null);
+  // 조치로 행이 빠져 마지막 페이지가 사라지면 빈 화면 대신 남은 마지막 페이지로 옮긴다
+  const listPageInfo = list?.pageInfo;
+  const listIsEmpty = list !== undefined && list.content.length === 0;
+  useEffect(() => {
+    if (!listPageInfo || !listIsEmpty || listPageInfo.totalResults === 0) {
+      return;
+    }
+    const lastPage = Math.max(1, listPageInfo.totalPages);
+    if (params.page > lastPage) {
+      updateParam("page", lastPage);
+    }
+  }, [listPageInfo, listIsEmpty, params.page, updateParam]);
+
+  const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
+  const selectedOrderId = params.orderId ? Number(params.orderId) : null;
+  const openOrder = useCallback(
+    (orderId: number) => updateParam("orderId", String(orderId)),
+    [updateParam]
+  );
+  const closeOrder = useCallback(
+    () => updateParam("orderId", ""),
+    [updateParam]
+  );
 
   const handleChange = useCallback(
     (patch: Partial<OrderListParams>) => updateParams({ ...patch, page: 1 }),
@@ -95,7 +124,7 @@ export default function OrderManagement() {
   );
 
   const handleTabChange = useCallback(
-    (tab: OrderTab) =>
+    (tab: AdminOrderTab) =>
       updateParams({
         tab,
         // 탭이 축을 바꾸면 그 축의 셀렉트도 바뀐다 — 이전 축의 값은 의미가 없다
@@ -106,27 +135,53 @@ export default function OrderManagement() {
     [updateParams]
   );
 
-  const handleToggle = useCallback((orderNo: string) => {
+  const handleToggle = useCallback((orderId: number) => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(orderNo)) {
-        next.delete(orderNo);
+      if (next.has(orderId)) {
+        next.delete(orderId);
       } else {
-        next.add(orderNo);
+        next.add(orderId);
       }
       return next;
     });
   }, []);
 
+  /*
+    반품·교환(06b)의 「주문 상세 열기」는 주문 id가 없어 `?searchType=ORDER_NUMBER&keyword=<주문번호>`로 온다.
+    진입 주소의 그 주문번호로 받은 첫 결과가 정확히 한 건이면 상세를 바로 연다 — 한 번만.
+  */
+  const [entryKeyword] = useState(() => {
+    const search = new URLSearchParams(window.location.search);
+    return search.get("searchType") === "ORDER_NUMBER" && !search.get("orderId")
+      ? (search.get("keyword")?.trim() ?? "")
+      : "";
+  });
+  const [autoOpenDone, setAutoOpenDone] = useState(entryKeyword === "");
+  useEffect(() => {
+    if (autoOpenDone || isPlaceholderData || !list) {
+      return;
+    }
+    if (listQuery.keyword !== entryKeyword) {
+      return; // 주소를 읽기 전 기본 조건의 결과다 — 다음 결과를 기다린다
+    }
+    setAutoOpenDone(true);
+    const only = list.content.length === 1 ? list.content[0] : null;
+    if (only && only.orderNumber === entryKeyword) {
+      openOrder(only.orderId);
+    }
+  }, [
+    autoOpenDone,
+    isPlaceholderData,
+    list,
+    listQuery.keyword,
+    entryKeyword,
+    openOrder,
+  ]);
+
   const rows = useMemo(() => list?.content ?? [], [list]);
-  const orderNos = useMemo(() => rows.map((row) => row.orderNo), [rows]);
-  const hasChips = Boolean(
-    params.brandId ||
-    params.groupBuyId ||
-    params.influencerId ||
-    params.payMethod
-  );
-  const brandName = options?.brands.find((b) => b.id === params.brandId)?.name;
+  const orderIds = useMemo(() => rows.map((row) => row.orderId), [rows]);
+  const brandName = brands?.find((b) => b.id === params.marketId)?.name;
   const total = pageInfo.totalResults;
 
   return (
@@ -137,144 +192,130 @@ export default function OrderManagement() {
         onKeywordChange={(keyword) => updateLocalParam("keyword", keyword)}
         onSearch={update}
         summary={summary}
-        options={options}
+        brands={brands}
+        expanded={filterExpanded}
+        onExpandedChange={setFilterExpanded}
         range={range}
         onChange={handleChange}
         onTabChange={handleTabChange}
       />
 
       <div className="overflow-hidden rounded-[8px] border border-sz-n-200 bg-white">
-        {!DEV_MOCK_ENABLED ? (
-          <NotReady title="주문 조회 화면은 준비 중입니다">
-            주문 조회 API가 준비되면 이 자리에 주문 목록이 표시됩니다.
-          </NotReady>
-        ) : (
-          <>
-            <div className="flex items-center justify-between border-b border-sz-n-200 px-4 py-2.5">
-              <div className="text-[12px] text-sz-n-600">
-                {isError ? (
-                  "—"
-                ) : (
-                  <>
-                    총 <b className="text-sz-n-900">{total}</b>건
-                  </>
-                )}
-                {total > 0 && params.brandId && (
-                  <span className="text-[11px] text-sz-n-500">
-                    {" "}
-                    · 브랜드 {brandName ?? params.brandId}
-                  </span>
-                )}
-                {total > 0 && list && (
-                  <>
-                    {params.tab === "ALL" ? (
-                      <>
-                        {" · 배송 이상 "}
-                        <b className="text-sz-n-900">
-                          {list.summary.anomalyCount}
-                        </b>
-                        {"건 · 처리 지연 "}
-                        <b className="text-sz-n-900">
-                          {list.summary.delayedCount}
-                        </b>
-                        건
-                      </>
-                    ) : (
-                      list.summary.typeCounts.map((item) => (
-                        <span key={item.label}>
-                          {` · ${item.label} `}
-                          <b className="text-sz-n-900">{item.count}</b>건
-                        </span>
-                      ))
-                    )}
-                  </>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  aria-label="정렬"
-                  className={SELECT_SM_CLASS}
-                  style={SELECT_CHEVRON_STYLE}
-                  value={sort}
-                  onChange={(event) =>
-                    handleChange({ sort: event.target.value as OrderSort })
-                  }
-                >
-                  {ORDER_SORT_OPTIONS[params.tab].map((value) => (
-                    <option key={value} value={value}>
-                      {ORDER_SORT_LABEL[value]}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  aria-label="표시 건수"
-                  className={SELECT_SM_CLASS}
-                  style={SELECT_CHEVRON_STYLE}
-                  value={params.size}
-                  onChange={(event) =>
-                    handleChange({ size: Number(event.target.value) })
-                  }
-                >
-                  {ORDER_PAGE_SIZES.map((size) => (
-                    <option key={size} value={size}>
-                      {size}건씩
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
+        <div className="flex items-center justify-between border-b border-sz-n-200 px-4 py-2.5">
+          <div className="text-[12px] text-sz-n-600">
             {isError ? (
-              <div className="p-4">
-                <Notice tone="danger">
-                  주문 목록을 불러오지 못했습니다.{" "}
-                  <button
-                    type="button"
-                    className="font-medium underline underline-offset-2"
-                    onClick={() => refetch()}
-                  >
-                    다시 시도
-                  </button>
-                </Notice>
-              </div>
-            ) : isLoading ? (
-              <div className="px-6 py-[72px] text-center text-[12px] text-sz-n-500">
-                불러오는 중…
-              </div>
-            ) : rows.length === 0 ? (
-              <OrderEmpty
-                params={params}
-                hasChips={hasChips}
-                isAllPeriod={params.period === "ALL"}
-                onResetAll={reset}
-                onSearchAllPeriod={() => handleChange({ period: "ALL" })}
-              />
+              "—"
             ) : (
-              <div className="[&_tbody>tr:last-child>td]:border-b-0">
-                <OrderTable
-                  rows={rows}
-                  expanded={expanded}
-                  onToggle={handleToggle}
-                  onRowClick={setSelectedOrderNo}
-                />
-              </div>
+              <>
+                총 <b className="text-sz-n-900">{total}</b>건
+              </>
             )}
+            {total > 0 && params.marketId && (
+              <span className="text-[11px] text-sz-n-500">
+                {" "}
+                · 브랜드 {brandName ?? params.marketId}
+              </span>
+            )}
+            {total > 0 && params.tab === "ALL" && summary && (
+              <>
+                {" · 배송 이상 "}
+                <b className="text-sz-n-900">
+                  {summary.tabCounts.DELIVERY_ISSUE}
+                </b>
+                건
+              </>
+            )}
+            {total > 0 && showDelay && delayCount !== undefined && (
+              <>
+                {" · 처리 지연 "}
+                <b className="text-sz-n-900">{delayCount}</b>건
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              aria-label="정렬"
+              className={SELECT_SM_CLASS}
+              style={SELECT_CHEVRON_STYLE}
+              value={params.sort}
+              onChange={(event) =>
+                handleChange({ sort: event.target.value as AdminOrderSort })
+              }
+            >
+              {ORDER_SORT_OPTIONS[params.tab].map((value) => (
+                <option key={value} value={value}>
+                  {ORDER_SORT_LABEL[value]}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="표시 건수"
+              className={SELECT_SM_CLASS}
+              style={SELECT_CHEVRON_STYLE}
+              value={params.size}
+              onChange={(event) =>
+                handleChange({ size: Number(event.target.value) })
+              }
+            >
+              {ORDER_PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {size}건씩
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-            {pageInfo.totalPages > 1 && (
-              <div className="flex justify-center border-t border-sz-n-100 py-[11px]">
-                <Pagination {...pageInfo} />
-              </div>
-            )}
-          </>
+        {isError ? (
+          <div className="p-4">
+            <Notice tone="danger">
+              주문 목록을 불러오지 못했습니다.{" "}
+              <button
+                type="button"
+                className="font-medium underline underline-offset-2"
+                onClick={() => refetch()}
+              >
+                다시 시도
+              </button>
+            </Notice>
+          </div>
+        ) : isLoading ? (
+          <div className="px-6 py-[72px] text-center text-[12px] text-sz-n-500">
+            불러오는 중…
+          </div>
+        ) : rows.length === 0 ? (
+          <OrderEmpty
+            params={params}
+            hasChips={hasChips}
+            isAllPeriod={params.period === "ALL"}
+            onResetAll={reset}
+            onSearchAllPeriod={() => handleChange({ period: "ALL" })}
+          />
+        ) : (
+          <div className="[&_tbody>tr:last-child>td]:border-b-0">
+            <OrderTable
+              rows={rows}
+              expanded={expanded}
+              onToggle={handleToggle}
+              onRowClick={openOrder}
+            />
+          </div>
+        )}
+
+        {/* 오류 안내 아래에 지난 조회의 페이저가 남지 않게 한다 */}
+        {!isError && pageInfo.totalPages > 1 && (
+          <div className="flex justify-center border-t border-sz-n-100 py-[11px]">
+            <Pagination {...pageInfo} />
+          </div>
         )}
       </div>
 
-      {selectedOrderNo && (
+      {selectedOrderId !== null && (
         <OrderDetailModal
-          orderNo={selectedOrderNo}
-          orderNos={orderNos}
-          onNavigate={setSelectedOrderNo}
-          onClose={() => setSelectedOrderNo(null)}
+          orderId={selectedOrderId}
+          orderIds={orderIds}
+          onNavigate={openOrder}
+          onClose={closeOrder}
         />
       )}
     </div>

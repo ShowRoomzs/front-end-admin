@@ -47,7 +47,7 @@ export default function OrderEmpty(props: OrderEmptyProps) {
   } else if (keyword) {
     // A5 — 주문번호는 맞는데 결과가 없으면 조회기간이 좁은 경우가 대부분이다
     title =
-      params.searchType === "ORDER_NO" ? (
+      params.searchType === "ORDER_NUMBER" ? (
         <>
           조회기간 안에 <span className="tabular-nums">{keyword}</span> 주문이
           없습니다

@@ -31,6 +31,18 @@ export function ymdhm(value: string | null | undefined): string {
   return value ? dayjs(value).format("YYYY.MM.DD HH:mm") : "—";
 }
 
+/** 요율 0.033 → 「3.3%」(서버 BigDecimal 요율) */
+export function rate(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return `${Number((value * 100).toFixed(2))}%`;
+}
+
+/** 오늘까지 지난 날 수(날짜 기준) */
+export function elapsedDays(value: string | null | undefined): number | null {
+  if (!value) return null;
+  return dayjs().startOf("day").diff(dayjs(value).startOf("day"), "day");
+}
+
 /** 목록 「08.28 ~ 09.14」 */
 export function periodShort(start: string, end: string): string {
   return `${md(start)} ~ ${md(end)}`;

@@ -1,18 +1,23 @@
-/** 서버(현재는 목업)가 돌려주는 업무 오류 — 화면은 `code`로 필드 오류와 토스트를 가른다 */
-export class OrderApiError extends Error {
-  code: string;
+import axios from "axios";
 
-  constructor(code: string, message: string) {
-    super(message);
-    this.name = "OrderApiError";
-    this.code = code;
-  }
+/*
+  서버 업무 오류(`ErrorResponse { code, message }`). 기본은 apiInstance 인터셉터가 서버 메시지를
+  토스트로 띄우므로 화면은 따로 알리지 않는다. 폼 안에 직접 그리는 오류(송장 형식 · 중복)만
+  `suppressErrorToast`로 토스트를 끄고 이 함수로 code · message를 읽는다.
+*/
+interface ErrorBody {
+  code?: string;
+  message?: string;
 }
 
 export function getOrderErrorCode(error: unknown) {
-  return error instanceof OrderApiError ? error.code : undefined;
+  return axios.isAxiosError<ErrorBody>(error)
+    ? error.response?.data?.code
+    : undefined;
 }
 
 export function getOrderErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : undefined;
+  return axios.isAxiosError<ErrorBody>(error)
+    ? error.response?.data?.message
+    : undefined;
 }

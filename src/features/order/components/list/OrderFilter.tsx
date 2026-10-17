@@ -1,6 +1,6 @@
 import {
-  ORDER_ANOMALY_OPTIONS,
-  ORDER_CANCEL_OPTIONS,
+  ORDER_ISSUE_OPTIONS,
+  ORDER_PAYMENT_METHODS,
   ORDER_PERIOD_PRESETS,
   ORDER_SEARCH_TYPES,
   ORDER_STATUS_OPTIONS,
@@ -12,17 +12,16 @@ import {
   SELECT_SM_CLASS,
 } from "@/features/order/components/shared/styles";
 import OrderBtn from "@/features/order/components/shared/OrderBtn";
+import { useGetOrderGroupBuyOptions } from "@/features/order/hooks/useOrderQueries";
 import type {
-  OrderFilterOptions,
+  AdminOrderSearchType,
+  AdminOrderSummary,
+  AdminOrderTab,
   OrderListParams,
   OrderPeriod,
-  OrderSearchType,
-  OrderTab,
-  OrderTabSummary,
 } from "@/features/order/types";
 import { periodLabel } from "@/features/order/utils/period";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
 
 interface OrderFilterProps {
   params: OrderListParams;
@@ -30,11 +29,15 @@ interface OrderFilterProps {
   keyword: string;
   onKeywordChange: (keyword: string) => void;
   onSearch: () => void;
-  summary: OrderTabSummary | undefined;
-  options: OrderFilterOptions | undefined;
+  summary: AdminOrderSummary | undefined;
+  /** 상세 조건 「브랜드」 — 어드민 마켓 목록 */
+  brands: Array<{ id: string; name: string }> | undefined;
+  /** 상세 조건 줄이 펼쳐져 있다 — 브랜드 목록은 펼칠 때 받는다 */
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   range: { from: string; to: string };
   onChange: (patch: Partial<OrderListParams>) => void;
-  onTabChange: (tab: OrderTab) => void;
+  onTabChange: (tab: AdminOrderTab) => void;
 }
 
 const FLAB = "mr-0.5 text-[11px] font-semibold text-sz-n-500";
@@ -45,6 +48,10 @@ const QMORE =
  * 시안 `.filter.two` — 탭 · 상태 셀렉트 · 검색(1줄), 결제일 프리셋 · 적용됨 칩 · 상세 조건(2줄),
  * 접힘을 열면 3줄이 같은 카드 안에서 늘어난다(별도 패널·드로어 없음).
  * 접힘은 조건을 숨기는 장치가 아니라 자리를 아끼는 장치라, 걸린 조건은 접어도 칩으로 남는다.
+ *
+ * API와 다른 점 — 셀렉트 옵션 옆 건수는 서버가 탭 건수만 주므로 붙이지 않는다. 인플루언서는 고를
+ * 목록(크리에이터 id) API가 없어 셀렉트를 뺐고, 다른 화면에서 `creatorId`로 넘어온 경우만 칩으로 보인다.
+ * 취소 탭은 서버에 취소 유형 축이 없어 셀렉트를 두지 않는다.
  */
 export default function OrderFilter(props: OrderFilterProps) {
   const {
@@ -53,31 +60,30 @@ export default function OrderFilter(props: OrderFilterProps) {
     onKeywordChange,
     onSearch,
     summary,
-    options,
+    brands,
+    expanded,
+    onExpandedChange,
     range,
     onChange,
     onTabChange,
   } = props;
-  const [expanded, setExpanded] = useState(false);
 
-  const brandName = options?.brands.find((b) => b.id === params.brandId)?.name;
-  const groupBuyTitle = options?.groupBuys.find(
+  const brandName = brands?.find((b) => b.id === params.marketId)?.name;
+  const { data: groupBuys } = useGetOrderGroupBuyOptions(brandName);
+  const groupBuyTitle = groupBuys?.find(
     (g) => g.id === params.groupBuyId
   )?.title;
-  const influencerName = options?.influencers.find(
-    (i) => i.id === params.influencerId
-  )?.name;
-  const payMethodLabel = options?.payMethods.find(
-    (p) => p.value === params.payMethod
+  const payMethodLabel = ORDER_PAYMENT_METHODS.find(
+    (p) => p.value === params.paymentMethod
   )?.label;
 
   const chips: Array<{ key: string; label: string; clear: () => void }> = [];
-  if (params.brandId) {
+  if (params.marketId) {
     chips.push({
       key: "brand",
-      label: `브랜드 ${brandName ?? params.brandId}`,
+      label: `브랜드 ${brandName ?? params.marketId}`,
       // 공구는 브랜드에 종속이라 브랜드를 지우면 공구도 함께 풀린다
-      clear: () => onChange({ brandId: "", groupBuyId: "" }),
+      clear: () => onChange({ marketId: "", groupBuyId: "" }),
     });
   }
   if (params.groupBuyId) {
@@ -87,28 +93,23 @@ export default function OrderFilter(props: OrderFilterProps) {
       clear: () => onChange({ groupBuyId: "" }),
     });
   }
-  if (params.influencerId) {
+  if (params.creatorId) {
     chips.push({
-      key: "influencer",
-      label: `인플루언서 ${influencerName ?? params.influencerId}`,
-      clear: () => onChange({ influencerId: "" }),
+      key: "creator",
+      label: `인플루언서 #${params.creatorId}`,
+      clear: () => onChange({ creatorId: "" }),
     });
   }
-  if (params.payMethod) {
+  if (params.paymentMethod) {
     chips.push({
-      key: "payMethod",
-      label: `결제수단 ${payMethodLabel ?? params.payMethod}`,
-      clear: () => onChange({ payMethod: "" }),
+      key: "paymentMethod",
+      label: `결제수단 ${payMethodLabel ?? params.paymentMethod}`,
+      clear: () => onChange({ paymentMethod: "" }),
     });
   }
 
-  // 건수는 서버가 내려준 값만 보인다 — 불러오기 전·API가 없는 배포본에서는 가짜 0을 그리지 않는다
-  const tabCount = (tab: OrderTab) => summary?.tabCounts[tab];
-  const withCount = (label: string, count: number | undefined) =>
-    count === undefined ? label : `${label} ${count}`;
-  const groupBuys = (options?.groupBuys ?? []).filter(
-    (g) => g.brandId === params.brandId
-  );
+  // 건수는 서버가 내려준 값만 보인다 — 불러오기 전에는 가짜 0을 그리지 않는다
+  const tabCount = (tab: AdminOrderTab) => summary?.tabCounts[tab];
 
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 rounded-[8px] border border-sz-n-200 bg-white px-4 py-3">
@@ -146,61 +147,40 @@ export default function OrderFilter(props: OrderFilterProps) {
       </div>
 
       <div className="flex items-start gap-1.5">
-        {/* 탭이 축을 바꾸면 같은 자리의 셀렉트가 따라 바뀐다 — 상태 → 이상 유형 → 취소 유형 */}
-        <select
-          aria-label={
-            params.tab === "ANOMALY"
-              ? "이상 유형"
-              : params.tab === "CANCELED"
-                ? "취소 유형"
-                : "상태"
-          }
-          className={cn(
-            SELECT_SM_CLASS,
-            params.tab === "ANOMALY" ? "w-[152px]" : "w-[134px]"
-          )}
-          style={SELECT_CHEVRON_STYLE}
-          value={params.status}
-          onChange={(event) => onChange({ status: event.target.value })}
-        >
-          {params.tab === "ALL" && (
-            <>
-              <option value="">상태 전체</option>
-              {ORDER_STATUS_OPTIONS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {withCount(item.label, summary?.statusCounts[item.value])}
-                </option>
-              ))}
-            </>
-          )}
-          {params.tab === "ANOMALY" && (
-            <>
-              <option value="">이상 유형 전체</option>
-              {ORDER_ANOMALY_OPTIONS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {withCount(item.label, summary?.anomalyCounts[item.value])}
-                </option>
-              ))}
-            </>
-          )}
-          {params.tab === "CANCELED" && (
-            <>
-              <option value="">취소 유형 전체</option>
-              {ORDER_CANCEL_OPTIONS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {withCount(item.label, summary?.cancelCounts[item.value])}
-                </option>
-              ))}
-            </>
-          )}
-        </select>
+        {/* 탭이 축을 바꾸면 같은 자리의 셀렉트가 따라 바뀐다 — 상태 → 이상 유형. 취소 탭은 축이 없다 */}
+        {params.tab !== "CANCEL" && (
+          <select
+            aria-label={params.tab === "DELIVERY_ISSUE" ? "이상 유형" : "상태"}
+            className={cn(
+              SELECT_SM_CLASS,
+              params.tab === "DELIVERY_ISSUE" ? "w-[152px]" : "w-[134px]"
+            )}
+            style={SELECT_CHEVRON_STYLE}
+            value={params.status}
+            onChange={(event) => onChange({ status: event.target.value })}
+          >
+            <option value="">
+              {params.tab === "DELIVERY_ISSUE" ? "이상 유형 전체" : "상태 전체"}
+            </option>
+            {(params.tab === "DELIVERY_ISSUE"
+              ? ORDER_ISSUE_OPTIONS
+              : ORDER_STATUS_OPTIONS
+            ).map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        )}
         <select
           aria-label="검색 기준"
           className={cn(SELECT_SM_CLASS, "w-[104px]")}
           style={SELECT_CHEVRON_STYLE}
           value={params.searchType}
           onChange={(event) =>
-            onChange({ searchType: event.target.value as OrderSearchType })
+            onChange({
+              searchType: event.target.value as AdminOrderSearchType,
+            })
           }
         >
           {ORDER_SEARCH_TYPES.map((item) => (
@@ -308,7 +288,7 @@ export default function OrderFilter(props: OrderFilterProps) {
         <button
           type="button"
           className={QMORE}
-          onClick={() => setExpanded((prev) => !prev)}
+          onClick={() => onExpandedChange(!expanded)}
         >
           상세 조건
           <span className="text-[8px]">{expanded ? "▴" : "▾"}</span>
@@ -323,13 +303,17 @@ export default function OrderFilter(props: OrderFilterProps) {
             aria-label="브랜드"
             className={cn(SELECT_SM_CLASS, "w-[150px]")}
             style={SELECT_CHEVRON_STYLE}
-            value={params.brandId}
+            value={params.marketId}
             onChange={(event) =>
-              onChange({ brandId: event.target.value, groupBuyId: "" })
+              onChange({ marketId: event.target.value, groupBuyId: "" })
             }
           >
             <option value="">브랜드 전체</option>
-            {(options?.brands ?? []).map((brand) => (
+            {/* 받은 목록 밖의 브랜드로 들어와도 고른 값이 빈칸으로 보이지 않게 남긴다 */}
+            {params.marketId && !brandName && (
+              <option value={params.marketId}>#{params.marketId}</option>
+            )}
+            {(brands ?? []).map((brand) => (
               <option key={brand.id} value={brand.id}>
                 {brand.name}
               </option>
@@ -339,7 +323,7 @@ export default function OrderFilter(props: OrderFilterProps) {
           <select
             aria-label="공구"
             // 공구는 브랜드에 종속 — 브랜드를 고르기 전에는 고를 수 없다
-            disabled={!params.brandId}
+            disabled={!params.marketId}
             className={cn(
               SELECT_SM_CLASS,
               "w-[186px] disabled:cursor-not-allowed disabled:bg-sz-n-100 disabled:text-sz-n-400"
@@ -349,24 +333,12 @@ export default function OrderFilter(props: OrderFilterProps) {
             onChange={(event) => onChange({ groupBuyId: event.target.value })}
           >
             <option value="">공구 전체</option>
-            {groupBuys.map((groupBuy) => (
+            {params.groupBuyId && !groupBuyTitle && (
+              <option value={params.groupBuyId}>#{params.groupBuyId}</option>
+            )}
+            {(groupBuys ?? []).map((groupBuy) => (
               <option key={groupBuy.id} value={groupBuy.id}>
                 {groupBuy.title}
-              </option>
-            ))}
-          </select>
-          <span className={cn(FLAB, "ml-2.5")}>인플루언서</span>
-          <select
-            aria-label="인플루언서"
-            className={cn(SELECT_SM_CLASS, "w-[160px]")}
-            style={SELECT_CHEVRON_STYLE}
-            value={params.influencerId}
-            onChange={(event) => onChange({ influencerId: event.target.value })}
-          >
-            <option value="">인플루언서 전체</option>
-            {(options?.influencers ?? []).map((influencer) => (
-              <option key={influencer.id} value={influencer.id}>
-                {influencer.name}
               </option>
             ))}
           </select>
@@ -375,11 +347,13 @@ export default function OrderFilter(props: OrderFilterProps) {
             aria-label="결제수단"
             className={cn(SELECT_SM_CLASS, "w-[128px]")}
             style={SELECT_CHEVRON_STYLE}
-            value={params.payMethod}
-            onChange={(event) => onChange({ payMethod: event.target.value })}
+            value={params.paymentMethod}
+            onChange={(event) =>
+              onChange({ paymentMethod: event.target.value })
+            }
           >
             <option value="">결제수단 전체</option>
-            {(options?.payMethods ?? []).map((method) => (
+            {ORDER_PAYMENT_METHODS.map((method) => (
               <option key={method.value} value={method.value}>
                 {method.label}
               </option>
@@ -390,10 +364,10 @@ export default function OrderFilter(props: OrderFilterProps) {
             className={cn(QMORE, "text-sz-n-600")}
             onClick={() =>
               onChange({
-                brandId: "",
+                marketId: "",
                 groupBuyId: "",
-                influencerId: "",
-                payMethod: "",
+                creatorId: "",
+                paymentMethod: "",
               })
             }
           >
