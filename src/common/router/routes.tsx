@@ -33,6 +33,12 @@ import ContractManagement from "@/features/contract/pages/ContractManagement";
 import ContractDetail from "@/features/contract/pages/ContractDetail";
 import GroupBuyManagement from "@/features/groupBuy/pages/GroupBuyManagement";
 import GroupBuyDetail from "@/features/groupBuy/pages/GroupBuyDetail";
+import SettlementManagement from "@/features/settlement/pages/SettlementManagement";
+import SettlementDetail from "@/features/settlement/pages/SettlementDetail";
+import OrderManagement from "@/features/order/pages/OrderManagement";
+import ClaimManagement from "@/features/claim/pages/ClaimManagement";
+import RefundManagement from "@/features/refund/pages/RefundManagement";
+import ExceptionManagement from "@/features/exception/pages/ExceptionManagement";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -205,21 +211,33 @@ export const mainRoutes: Array<RouteObject> = [
           },
         ],
       },
-      // 주문 관리
+      // 거래 관리 — 주문 조회 · 반품·교환 · 환불 관리 · 예외 관리(ui-admin-06a~06d)
       {
         path: "order",
         children: [
           {
             path: "list",
-            element: <PlaceholderPage title="전체 주문 조회" />,
+            element: <OrderManagement />,
           },
           {
             path: "claim",
-            element: <PlaceholderPage title="클레임 현황" />,
+            element: <ClaimManagement />,
+          },
+          {
+            path: "refund",
+            element: <RefundManagement />,
+          },
+          {
+            path: "exception",
+            element: <ExceptionManagement />,
           },
         ],
       },
-      // 정산 관리
+      /*
+        정산 관리 — 하위 메뉴 없이 공구 정산 하나다(ui-admin-07a · 07b).
+        「고정 지급비 정산」은 지웠다 — 고정 지급비는 브랜드가 인플루언서에게 직접 지급해(모델 B)
+        플랫폼을 지나지 않으므로 정산 관리 대상이 아니다(§41-1 · 14). 다시 만들지 말 것.
+      */
       {
         path: "settlement",
         children: [
@@ -233,11 +251,11 @@ export const mainRoutes: Array<RouteObject> = [
           },
           {
             path: "group-buy",
-            element: <PlaceholderPage title="공구 정산" />,
+            element: <SettlementManagement />,
           },
           {
-            path: "fixed-payout",
-            element: <PlaceholderPage title="고정 지급비 정산" />,
+            path: "group-buy/:id",
+            element: <SettlementDetail />,
           },
         ],
       },
