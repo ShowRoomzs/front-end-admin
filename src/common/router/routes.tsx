@@ -39,6 +39,7 @@ import OrderManagement from "@/features/order/pages/OrderManagement";
 import ClaimManagement from "@/features/claim/pages/ClaimManagement";
 import RefundManagement from "@/features/refund/pages/RefundManagement";
 import ExceptionManagement from "@/features/exception/pages/ExceptionManagement";
+import ThreadPage from "@/features/thread/pages/ThreadPage";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -167,7 +168,8 @@ export const mainRoutes: Array<RouteObject> = [
           },
           {
             path: "threads",
-            element: <PlaceholderPage title="소통 스레드" />,
+            // 소통 스레드 — 운영팀 1:1 채널(ui-admin-20a) · 정산 조정 이슈 스레드(ui-admin-20b)
+            element: <ThreadPage />,
           },
         ],
       },

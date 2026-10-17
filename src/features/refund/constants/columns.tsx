@@ -38,7 +38,7 @@ export function createRefundColumns(
     {
       key: "refundNo",
       label: "환불번호",
-      width: 92,
+      width: 80,
       render: (value) => (
         <span className="whitespace-nowrap text-[12px] tabular-nums">
           {value as string}
@@ -48,7 +48,8 @@ export function createRefundColumns(
     {
       key: "orderNumber",
       label: "주문번호",
-      width: 100,
+      // 서버 주문번호는 「20261003-000123」 15자 — 시안의 ORD-24201보다 길다
+      width: 130,
       render: (value) => (
         <span
           className="block truncate text-[12px] tabular-nums"

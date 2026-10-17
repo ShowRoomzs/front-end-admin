@@ -105,7 +105,7 @@ export default function ClaimFilterBar(props: ClaimFilterBarProps) {
         </select>
         <input
           aria-label="검색어"
-          className={cn(INPUT_CLASS, "h-8 w-[220px] py-1.5 pl-2.5 pr-2.5")}
+          className={cn(INPUT_CLASS, "h-8 w-[172px] py-1.5 pl-2.5 pr-2.5")}
           placeholder={field.placeholder}
           value={draft.keyword}
           onChange={(event) => onDraftChange("keyword", event.target.value)}
