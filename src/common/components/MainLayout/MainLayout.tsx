@@ -6,6 +6,7 @@ import { useGetChangeRequestPendingCount } from "@/features/changeRequest/hooks/
 import { useGetCreatorPendingCount } from "@/features/creator/hooks/useGetCreatorPendingCount";
 import { useGetInquiryUnansweredCount } from "@/features/inquiry/hooks/useGetInquiryUnansweredCount";
 import { useGetSellerPendingCount } from "@/features/seller/hooks/useGetSellerPendingCount";
+import { useGetAdminSettlementSummary } from "@/features/settlement/hooks/useAdminSettlement";
 import { useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../Sidebar";
@@ -121,6 +122,24 @@ function withGroupBuyCount(
   }));
 }
 
+/**
+ * 정산 관리 GNB 뱃지 = 운영자 조치만(분배 실패 + 차감 미회수 + 세금계산서 대조 대기 + 브랜드 발행 대기).
+ * 조정 협의 · 주민번호 미등록은 다음 차례가 당사자라 세지 않는다(§45-0).
+ * API가 없어 배포본에서는 값이 오지 않고 뱃지도 그리지 않는다(개발 서버 목업만).
+ */
+function withSettlementCount(
+  menus: Array<typeof ADMIN_MENU>,
+  actionRequired: number
+) {
+  const badge = actionRequired > 0 ? actionRequired : undefined;
+  return menus.map((menu) => ({
+    ...menu,
+    groups: menu.groups.map((group) =>
+      group.id === "settlement" ? { ...group, badge } : group
+    ),
+  }));
+}
+
 /** 제목 아래 설명 줄이 붙어 화면이 h1을 직접 그리는 목록 */
 const SELF_TITLED_PATHS = ["/contract"];
 
@@ -170,6 +189,7 @@ export default function MainLayout() {
   const { unansweredCount: inquiryUnanswered } = useGetInquiryUnansweredCount();
   const { data: contractSummary } = useGetAdminContractSummary();
   const { data: groupBuySummary } = useGetAdminGroupBuySummary();
+  const { data: settlementSummary } = useGetAdminSettlementSummary();
 
   // 목록 화면은 메뉴에 지정된 제목을 페이지 타이틀로 쓴다.
   // 상세 화면(하위 경로)은 브랜드명 등 자체 타이틀을 렌더링하므로 비워둔다.
@@ -195,7 +215,12 @@ export default function MainLayout() {
 
   return (
     <div className="flex h-screen bg-sz-n-50">
-      <Sidebar menus={menus} />
+      <Sidebar
+        menus={withSettlementCount(
+          menus,
+          settlementSummary?.operatorActionCount ?? 0
+        )}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Header title={title} subtitle={subtitle} operatorName="운영자" />

@@ -84,24 +84,42 @@ export const ADMIN_MENU: MenuConfig = {
     {
       id: "transaction",
       label: "거래 관리",
-      path: "/order/list",
-      pageTitle: "거래 관리",
+      children: [
+        {
+          id: "transaction-order",
+          label: "주문 조회",
+          path: "/order/list",
+          pageTitle: "주문 조회",
+        },
+        {
+          id: "transaction-claim",
+          label: "반품·교환",
+          path: "/order/claim",
+          pageTitle: "반품·교환",
+        },
+        {
+          id: "transaction-refund",
+          label: "환불 관리",
+          path: "/order/refund",
+          pageTitle: "환불 관리",
+        },
+        {
+          id: "transaction-exception",
+          label: "예외 관리",
+          path: "/order/exception",
+          pageTitle: "예외 관리",
+        },
+      ],
     },
     {
       id: "settlement",
       label: "정산 관리",
-      children: [
-        {
-          id: "settlement-group-buy",
-          label: "공구 정산",
-          path: "/settlement/group-buy",
-        },
-        {
-          id: "settlement-fixed-payout",
-          label: "고정 지급비 정산",
-          path: "/settlement/fixed-payout",
-        },
-      ],
+      /*
+        하위 메뉴 없이 공구 정산 하나다(ui-admin-07a GNB) — 「고정 지급비 정산」 메뉴는 삭제됐다.
+        본문 h1은 화면명 「공구 정산」.
+      */
+      path: "/settlement/group-buy",
+      pageTitle: "공구 정산",
     },
     {
       id: "cs-content",
