@@ -86,9 +86,14 @@ const CLAIM_NO_COLUMN: Column = {
 };
 const CONSUMER_COLUMN: Column = {
   label: "소비자",
-  width: 64,
+  width: 80,
   center: true,
-  render: (item) => item.claim.consumerName,
+  // 서버는 이름을 가리지 않고 준다 — 긴 이름은 말줄임 · 전체는 툴팁
+  render: (item) => (
+    <span className="block truncate" title={item.claim.consumerName}>
+      {item.claim.consumerName}
+    </span>
+  ),
 };
 const BRAND_COLUMN: Column = {
   label: "브랜드",

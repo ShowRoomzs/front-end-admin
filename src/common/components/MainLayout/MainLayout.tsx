@@ -10,6 +10,10 @@ import { useGetAdminSettlementSummary } from "@/features/settlement/hooks/useAdm
 import { useGetClaimSummary } from "@/features/claim/hooks/useAdminClaimQueries";
 import { useGetExceptionSummary } from "@/features/exception/hooks/useExceptionQueries";
 import { useGetRefundSummary } from "@/features/refund/hooks/useAdminRefund";
+import {
+  getThreadMenuBadge,
+  useGetThreadSummary,
+} from "@/features/thread/hooks/useGetThreadSummary";
 import { useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../Sidebar";
@@ -147,7 +151,6 @@ function withSettlementCount(
  * 거래 관리 GNB(ui-admin-06c 사이드바 배지) — 하위 메뉴마다 운영자 조치 건수를 회색 카운트로,
  * 묶음 뱃지는 그 합계로 그린다. 주문 조회는 조회 화면이라 세지 않는다.
  * 반품·교환 = 소비자 이의 · 환불 관리 = 집행 대기 + 실패 · 예외 관리 = 처리 지연 + 배송 예외.
- * API가 없어 배포본에서는 값이 오지 않고 뱃지도 그리지 않는다(개발 서버 목업만).
  */
 function withTransactionCounts(
   menus: Array<typeof ADMIN_MENU>,
@@ -170,6 +173,32 @@ function withTransactionCounts(
               const count = childCount[child.id] ?? 0;
               return count > 0 ? { ...child, count } : child;
             }),
+          }
+        : group
+    ),
+  }));
+}
+
+/**
+ * 게시물·소통 모니터링 GNB(ui-admin-20a 사이드바) — 소통 스레드 = 브랜드 + 인플루언서 1:1 안 읽은 수.
+ * 이슈 스레드는 운영자 차례가 없어 세지 않는다. 다른 하위 메뉴는 아직 건수가 없어 묶음 뱃지도 같은 값이다.
+ */
+function withThreadCount(
+  menus: Array<typeof ADMIN_MENU>,
+  unread: number | undefined
+) {
+  return menus.map((menu) => ({
+    ...menu,
+    groups: menu.groups.map((group) =>
+      group.id === "monitoring"
+        ? {
+            ...group,
+            badge: unread,
+            children: group.children?.map((child) =>
+              child.id === "monitoring-thread"
+                ? { ...child, count: unread }
+                : child
+            ),
           }
         : group
     ),
@@ -229,6 +258,7 @@ export default function MainLayout() {
   const { data: claimSummary } = useGetClaimSummary();
   const { data: refundSummary } = useGetRefundSummary();
   const { data: exceptionSummary } = useGetExceptionSummary();
+  const { data: threadSummary } = useGetThreadSummary();
 
   // 목록 화면은 메뉴에 지정된 제목을 페이지 타이틀로 쓴다.
   // 상세 화면(하위 경로)은 브랜드명 등 자체 타이틀을 렌더링하므로 비워둔다.
@@ -236,20 +266,23 @@ export default function MainLayout() {
   const pageTitle = SELF_TITLED_PATHS.includes(location.pathname)
     ? undefined
     : (currentItem?.pageTitle ?? currentItem?.label);
-  const menus = withGroupBuyCount(
-    withContractCount(
-      withCsCounts(
-        withOnboardingCounts(
-          MENUS,
-          brandPending,
-          influencerPending,
-          changeRequestPending
+  const menus = withThreadCount(
+    withGroupBuyCount(
+      withContractCount(
+        withCsCounts(
+          withOnboardingCounts(
+            MENUS,
+            brandPending,
+            influencerPending,
+            changeRequestPending
+          ),
+          inquiryUnanswered
         ),
-        inquiryUnanswered
+        contractSummary?.actionRequiredCount ?? 0
       ),
-      contractSummary?.actionRequiredCount ?? 0
+      groupBuySummary?.actionRequiredCount ?? 0
     ),
-    groupBuySummary?.actionRequiredCount ?? 0
+    getThreadMenuBadge(threadSummary)
   );
 
   return (
