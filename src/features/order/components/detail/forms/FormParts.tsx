@@ -1,5 +1,9 @@
+import { FORM_SELECT_CLASS } from "@/features/order/components/shared/styles";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/features/order/constants/params";
+import type { AdminOrderGroupDetail } from "@/features/order/types";
+import { subOrderSuffix } from "@/features/order/utils/format";
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 /*
   레일 인라인 폼의 조각 — 시안 `.ifm` · `.mlabel` · `.mwarn` · `.cbrow`.
@@ -81,6 +85,11 @@ export function CheckRow(props: {
   onQtyChange?: (qty: number) => void;
 }) {
   const { checked, label, qty, maxQty, onToggle, onQtyChange } = props;
+  // 입력 중에는 칸을 비우거나 한 자리씩 고칠 수 있어야 한다 — 문자열로 들고 있다가 벗어날 때 [1, 최대]로 맞춘다.
+  // 부모에는 숫자로 읽히는 값만 범위 안으로 맞춰 올려서, 그대로 제출해도 수량이 범위를 벗어나지 않는다.
+  const [draft, setDraft] = useState<string | null>(null);
+  const clamp = (value: number) =>
+    Math.min(maxQty, Math.max(1, Math.trunc(value)));
   return (
     <div className="flex items-center gap-[7px] py-1 text-[11px]">
       <button
@@ -105,13 +114,26 @@ export function CheckRow(props: {
           min={1}
           max={maxQty}
           aria-label={`${label} 수량`}
-          value={qty}
+          value={draft ?? String(qty)}
           onChange={(event) => {
-            const next = Math.min(
-              maxQty,
-              Math.max(1, Number(event.target.value) || 1)
-            );
-            onQtyChange(next);
+            const raw = event.target.value;
+            setDraft(raw);
+            const value = Number(raw);
+            if (raw.trim() !== "" && Number.isFinite(value)) {
+              onQtyChange(clamp(value));
+            }
+          }}
+          onBlur={() => {
+            const value = Number(draft);
+            if (
+              draft !== null &&
+              draft.trim() !== "" &&
+              Number.isFinite(value)
+            ) {
+              onQtyChange(clamp(value));
+            }
+            // 비워 둔 채 벗어나면 마지막으로 맞춰 둔 값(최소 1)으로 돌아간다
+            setDraft(null);
           }}
           className="ml-auto h-[22px] w-[38px] rounded-[4px] border border-sz-n-300 bg-white text-center text-[10px] tabular-nums text-sz-n-900 outline-none focus:border-sz-accent-500"
         />
@@ -126,5 +148,46 @@ export function CheckRow(props: {
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * 대상 하위주문 — 조치는 하위주문 단위다. 열 수 있는 하위주문이 하나면 고정 문구,
+ * 둘 이상이면 셀렉트로 고른다(직권 취소 · 사유 환불이 다른 브랜드를 건드리지 않게).
+ */
+export function TargetGroupField(props: {
+  id: string;
+  groups: Array<AdminOrderGroupDetail>;
+  value: number;
+  onChange: (deliveryGroupId: number) => void;
+}) {
+  const { id, groups, value, onChange } = props;
+  const name = (group: AdminOrderGroupDetail) =>
+    `${group.brandName} · 하위주문 ${subOrderSuffix(group.subOrderNumber)}`;
+  return (
+    <>
+      <FormLabel required htmlFor={id}>
+        대상 하위주문
+      </FormLabel>
+      {groups.length > 1 ? (
+        <select
+          id={id}
+          className={FORM_SELECT_CLASS}
+          style={MODAL_SELECT_CHEVRON_STYLE}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+        >
+          {groups.map((group) => (
+            <option key={group.deliveryGroupId} value={group.deliveryGroupId}>
+              {name(group)}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <p id={id} className="text-[11px] font-medium text-sz-n-900">
+          {groups[0] ? name(groups[0]) : "—"}
+        </p>
+      )}
+    </>
   );
 }

@@ -242,14 +242,6 @@ export const mainRoutes: Array<RouteObject> = [
         path: "settlement",
         children: [
           {
-            path: "status",
-            element: <PlaceholderPage title="정산 현황" />,
-          },
-          {
-            path: "process",
-            element: <PlaceholderPage title="정산 처리" />,
-          },
-          {
             path: "group-buy",
             element: <SettlementManagement />,
           },

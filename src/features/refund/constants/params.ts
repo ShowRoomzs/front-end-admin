@@ -2,13 +2,11 @@ import type {
   RefundListParams,
   RefundRouteFilter,
   RefundSort,
-  RefundStatus,
+  RefundTab,
 } from "@/features/refund/types";
 
-export const REFUND_LIST_PATH = "/order/refund";
-
 /** 탭 3종 — 집행 대기 · 실패 · 완료(시안 A1~A3) */
-export const REFUND_TABS: Array<{ value: RefundStatus; label: string }> = [
+export const REFUND_TABS: Array<{ value: RefundTab; label: string }> = [
   { value: "PENDING", label: "집행 대기" },
   { value: "FAILED", label: "실패" },
   { value: "DONE", label: "완료" },
@@ -21,7 +19,9 @@ export const REFUND_ROUTE_OPTIONS: Array<{
   { value: "", label: "경로 전체" },
   { value: "CANCEL", label: "취소" },
   { value: "RETURN", label: "반품" },
-  { value: "RETURN_BACK", label: "반송" },
+  { value: "RETURN_SHIPMENT", label: "반송" },
+  // 시안에는 없다 — 39 설계서 3-1 「교환 재발송비 환불이 속할 곳」으로 서버가 한 칸 더했다
+  { value: "EXCHANGE", label: "교환" },
   { value: "OPERATOR", label: "운영자 사유" },
 ];
 

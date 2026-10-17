@@ -1,37 +1,44 @@
 import {
-  CLAIM_KIND_OPTIONS,
+  CLAIM_SEARCH_FIELDS,
   CLAIM_TABS,
+  CLAIM_TYPE_OPTIONS,
   SELECT_CHEVRON_STYLE,
 } from "@/features/claim/constants/params";
-import type {
-  ClaimKind,
-  ClaimListParams,
-  ClaimTab,
-} from "@/features/claim/types";
+import type { ClaimListParams, ClaimTab } from "@/features/claim/types";
 import Btn from "@/features/contract/components/shared/Btn";
 import { INPUT_CLASS } from "@/features/contract/components/shared/styles";
 import { cn } from "@/lib/utils";
 
+const SELECT_SM_CLASS =
+  "h-7 cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
+
 interface ClaimFilterBarProps {
   /** 적용된 탭 */
   tab: ClaimTab;
-  /** 아직 적용 전인(검색을 눌러야 반영되는) 유형 · 검색어 */
-  draft: Pick<ClaimListParams, "kind" | "keyword">;
-  /** 탭 건수 — 요약을 받기 전(또는 API 미준비)에는 칩을 그리지 않는다 */
+  /** 아직 적용 전인(검색을 눌러야 반영되는) 유형 · 검색 기준 · 검색어 */
+  draft: Pick<ClaimListParams, "type" | "searchField" | "keyword">;
+  /** 탭 건수 — 요약을 받기 전에는 칩을 그리지 않는다 */
   counts: Record<ClaimTab, number> | undefined;
   onTabChange: (tab: ClaimTab) => void;
-  onDraftChange: (key: "kind" | "keyword", value: string) => void;
+  onDraftChange: (
+    key: "type" | "searchField" | "keyword",
+    value: string
+  ) => void;
   onSearch: () => void;
   onReset: () => void;
 }
 
 /**
  * 시안 `.filter` — 탭(좌) + 유형 · 검색(우)을 한 장의 카드에 담는다.
- * 탭 7개와 건수는 파트너 11-claims와 같다 — 브랜드가 보는 큐와 운영자가 보는 큐가 어긋나면 CS 통화에서 단계가 맞지 않는다.
+ * 탭 7개와 건수(`summary.tabCounts`)는 파트너 11-claims와 같다.
+ * 시안의 검색 입력 하나는 서버가 셋(접수·주문번호 / 브랜드명 / 소비자명)으로 나눠 받아 기준 셀렉트를 더했다.
  */
 export default function ClaimFilterBar(props: ClaimFilterBarProps) {
   const { tab, draft, counts, onTabChange, onDraftChange, onSearch, onReset } =
     props;
+  const field =
+    CLAIM_SEARCH_FIELDS.find((item) => item.value === draft.searchField) ??
+    CLAIM_SEARCH_FIELDS[0];
 
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-[8px] border border-sz-n-200 bg-white px-4 py-3">
@@ -61,7 +68,7 @@ export default function ClaimFilterBar(props: ClaimFilterBarProps) {
                       : "bg-sz-n-100 text-sz-n-600"
                   )}
                 >
-                  {counts[item.value]}
+                  {counts[item.value] ?? 0}
                 </span>
               )}
             </button>
@@ -72,14 +79,25 @@ export default function ClaimFilterBar(props: ClaimFilterBarProps) {
       <div className="ml-auto flex gap-1.5">
         <select
           aria-label="유형"
-          className="h-7 w-24 cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+          className={cn(SELECT_SM_CLASS, "w-24")}
           style={SELECT_CHEVRON_STYLE}
-          value={draft.kind}
-          onChange={(event) =>
-            onDraftChange("kind", event.target.value as "" | ClaimKind)
-          }
+          value={draft.type}
+          onChange={(event) => onDraftChange("type", event.target.value)}
         >
-          {CLAIM_KIND_OPTIONS.map((option) => (
+          {CLAIM_TYPE_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="검색 기준"
+          className={cn(SELECT_SM_CLASS, "w-[112px]")}
+          style={SELECT_CHEVRON_STYLE}
+          value={draft.searchField}
+          onChange={(event) => onDraftChange("searchField", event.target.value)}
+        >
+          {CLAIM_SEARCH_FIELDS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -88,7 +106,7 @@ export default function ClaimFilterBar(props: ClaimFilterBarProps) {
         <input
           aria-label="검색어"
           className={cn(INPUT_CLASS, "h-8 w-[220px] py-1.5 pl-2.5 pr-2.5")}
-          placeholder="접수번호 · 주문번호 · 브랜드명 · 소비자"
+          placeholder={field.placeholder}
           value={draft.keyword}
           onChange={(event) => onDraftChange("keyword", event.target.value)}
           onKeyDown={(event) => {

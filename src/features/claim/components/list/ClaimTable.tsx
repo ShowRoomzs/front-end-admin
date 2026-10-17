@@ -2,20 +2,27 @@ import Pagination from "@/common/components/Pagination/Pagination";
 import type { PaginationProps } from "@/common/components/Pagination/Pagination";
 import { ClaimBadge } from "@/features/claim/components/shared/ClaimParts";
 import {
-  CLAIM_KIND_LABEL,
   CLAIM_PAGE_SIZES,
-  CLAIM_PARTY_LABEL,
   CLAIM_SORT_OPTIONS,
   CLAIM_TAB_LABEL,
   SELECT_CHEVRON_STYLE,
 } from "@/features/claim/constants/params";
 import type {
   ClaimListItem,
-  ClaimListResponse,
+  ClaimListView,
   ClaimSort,
+  ClaimSummary,
   ClaimTab,
 } from "@/features/claim/types";
-import { md, mdHm, won } from "@/features/claim/utils/format";
+import {
+  dDay,
+  elapsedLabel,
+  feeBearerShort,
+  md,
+  mdHm,
+  stageBadge,
+  won,
+} from "@/features/claim/utils/format";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -46,16 +53,28 @@ function Note(props: { warn?: boolean; children: ReactNode }) {
   );
 }
 
+/** 「50ml」 · 교환은 「03 → 05」 */
+function optionText(item: ClaimListItem): string {
+  const { optionName, exchangeOptionName } = item.claim;
+  if (exchangeOptionName) {
+    return `${optionName ?? "—"} → ${exchangeOptionName}`;
+  }
+  return optionName ?? "";
+}
+
 /** 시안 `.t-main` + `.t-sub` — 상품 · 옵션 */
-function ProductCell(props: { item: ClaimListItem; note?: ReactNode }) {
-  const { item, note } = props;
+function ProductCell(props: {
+  name: string;
+  option: string;
+  note?: ReactNode;
+}) {
   return (
     <div className="overflow-hidden text-ellipsis">
       <span className="text-[12px] font-medium text-sz-n-900">
-        {item.productName}
+        {props.name}
       </span>{" "}
-      <span className="text-[11px] text-sz-n-500">{item.optionText}</span>
-      {note}
+      <span className="text-[11px] text-sz-n-500">{props.option}</span>
+      {props.note}
     </div>
   );
 }
@@ -63,24 +82,24 @@ function ProductCell(props: { item: ClaimListItem; note?: ReactNode }) {
 const CLAIM_NO_COLUMN: Column = {
   label: "접수번호",
   width: 92,
-  render: (item) => <span className={TNUM}>{item.claimNo}</span>,
+  render: (item) => <span className={TNUM}>{item.claim.claimNumber}</span>,
 };
 const CONSUMER_COLUMN: Column = {
   label: "소비자",
-  width: 58,
+  width: 64,
   center: true,
-  render: (item) => item.consumerName,
+  render: (item) => item.claim.consumerName,
 };
 const BRAND_COLUMN: Column = {
   label: "브랜드",
   width: 100,
-  render: (item) => item.brandName,
+  render: (item) => item.brandName ?? "—",
 };
 const QUANTITY_COLUMN: Column = {
   label: "수량",
   width: 44,
   center: true,
-  render: (item) => <span className={TNUM}>{item.quantity}</span>,
+  render: (item) => <span className={TNUM}>{item.claim.quantity}</span>,
 };
 
 /** 전체·진행 탭 열 — 어드민 전용 열은 브랜드와 귀책 둘 */
@@ -90,53 +109,58 @@ const DEFAULT_COLUMNS: Array<Column> = [
     label: "유형",
     width: 54,
     center: true,
-    render: (item) => CLAIM_KIND_LABEL[item.kind],
+    render: (item) => item.claim.typeLabel,
   },
   CONSUMER_COLUMN,
   BRAND_COLUMN,
-  { label: "상품 · 옵션", render: (item) => <ProductCell item={item} /> },
+  {
+    label: "상품 · 옵션",
+    render: (item) => (
+      <ProductCell name={item.claim.productName} option={optionText(item)} />
+    ),
+  },
   QUANTITY_COLUMN,
-  { label: "사유", width: 150, render: (item) => item.reason },
+  { label: "사유", width: 150, render: (item) => item.claim.reasonLabel },
   {
     label: "귀책",
     width: 64,
     center: true,
-    render: (item) => CLAIM_PARTY_LABEL[item.fault],
+    render: (item) => feeBearerShort(item),
   },
   {
     label: "단계",
     width: 150,
     center: true,
-    render: (item) => (
-      <>
-        <ClaimBadge tone={item.stageTone}>{item.stageLabel}</ClaimBadge>
-        {(item.operatorOpened || item.afterPurchaseConfirm) && (
-          <Note>
-            {[
-              item.operatorOpened && "운영자 개설",
-              item.afterPurchaseConfirm && "확정 후 하자",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </Note>
-        )}
-        {item.objectionAt && <Note warn>소비자 이의 접수</Note>}
-      </>
-    ),
+    render: (item) => {
+      const badge = stageBadge(item.claim);
+      return (
+        <>
+          <ClaimBadge tone={badge.tone}>{badge.label}</ClaimBadge>
+          {item.claim.openedByOperator && (
+            <Note>
+              {["운영자 개설", item.claim.openReason]
+                .filter(Boolean)
+                .join(" · ")}
+            </Note>
+          )}
+          {item.disputeOpen && <Note warn>소비자 이의 접수</Note>}
+        </>
+      );
+    },
   },
   {
     label: "경과",
     width: 92,
     center: true,
     render: (item) => (
-      // 시안은 td 규칙(12px · 본문색)이 .t-sub를 이겨 평소엔 본문색이다 — 지연만 경고색(.t-warn)이 남는다
+      // 시안은 평소 본문색 — 기한 초과만 경고색(.t-warn)
       <span
         className={cn(
           TNUM,
-          item.elapsedOverdue ? "text-sz-warning-text" : "text-sz-n-900"
+          item.claim.overdue ? "text-sz-warning-text" : "text-sz-n-900"
         )}
       >
-        {item.elapsedLabel}
+        {elapsedLabel(item.claim)}
       </span>
     ),
   },
@@ -144,7 +168,7 @@ const DEFAULT_COLUMNS: Array<Column> = [
 
 /**
  * 반려 보류 탭 열 — 파트너와 같은 열(반려 사유 · 고지 · 보관 기한) + 어드민 전용 「재발송비 결제」.
- * 「폐기 가능」 표기와 폐기 액션은 두지 않는다 — 약관에 고지·보관·폐기 조항이 들어가기 전이라(결정 12) 보관 기한까지만 보인다.
+ * 「폐기 가능」 표기와 폐기 액션은 두지 않는다 — 약관 반영 전이라(결정 12) 기한 경과는 「약관 반영 후 처리」로만 적는다.
  */
 const HOLD_COLUMNS: Array<Column> = [
   CLAIM_NO_COLUMN,
@@ -154,10 +178,14 @@ const HOLD_COLUMNS: Array<Column> = [
     label: "보관 중인 상품",
     render: (item) => (
       <ProductCell
-        item={item}
+        name={item.claim.shipLabel ?? item.claim.productName}
+        option={item.claim.shipLabel ? "" : optionText(item)}
         note={
-          item.objectionAt && (
-            <Note warn>소비자 이의 접수 {md(item.objectionAt)}</Note>
+          item.disputeOpen && (
+            <Note warn>
+              소비자 이의 접수
+              {item.disputedAt && ` ${md(item.disputedAt)}`}
+            </Note>
           )
         }
       />
@@ -167,33 +195,38 @@ const HOLD_COLUMNS: Array<Column> = [
   {
     label: "반려 사유",
     width: 170,
-    render: (item) => item.hold?.rejectReason,
+    render: (item) => item.claim.rejectReasonLabel ?? "—",
   },
   {
     label: "반려일시",
     width: 110,
     center: true,
     render: (item) => (
-      <span className={TNUM}>
-        {item.hold ? mdHm(item.hold.rejectedAt) : "—"}
-      </span>
+      <span className={TNUM}>{mdHm(item.claim.rejectedAt)}</span>
     ),
   },
   {
     label: "재발송비 결제",
     width: 120,
     center: true,
-    render: (item) =>
-      item.hold && (
+    render: (item) => {
+      const fee = item.claim.reshipFee;
+      if (!fee) return "—";
+      return (
         <>
-          <ClaimBadge tone="INFO" hideDot>
-            결제 대기
+          <ClaimBadge
+            tone={fee.status === "PENDING" ? "INFO" : "NEUTRAL"}
+            hideDot
+          >
+            {fee.statusLabel}
           </ClaimBadge>
           <Note>
-            {won(item.hold.reshipFee)} · D-{item.hold.payDueDays}
+            {won(fee.amount)}
+            {fee.status === "PENDING" && fee.dueAt && ` · ${dDay(fee.dueAt)}`}
           </Note>
         </>
-      ),
+      );
+    },
   },
   {
     label: "고지",
@@ -201,7 +234,7 @@ const HOLD_COLUMNS: Array<Column> = [
     center: true,
     render: (item) => (
       <span className={TNUM}>
-        {item.hold ? `${item.hold.noticeCount}회` : "—"}
+        {item.claim.storage ? `${item.claim.storage.noticeCount}회` : "—"}
       </span>
     ),
   },
@@ -209,11 +242,19 @@ const HOLD_COLUMNS: Array<Column> = [
     label: "보관 기한",
     width: 96,
     center: true,
-    render: (item) => (
-      <span className={TNUM}>
-        {item.hold ? md(item.hold.retainUntil) : "—"}
-      </span>
-    ),
+    render: (item) => {
+      const storage = item.claim.storage;
+      if (!storage) return "—";
+      if (!storage.storageDueAt) {
+        return <span className="text-sz-n-400">고지 2회 후</span>;
+      }
+      return (
+        <>
+          <span className={TNUM}>{md(storage.storageDueAt)}</span>
+          {storage.phase === "EXPIRED" && <Note>기한 경과</Note>}
+        </>
+      );
+    },
   },
 ];
 
@@ -222,12 +263,15 @@ const TH_CLASS =
 const TD_CLASS =
   "h-[50px] overflow-hidden whitespace-nowrap border-b border-sz-n-100 px-2.5 py-[11px] align-middle text-[12px] text-sz-n-900 first:pl-5 last:pr-5";
 
-/** 시안 `.tbar-l` — 탭마다 보여줄 건수가 다르다(지연은 입고·검수, 이의는 반려 보류) */
+/**
+ * 시안 `.tbar-l` — 탭마다 보여줄 건수가 다르다(지연은 입고·검수, 이의는 반려 보류).
+ * 지연 · 이의 건수는 요약(`kpi.overdue` · `disputeCount`)이라 검색 조건과 무관한 전체 기준이다.
+ */
 function summaryLine(
   tab: ClaimTab,
   total: number,
   delayCount: number,
-  objectionCount: number
+  disputeCount: number
 ): ReactNode {
   if (tab === "ALL") {
     return (
@@ -239,12 +283,12 @@ function summaryLine(
             <b>{delayCount}</b>건
           </>
         )}
-        {objectionCount > 0 && (
+        {disputeCount > 0 && (
           <>
             {" · 반려 이의 "}
-            <b>{objectionCount}</b>건{" "}
+            <b>{disputeCount}</b>건{" "}
             <span className="text-[11px] text-sz-n-500">
-              · 운영자 조치는 이의 {objectionCount}건뿐 — 나머지는 브랜드·소비자
+              · 운영자 조치는 이의 {disputeCount}건뿐 — 나머지는 브랜드·소비자
               진행
             </span>
           </>
@@ -261,10 +305,10 @@ function summaryLine(
           <b>{delayCount}</b>건
         </>
       )}
-      {tab === "REJECT_HOLD" && objectionCount > 0 && (
+      {tab === "REJECT_HOLD" && disputeCount > 0 && (
         <>
           {" · 이의 "}
-          <b>{objectionCount}</b>건
+          <b>{disputeCount}</b>건
         </>
       )}
     </>
@@ -272,10 +316,13 @@ function summaryLine(
 }
 
 interface ClaimTableProps {
+  /** 주소의 탭 — 아직 받은 결과가 없을 때만 열 구성에 쓴다 */
   tab: ClaimTab;
-  list: ClaimListResponse | undefined;
+  list: ClaimListView | undefined;
+  summary: ClaimSummary | undefined;
   isLoading: boolean;
   isError: boolean;
+  /** 지금 적용된 정렬 — 고르지 않았으면 탭 기본 정렬 */
   sort: ClaimSort;
   size: number;
   pageInfo: PaginationProps;
@@ -286,7 +333,7 @@ interface ClaimTableProps {
 }
 
 /**
- * A1~A3 — 목록 표. 행을 누르면 상세 모달이 열린다(목록에는 액션 버튼이 없다 — 운영자 조치는 상세의 사유 환불 하나뿐).
+ * A1~A3 — 목록 표. 행을 누르면 상세 모달이 열린다(목록에는 액션 버튼이 없다).
  *
  * 공용 Table은 셀 좌우 여백 16px이라 「수량」 44px · 「귀책」 64px 같은 시안의 좁은 열에 헤더가 안 들어간다.
  * 시안 `.tcard`의 여백(10px · 첫 열 20px)과 행 50px을 그대로 옮긴 전용 표다.
@@ -295,6 +342,7 @@ export default function ClaimTable(props: ClaimTableProps) {
   const {
     tab,
     list,
+    summary,
     isLoading,
     isError,
     sort,
@@ -306,7 +354,10 @@ export default function ClaimTable(props: ClaimTableProps) {
     onRowClick,
   } = props;
 
-  const columns = tab === "REJECT_HOLD" ? HOLD_COLUMNS : DEFAULT_COLUMNS;
+  // 열·상단 줄은 지금 보이는 행을 불러온 탭을 따른다 — 탭을 막 옮겨 직전 탭의 행이 남아 있는 동안
+  // 주소의 탭을 따르면 반려 사유·재발송비 칸이 비고 건수도 엉뚱한 탭 이름에 붙는다
+  const shownTab = list?.tab ?? tab;
+  const columns = shownTab === "REJECT_HOLD" ? HOLD_COLUMNS : DEFAULT_COLUMNS;
   const items = list?.content ?? [];
   const total = list?.pageInfo.totalResults ?? 0;
 
@@ -315,7 +366,12 @@ export default function ClaimTable(props: ClaimTableProps) {
       <div className="flex items-center justify-between border-b border-sz-n-200 px-4 py-2.5">
         <div className="text-[12px] text-sz-n-600 [&_b]:text-sz-n-900">
           {list &&
-            summaryLine(tab, total, list.delayCount, list.objectionCount)}
+            summaryLine(
+              shownTab,
+              total,
+              summary?.kpi.overdue ?? 0,
+              summary?.disputeCount ?? 0
+            )}
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -368,7 +424,7 @@ export default function ClaimTable(props: ClaimTableProps) {
           <tbody>
             {items.map((item) => (
               <tr
-                key={item.claimNo}
+                key={item.claim.claimId}
                 onClick={() => onRowClick(item)}
                 className="cursor-pointer hover:bg-sz-n-50 [&:last-child>td]:border-b-0"
               >

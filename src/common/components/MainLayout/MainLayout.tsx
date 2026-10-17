@@ -7,6 +7,9 @@ import { useGetCreatorPendingCount } from "@/features/creator/hooks/useGetCreato
 import { useGetInquiryUnansweredCount } from "@/features/inquiry/hooks/useGetInquiryUnansweredCount";
 import { useGetSellerPendingCount } from "@/features/seller/hooks/useGetSellerPendingCount";
 import { useGetAdminSettlementSummary } from "@/features/settlement/hooks/useAdminSettlement";
+import { useGetClaimSummary } from "@/features/claim/hooks/useAdminClaimQueries";
+import { useGetExceptionSummary } from "@/features/exception/hooks/useExceptionQueries";
+import { useGetRefundSummary } from "@/features/refund/hooks/useAdminRefund";
 import { useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Sidebar from "../Sidebar";
@@ -125,7 +128,7 @@ function withGroupBuyCount(
 /**
  * 정산 관리 GNB 뱃지 = 운영자 조치만(분배 실패 + 차감 미회수 + 세금계산서 대조 대기 + 브랜드 발행 대기).
  * 조정 협의 · 주민번호 미등록은 다음 차례가 당사자라 세지 않는다(§45-0).
- * API가 없어 배포본에서는 값이 오지 않고 뱃지도 그리지 않는다(개발 서버 목업만).
+ * 값은 서버가 센다(`GET /admin/settlements/summary`의 gnbBadge).
  */
 function withSettlementCount(
   menus: Array<typeof ADMIN_MENU>,
@@ -136,6 +139,39 @@ function withSettlementCount(
     ...menu,
     groups: menu.groups.map((group) =>
       group.id === "settlement" ? { ...group, badge } : group
+    ),
+  }));
+}
+
+/**
+ * 거래 관리 GNB(ui-admin-06c 사이드바 배지) — 하위 메뉴마다 운영자 조치 건수를 회색 카운트로,
+ * 묶음 뱃지는 그 합계로 그린다. 주문 조회는 조회 화면이라 세지 않는다.
+ * 반품·교환 = 소비자 이의 · 환불 관리 = 집행 대기 + 실패 · 예외 관리 = 처리 지연 + 배송 예외.
+ * API가 없어 배포본에서는 값이 오지 않고 뱃지도 그리지 않는다(개발 서버 목업만).
+ */
+function withTransactionCounts(
+  menus: Array<typeof ADMIN_MENU>,
+  counts: { claim: number; refund: number; exception: number }
+) {
+  const childCount: Record<string, number> = {
+    "transaction-claim": counts.claim,
+    "transaction-refund": counts.refund,
+    "transaction-exception": counts.exception,
+  };
+  const total = counts.claim + counts.refund + counts.exception;
+  return menus.map((menu) => ({
+    ...menu,
+    groups: menu.groups.map((group) =>
+      group.id === "transaction"
+        ? {
+            ...group,
+            badge: total > 0 ? total : undefined,
+            children: group.children?.map((child) => {
+              const count = childCount[child.id] ?? 0;
+              return count > 0 ? { ...child, count } : child;
+            }),
+          }
+        : group
     ),
   }));
 }
@@ -190,6 +226,9 @@ export default function MainLayout() {
   const { data: contractSummary } = useGetAdminContractSummary();
   const { data: groupBuySummary } = useGetAdminGroupBuySummary();
   const { data: settlementSummary } = useGetAdminSettlementSummary();
+  const { data: claimSummary } = useGetClaimSummary();
+  const { data: refundSummary } = useGetRefundSummary();
+  const { data: exceptionSummary } = useGetExceptionSummary();
 
   // 목록 화면은 메뉴에 지정된 제목을 페이지 타이틀로 쓴다.
   // 상세 화면(하위 경로)은 브랜드명 등 자체 타이틀을 렌더링하므로 비워둔다.
@@ -216,9 +255,13 @@ export default function MainLayout() {
   return (
     <div className="flex h-screen bg-sz-n-50">
       <Sidebar
-        menus={withSettlementCount(
-          menus,
-          settlementSummary?.operatorActionCount ?? 0
+        menus={withTransactionCounts(
+          withSettlementCount(menus, settlementSummary?.gnbBadge ?? 0),
+          {
+            claim: claimSummary?.disputeCount ?? 0,
+            refund: refundSummary?.badge ?? 0,
+            exception: exceptionSummary?.badge ?? 0,
+          }
         )}
       />
 

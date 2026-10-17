@@ -8,13 +8,14 @@ import {
   SELECT_CHEVRON_STYLE,
 } from "@/features/exception/constants/params";
 import type {
+  ExceptionKind,
+  ExceptionKindFilter,
   ExceptionTab,
-  ExceptionTypeFilter,
 } from "@/features/exception/types";
 import { cn } from "@/lib/utils";
 
 export interface TypeOption {
-  value: Exclude<ExceptionTypeFilter, "">;
+  value: ExceptionKind;
   label: string;
   /** 요약 건수 — 아직 못 받았으면 숫자를 붙이지 않는다 */
   count: number | undefined;
@@ -25,9 +26,9 @@ interface ExceptionFilterProps {
   /** 탭 카운트 — 못 받았으면(준비 중 · 로딩) 칩을 그리지 않는다. 0으로 보이면 거짓말이다 */
   tabCounts: Partial<Record<ExceptionTab, number>> | undefined;
   onTabChange: (tab: ExceptionTab) => void;
-  typeValue: ExceptionTypeFilter;
+  typeValue: ExceptionKindFilter;
   typeOptions: TypeOption[];
-  onTypeChange: (type: ExceptionTypeFilter) => void;
+  onTypeChange: (type: ExceptionKindFilter) => void;
   keyword: string;
   onKeywordChange: (keyword: string) => void;
   onSearch: () => void;
@@ -98,7 +99,7 @@ export default function ExceptionFilter(props: ExceptionFilterProps) {
           style={SELECT_CHEVRON_STYLE}
           value={typeValue}
           onChange={(event) =>
-            onTypeChange(event.target.value as ExceptionTypeFilter)
+            onTypeChange(event.target.value as ExceptionKindFilter)
           }
         >
           <option value="">유형 전체</option>

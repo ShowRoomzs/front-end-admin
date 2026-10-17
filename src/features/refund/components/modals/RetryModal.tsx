@@ -3,17 +3,32 @@ import {
   DIALOG_BODY_CLASS,
   DialogRow,
   DialogStatus,
+  Dim,
   Sub,
 } from "@/features/refund/components/modals/DialogParts";
 import Btn from "@/features/refund/components/shared/Btn";
 import { useGetRefundDetail } from "@/features/refund/hooks/useAdminRefund";
+import type { RefundDetail } from "@/features/refund/types";
 import { formatMonthDayTime, formatWon } from "@/features/refund/utils/format";
 
 interface RetryModalProps {
   refundId: number;
   isPending: boolean;
   onClose: () => void;
-  onConfirm: (refundId: number) => void;
+  onConfirm: (detail: RefundDetail) => void;
+}
+
+/**
+ * 「자동 재시도 N회」 — 시스템 실패 기록(`failure.attempts`, actorType SYSTEM) 중 최초 시도를 뺀 수.
+ * 운영자 사유 환불은 자동 재시도하지 않는다(서버 배치가 PG 자동만 집는다).
+ */
+function autoRetry(detail: RefundDetail) {
+  const system = (detail.failure?.attempts ?? []).filter(
+    (attempt) => attempt.actorType === "SYSTEM"
+  );
+  const count =
+    detail.origin === "PG_AUTO" ? Math.max(0, system.length - 1) : 0;
+  return { count, lastAt: count > 0 ? system[system.length - 1].at : null };
 }
 
 /**
@@ -23,22 +38,30 @@ interface RetryModalProps {
 export default function RetryModal(props: RetryModalProps) {
   const { refundId, isPending, onClose, onConfirm } = props;
   const { data: detail, isLoading, isError } = useGetRefundDetail(refundId);
+  // 요청이 나간 뒤에는 닫지 못한다(X · Esc · [취소]) — 결과를 보기 전에 창이 사라지면
+  // 돈이 나갔는지 알 수 없다. 바깥 클릭은 ModalShell이 원래 막는다.
+  const handleClose = () => {
+    if (!isPending) onClose();
+  };
+  const retry = detail ? autoRetry(detail) : null;
 
   return (
     <ModalShell
       isOpen
       title="환불 재시도"
       width={520}
-      onClose={onClose}
+      onClose={handleClose}
       bodyClassName={DIALOG_BODY_CLASS}
       footer={
         <>
-          <Btn onClick={onClose}>취소</Btn>
+          <Btn disabled={isPending} onClick={handleClose}>
+            취소
+          </Btn>
           <Btn
             variant="primary"
-            disabled={!detail}
+            disabled={!detail?.executable}
             isLoading={isPending}
-            onClick={() => onConfirm(refundId)}
+            onClick={() => detail && onConfirm(detail)}
           >
             재시도
           </Btn>
@@ -54,38 +77,66 @@ export default function RetryModal(props: RetryModalProps) {
       {detail && (
         <>
           <DialogRow label="환불번호">
-            <span className="tabular-nums">{detail.refundNumber}</span> ·{" "}
-            {detail.orderNumber}
+            <span className="tabular-nums">{detail.refundNo}</span> ·{" "}
+            {detail.order.orderNumber}
           </DialogRow>
           <DialogRow label="경로">
-            {detail.routeLabel}
-            <Sub>
-              {` · ${detail.source === "OPERATOR" ? "운영자 사유" : "PG 자동"}`}
-            </Sub>
+            {detail.source.label}
+            <Sub>{` · ${detail.originLabel}`}</Sub>
           </DialogRow>
           <DialogRow label="취소 대상">
-            {detail.originalPayment.methodLabel}{" "}
-            <span className="tabular-nums">
-              {detail.originalPayment.pgTransactionId}
-            </span>{" "}
-            ·{" "}
-            <b className="tabular-nums">
-              {formatWon(detail.originalPayment.amount)}
-            </b>
+            {detail.target ? (
+              <>
+                {detail.target.methodLabel}{" "}
+                {detail.target.pgTxId && (
+                  <span className="tabular-nums">{detail.target.pgTxId}</span>
+                )}{" "}
+                ·{" "}
+                <b className="tabular-nums">
+                  {formatWon(detail.target.amount)}
+                </b>
+              </>
+            ) : (
+              <Dim>결제 없음</Dim>
+            )}
           </DialogRow>
           {detail.failure && (
             <DialogRow label="실패">
-              {detail.failure.label}
+              {detail.failure.message}
               <Sub>
-                {` · 코드 ${detail.failure.code} · ${formatMonthDayTime(detail.failure.failedAt)}`}
+                {[
+                  detail.failure.code && `코드 ${detail.failure.code}`,
+                  detail.failure.at && formatMonthDayTime(detail.failure.at),
+                ]
+                  .filter(Boolean)
+                  .map((part) => ` · ${part}`)
+                  .join("")}
               </Sub>
             </DialogRow>
           )}
-          {detail.autoRetry && (
+          {retry && (
             <DialogRow label="자동 재시도">
-              {detail.autoRetry.count}회 · 실패
-              <Sub>{` · ${formatMonthDayTime(detail.autoRetry.failedAt)}`}</Sub>
+              {retry.count > 0 ? (
+                <>
+                  {retry.count}회 · 실패
+                  {retry.lastAt && (
+                    <Sub>{` · ${formatMonthDayTime(retry.lastAt)}`}</Sub>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Dim>없음</Dim>
+                  {detail.origin === "OPERATOR" && (
+                    <Sub> · 운영자 사유 환불은 자동 재시도하지 않습니다</Sub>
+                  )}
+                </>
+              )}
             </DialogRow>
+          )}
+          {!detail.executable && (
+            <p className="mb-0 mt-2.5 text-[11px] leading-[1.7] text-sz-n-500">
+              지금은 재시도할 수 없습니다 — {detail.statusLabel}
+            </p>
           )}
           <p className="mb-[1em] mt-2.5 text-[11px] leading-[1.7] text-sz-n-500">
             금액과 경로는 바꿀 수 없습니다 — 원래 요청을 그대로 다시 보냅니다.

@@ -1,20 +1,18 @@
 import {
   EXCEPTION_PAGE_SIZES,
-  EXCEPTION_SORT_OPTIONS,
+  EXCEPTION_SORT_LABEL,
   SELECT_CHEVRON_STYLE,
 } from "@/features/exception/constants/params";
 import { SELECT_SM_CLASS } from "@/features/exception/components/shared/styles";
-import type { ExceptionSort, ExceptionTab } from "@/features/exception/types";
+import type { ExceptionTab } from "@/features/exception/types";
 
 interface ExceptionToolbarProps {
   tab: ExceptionTab;
   /** 현재 조건의 결과 건수 — 못 받았으면 건수 문구를 그리지 않는다 */
   total: number | undefined;
-  /** 처리 지연 탭의 「대행 가능 N건」 */
-  proxyAvailableCount: number;
-  sort: ExceptionSort;
+  /** 처리 지연 탭의 「대행 가능 N건」(요약 · 필터와 무관한 전체) — 못 받았으면 그 마디를 뺀다 */
+  actOnBehalfCount: number | undefined;
   size: number;
-  onSortChange: (sort: ExceptionSort) => void;
   onSizeChange: (size: number) => void;
 }
 
@@ -22,17 +20,10 @@ interface ExceptionToolbarProps {
  * 시안 `.tbar` — 좌측 건수 문구, 우측 정렬 · 표시 건수.
  * 처리 지연은 「처리 지연 3건 · 대행 가능 1건」, 배송 예외는 「배송 예외 4건 · 운영자 조치 없음 — 관찰」
  * (플랫폼 미개입이라 운영자가 누를 것이 없다는 말을 건수 옆에 붙인다).
+ * 정렬은 서버 고정(경과 오래된순)이라 셀렉트는 그 하나만 보여 준다(시안과 같다).
  */
 export default function ExceptionToolbar(props: ExceptionToolbarProps) {
-  const {
-    tab,
-    total,
-    proxyAvailableCount,
-    sort,
-    size,
-    onSortChange,
-    onSizeChange,
-  } = props;
+  const { tab, total, actOnBehalfCount, size, onSizeChange } = props;
 
   return (
     <div className="flex shrink-0 items-center justify-between border-b border-sz-n-200 px-4 py-2.5">
@@ -40,8 +31,14 @@ export default function ExceptionToolbar(props: ExceptionToolbarProps) {
         {total !== undefined &&
           (tab === "DELAY" ? (
             <>
-              처리 지연 <b className="text-sz-n-900">{total}</b>건 · 대행 가능{" "}
-              <b className="text-sz-n-900">{proxyAvailableCount}</b>건
+              처리 지연 <b className="text-sz-n-900">{total}</b>건
+              {actOnBehalfCount !== undefined && (
+                <>
+                  {" "}
+                  · 대행 가능{" "}
+                  <b className="text-sz-n-900">{actOnBehalfCount}</b>건
+                </>
+              )}
             </>
           ) : (
             <>
@@ -57,16 +54,9 @@ export default function ExceptionToolbar(props: ExceptionToolbarProps) {
           aria-label="정렬"
           className={SELECT_SM_CLASS}
           style={SELECT_CHEVRON_STYLE}
-          value={sort}
-          onChange={(event) =>
-            onSortChange(event.target.value as ExceptionSort)
-          }
+          defaultValue="ELAPSED"
         >
-          {EXCEPTION_SORT_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
+          <option value="ELAPSED">{EXCEPTION_SORT_LABEL}</option>
         </select>
         <select
           aria-label="표시 건수"

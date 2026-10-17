@@ -1,12 +1,13 @@
-import NotReady from "@/common/components/NotReady/NotReady";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
 import ClaimDetailModal from "@/features/claim/components/detail/ClaimDetailModal";
 import ClaimFilterBar from "@/features/claim/components/list/ClaimFilterBar";
 import ClaimTable from "@/features/claim/components/list/ClaimTable";
-import { CLAIM_INITIAL_PARAMS } from "@/features/claim/constants/params";
 import {
-  CLAIM_API_AVAILABLE,
+  CLAIM_INITIAL_PARAMS,
+  CLAIM_TAB_DEFAULT_SORT,
+} from "@/features/claim/constants/params";
+import {
   useGetClaimList,
   useGetClaimSummary,
 } from "@/features/claim/hooks/useAdminClaimQueries";
@@ -16,17 +17,28 @@ import type {
   ClaimSort,
   ClaimTab,
 } from "@/features/claim/types";
+import {
+  normalizeClaimParams,
+  toClaimListQuery,
+} from "@/features/claim/utils/params";
 import Btn from "@/features/contract/components/shared/Btn";
 import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+
+/** 다른 화면(06d 예외 관리 등)이 상세를 바로 열 때 싣는 주소 값 — `?claimId=3021` */
+const CLAIM_ID_PARAM = "claimId";
+
+function parseClaimId(value: string | null): number | null {
+  const id = Number(value);
+  return value && Number.isInteger(id) && id > 0 ? id : null;
+}
 
 /**
- * 어드민 거래 관리 › 반품·교환 (시안 ui-admin-06b-claims rev.1).
+ * 어드민 거래 관리 › 반품·교환 (시안 ui-admin-06b-claims rev.1 · `GET /v1/admin/claims`).
  *
- * 운영자가 실행하는 일은 **반려 이의 인용(운영자 사유 환불) 하나**뿐이다 — 회수·입고·검수·재발송은
- * 소비자와 브랜드의 일이라 목록에도 액션이 없고, 행을 누르면 상세 모달이 열린다.
+ * 운영자가 실행하는 일은 상세의 **반려 이의 인용 · 검수 무응답 환불**(둘 다 운영자 사유 환불 편입)뿐이다 —
+ * 회수·입고·검수·재발송은 소비자와 브랜드의 일이라 목록에도 액션이 없고, 행을 누르면 상세 모달이 열린다.
  * 페이지 제목 「반품·교환」은 셸(MainLayout)이 그린다 — 여기서 h1을 다시 그리지 않는다.
- *
- * 백엔드 API가 아직 없다: DEV는 목업, 배포본은 틀(탭·검색)만 두고 데이터 자리에 「준비 중」을 띄운다.
  */
 export default function ClaimManagement() {
   const {
@@ -38,10 +50,32 @@ export default function ClaimManagement() {
     update,
     reset,
   } = useParams<ClaimListParams>(CLAIM_INITIAL_PARAMS);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data: list, isLoading, isError } = useGetClaimList(params);
+  // 주소의 값은 문자열이고 손으로 고칠 수 있다 — 조회·화면은 정리한 값만 쓴다
+  const listParams = useMemo(() => normalizeClaimParams(params), [params]);
+  const draft = normalizeClaimParams(localParams);
+  const query = useMemo(() => toClaimListQuery(listParams), [listParams]);
+
+  const { data: list, isLoading, isError } = useGetClaimList(query);
   const { data: summary } = useGetClaimSummary();
-  const [selectedClaimNo, setSelectedClaimNo] = useState<string | null>(null);
+
+  // 주소의 `claimId`로 들어오면 그 건의 상세를 연다 — 화면에 머문 채 주소만 바뀌어도 따라간다
+  const urlClaimId = parseClaimId(searchParams.get(CLAIM_ID_PARAM));
+  const [selectedClaimId, setSelectedClaimId] = useState<number | null>(
+    urlClaimId
+  );
+  const [seenUrlClaimId, setSeenUrlClaimId] = useState(urlClaimId);
+  if (urlClaimId !== seenUrlClaimId) {
+    setSeenUrlClaimId(urlClaimId);
+    if (urlClaimId !== null) setSelectedClaimId(urlClaimId);
+  }
+
+  /** 선택한 건이 목록에서 마지막으로 보인 자리 — 조치로 탭에서 빠진 뒤에도 이웃을 찾는다 */
+  const [anchor, setAnchor] = useState<{
+    claimId: number;
+    index: number;
+  } | null>(null);
 
   const pageInfo = usePaginationInfo({
     data: list?.pageInfo,
@@ -49,31 +83,64 @@ export default function ClaimManagement() {
   });
 
   // 모달의 ‹ 이전 · 다음 › — 지금 보고 있는 목록(탭·검색·정렬)의 순서를 따른다
+  const ids = useMemo(
+    () => list?.content.map((item) => item.claim.claimId) ?? [],
+    [list]
+  );
+  const index = selectedClaimId !== null ? ids.indexOf(selectedClaimId) : -1;
+  // 렌더 중 갱신(React 문서의 「이전 렌더 값으로 state 조정」) — 자리가 바뀐 때만 부른다
+  if (
+    selectedClaimId !== null &&
+    index >= 0 &&
+    (anchor?.claimId !== selectedClaimId || anchor.index !== index)
+  ) {
+    setAnchor({ claimId: selectedClaimId, index });
+  }
   const neighbors = useMemo(() => {
-    const ids = list?.content.map((item) => item.claimNo) ?? [];
-    const index = selectedClaimNo ? ids.indexOf(selectedClaimNo) : -1;
-    return {
-      prev: index > 0 ? ids[index - 1] : undefined,
-      next: index >= 0 && index < ids.length - 1 ? ids[index + 1] : undefined,
-    };
-  }, [list, selectedClaimNo]);
+    if (index >= 0) {
+      return { prev: ids[index - 1], next: ids[index + 1] };
+    }
+    // 인용·환불로 그 건이 탭을 떠나 indexOf가 -1이 되면 —
+    // 버튼이 사라지지 않게 마지막으로 있던 자리를 기준으로 이웃을 잡는다(뒤 건이 그 자리로 당겨온다)
+    if (selectedClaimId !== null && anchor?.claimId === selectedClaimId) {
+      const at = Math.min(anchor.index, ids.length);
+      return { prev: ids[at - 1], next: ids[at] };
+    }
+    return { prev: undefined, next: undefined };
+  }, [ids, index, anchor, selectedClaimId]);
 
+  // 탭을 옮기면 정렬도 그 탭의 기본으로 돌아간다 — 작업 탭과 조회 탭의 기본이 다르다
   const handleTabChange = useCallback(
-    (tab: ClaimTab) => updateParams({ tab, page: 1 }),
+    (tab: ClaimTab) => updateParams({ tab, sort: "", page: 1 }),
     [updateParams]
   );
 
   const handleDraftChange = useCallback(
-    (key: "kind" | "keyword", value: string) => updateLocalParam(key, value),
+    (key: "type" | "searchField" | "keyword", value: string) =>
+      updateLocalParam(key, value),
     [updateLocalParam]
   );
 
   const handleRowClick = useCallback(
-    (item: ClaimListItem) => setSelectedClaimNo(item.claimNo),
+    (item: ClaimListItem) => setSelectedClaimId(item.claim.claimId),
     []
   );
 
-  const hasFilter = params.keyword !== "" || params.kind !== "";
+  const handleClose = useCallback(() => {
+    setSelectedClaimId(null);
+    if (searchParams.has(CLAIM_ID_PARAM)) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete(CLAIM_ID_PARAM);
+          return next;
+        },
+        { replace: true }
+      );
+    }
+  }, [searchParams, setSearchParams]);
+
+  const hasFilter = listParams.keyword !== "" || listParams.type !== "";
   const emptyState = (
     <>
       <div className="mb-1 text-[13px] font-semibold text-sz-n-700">
@@ -81,7 +148,7 @@ export default function ClaimManagement() {
       </div>
       <div className="text-[12px] text-sz-n-500">
         {hasFilter
-          ? "접수번호 · 주문번호 · 브랜드명 · 소비자 중 하나로 검색됩니다. 철자를 확인해 주세요."
+          ? "접수·주문번호는 정확히, 브랜드명 · 소비자는 일부만 입력해도 검색됩니다."
           : "소비자가 반품·교환을 신청하면 이 목록에 표시됩니다."}
       </div>
       {hasFilter && (
@@ -95,8 +162,12 @@ export default function ClaimManagement() {
   return (
     <div>
       <ClaimFilterBar
-        tab={params.tab}
-        draft={{ kind: localParams.kind, keyword: localParams.keyword }}
+        tab={listParams.tab}
+        draft={{
+          type: draft.type,
+          searchField: draft.searchField,
+          keyword: localParams.keyword,
+        }}
         counts={summary?.tabCounts}
         onTabChange={handleTabChange}
         onDraftChange={handleDraftChange}
@@ -104,35 +175,28 @@ export default function ClaimManagement() {
         onReset={reset}
       />
 
-      {CLAIM_API_AVAILABLE ? (
-        <ClaimTable
-          tab={params.tab}
-          list={list}
-          isLoading={isLoading}
-          isError={isError}
-          sort={params.sort}
-          size={Number(params.size)}
-          pageInfo={pageInfo}
-          emptyState={emptyState}
-          onSortChange={(sort: ClaimSort) => updateParams({ sort, page: 1 })}
-          onSizeChange={(size) => updateParams({ size, page: 1 })}
-          onRowClick={handleRowClick}
-        />
-      ) : (
-        <div className="overflow-hidden rounded-[8px] border border-sz-n-200 bg-white">
-          <NotReady title="반품·교환 화면은 준비 중입니다">
-            반품·교환 API가 준비되면 이 자리에 접수 목록과 상세가 표시됩니다.
-          </NotReady>
-        </div>
-      )}
+      <ClaimTable
+        tab={listParams.tab}
+        list={list}
+        summary={summary}
+        isLoading={isLoading}
+        isError={isError}
+        sort={listParams.sort || CLAIM_TAB_DEFAULT_SORT[listParams.tab]}
+        size={listParams.size}
+        pageInfo={pageInfo}
+        emptyState={emptyState}
+        onSortChange={(sort: ClaimSort) => updateParams({ sort, page: 1 })}
+        onSizeChange={(size) => updateParams({ size, page: 1 })}
+        onRowClick={handleRowClick}
+      />
 
-      {CLAIM_API_AVAILABLE && selectedClaimNo && (
+      {selectedClaimId !== null && (
         <ClaimDetailModal
-          claimNo={selectedClaimNo}
-          prevClaimNo={neighbors.prev}
-          nextClaimNo={neighbors.next}
-          onNavigate={setSelectedClaimNo}
-          onClose={() => setSelectedClaimNo(null)}
+          claimId={selectedClaimId}
+          prevClaimId={neighbors.prev}
+          nextClaimId={neighbors.next}
+          onNavigate={setSelectedClaimId}
+          onClose={handleClose}
         />
       )}
     </div>

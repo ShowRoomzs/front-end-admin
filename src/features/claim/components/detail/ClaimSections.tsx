@@ -1,12 +1,4 @@
-import {
-  CLAIM_KIND_LABEL,
-  CLAIM_PARTY_LABEL,
-} from "@/features/claim/constants/params";
-import type {
-  ClaimDetail,
-  ClaimParty,
-  ClaimRejection,
-} from "@/features/claim/types";
+import type { ClaimDetail, ClaimTone } from "@/features/claim/types";
 import {
   Block,
   ClaimBadge,
@@ -20,55 +12,49 @@ import {
   Sc,
   Sub,
 } from "@/features/claim/components/shared/ClaimParts";
-import { md, mdHm, minusWon, won } from "@/features/claim/utils/format";
+import { dDay, md, mdHm, minusWon, won } from "@/features/claim/utils/format";
 import type { ReactNode } from "react";
 
 /*
-  상세 좌측 블록 — 서버가 단계마다 내리는 블록(`ClaimDetail`의 null 아닌 필드)만 그린다.
+  상세 좌측 블록 — 서버가 단계마다 채워 내리는 값(null 아닌 블록)만 그린다.
   번호(① ②…)는 그려진 순서대로 붙는다 — 시안도 상태마다 블록 구성이 다르다.
-  블록 순서: 클레임 → 항목 → 검수 반려 → 반려 보류 → 소비자 이의 → 회수 → 법정 기한 → 금액 → 환불 계산 → 정산 반영 → 이력.
+  블록 순서: 클레임 → 항목 → 검수 반려 → 반려 보류 → 소비자 이의 → 회수 → 재발송 → 금액 → 처리 결과 → 이력.
 */
 
-/** 신청자 이름을 「신청」 줄에 붙이는 단계 — 진행 중일 때만(종결·반려 보류 상세는 이력에 이름이 있다) */
-const IN_MOTION_STAGES = new Set([
-  "PICKUP_WAIT",
-  "IN_TRANSIT",
-  "INSPECT_WAIT",
-  "INSPECT_OVERDUE",
-  "RESHIP_WAIT",
-]);
-
-function party(value: ClaimParty): string {
-  return CLAIM_PARTY_LABEL[value];
+/** 이력 점 색 — 서버는 톤을 내리지 않는다. 반려·지연 계열만 경고, 종결 계열은 성공 */
+function historyTone(eventType: string): ClaimTone {
+  if (/REJECT|OVERDUE|EXPIRED/.test(eventType)) return "WARNING";
+  if (/COMPLETED|REFUNDED|EXCHANGED|ACCEPTED/.test(eventType)) {
+    return "SUCCESS";
+  }
+  return "INFO";
 }
 
-/** 귀책은 항목 단위다 — 일부 반려는 반려분·통과분이 갈린다 */
-function rejectionFault(rejection: ClaimRejection): ReactNode {
-  if (rejection.scope === "PARTIAL") {
-    return (
-      <>
-        반려분 {party(rejection.rejectedFault)}{" "}
-        {rejection.passedFault && (
-          <Sub>· 통과분 {party(rejection.passedFault)}</Sub>
-        )}
-      </>
-    );
-  }
-  if (rejection.faultChanged) {
-    return <>{party(rejection.rejectedFault)}로 변경</>;
-  }
+/** 첨부 사진 — 새 창으로 원본을 연다 */
+function Photos(props: { urls: Array<string> }) {
+  if (props.urls.length === 0) return <Dim>없음</Dim>;
   return (
-    <>
-      변경 없음 <Sub>· {party(rejection.rejectedFault)}</Sub>
-    </>
+    <span className="inline-flex flex-wrap gap-1">
+      {props.urls.map((url, index) => (
+        <a
+          key={url}
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sz-accent-500 hover:underline"
+        >
+          사진 {index + 1}
+        </a>
+      ))}
+    </span>
   );
 }
 
 export default function ClaimSections(props: { detail: ClaimDetail }) {
   const { detail } = props;
-  const kindLabel = CLAIM_KIND_LABEL[detail.kind];
-  const claimedQty = detail.items.reduce((sum, row) => sum + row.quantity, 0);
-  const firstItem = detail.items[0];
+  const { claim } = detail;
+  const row = claim.summary;
+  const isHold = row.stage === "REJECT_HOLD";
 
   const blocks: Array<{
     key: string;
@@ -77,132 +63,139 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
     body: ReactNode;
   }> = [];
 
-  // 클레임 — 4칸. 운영자 개설은 신청 대신 「개설 · 근거」가 들어간다
+  // 클레임 — 4칸. 운영자 개설은 「개설 · 증빙」이 더해진다
   blocks.push({
     key: "claim",
     title: "클레임",
     body: (
       <Grid2>
         <Frow label="유형">
-          {kindLabel} · {detail.reason} <Sub>· {party(detail.fault)} 귀책</Sub>
+          {row.typeLabel} · {row.reasonLabel}{" "}
+          <Sub>· {detail.feeBearerLabel}</Sub>
         </Frow>
         <Frow label="주문">
-          <Num>{detail.orderNo}</Num>{" "}
+          <Num>{claim.orderNumber}</Num> <Sub>· {detail.brandName}</Sub>
+        </Frow>
+        <Frow label="신청">
+          <Num>{mdHm(row.requestedAt)}</Num>{" "}
           <Sub>
-            · {detail.brandName}
-            {detail.confirmedAt && ` · 구매확정 ${md(detail.confirmedAt)}`}
+            · 소비자 {row.consumerName}
+            {claim.consumerPhone && ` · ${claim.consumerPhone}`}
           </Sub>
         </Frow>
-        {detail.opened ? (
-          <>
-            <Frow label="개설">
-              <b>운영자 {detail.opened.operatorName}</b>{" "}
-              <Sub>· {mdHm(detail.opened.openedAt)}</Sub>
-            </Frow>
-            <Frow label="근거">
-              1:1 문의 {detail.opened.basis.inquiryNo} ·{" "}
-              {detail.opened.basis.summary} · 사진{" "}
-              {detail.opened.basis.photoCount}장
-            </Frow>
-          </>
-        ) : (
-          <>
-            <Frow label="신청">
-              <Num>{mdHm(detail.appliedAt)}</Num>
-              {IN_MOTION_STAGES.has(detail.stage) && (
-                <>
-                  {" "}
-                  <Sub>· 소비자 {detail.consumerName}</Sub>
-                </>
-              )}
-            </Frow>
-            {detail.hold ? (
-              // 반려 보류는 항목 블록이 없다 — 반려한 상품을 클레임 줄에서 보인다
-              <Frow label="항목">
-                {firstItem.name} {firstItem.option} ×{firstItem.quantity} ·{" "}
-                <Num>{won(firstItem.price)}</Num>
-              </Frow>
-            ) : (
-              <Frow label="상세 내용">
-                {detail.detailText ? (
-                  `“${detail.detailText}”`
-                ) : (
-                  <Dim>선택 입력 없음</Dim>
-                )}
-              </Frow>
-            )}
-          </>
+        <Frow label="상세 내용">
+          {claim.reasonDetail ? (
+            `“${claim.reasonDetail}”`
+          ) : (
+            <Dim>선택 입력 없음</Dim>
+          )}
+        </Frow>
+        {row.openedByOperator && (
+          <Frow label="개설">
+            <b>운영자 개설</b>
+            {row.openReason && <Sub> · {row.openReason}</Sub>}
+          </Frow>
+        )}
+        {(row.openedByOperator || claim.consumerAttachments.length > 0) && (
+          <Frow label="소비자 증빙">
+            <Photos urls={claim.consumerAttachments} />
+          </Frow>
         )}
       </Grid2>
     ),
   });
 
-  // 항목 — 반려 보류는 위 클레임 줄로 갈음한다
-  if (!detail.hold) {
-    const hasResult = detail.rejection?.scope === "PARTIAL";
-    let note: string | null = null;
-    if (hasResult && detail.rejection) {
-      note = `신청 ${detail.rejection.claimedQty} · 통과 ${
-        detail.rejection.claimedQty - detail.rejection.rejectedQty
-      } · 반려 ${detail.rejection.rejectedQty}`;
-    } else if (detail.orderedQty !== null) {
-      note = `주문 수량 ${detail.orderedQty} · ${kindLabel} 신청 ${claimedQty}`;
-    }
+  // 항목 — 그 하위주문의 항목 전체. 신청하지 않은 항목은 흐리게
+  if (row.orderItems.length > 0) {
     blocks.push({
       key: "items",
-      title: hasResult ? "항목 · 검수 결과" : "항목",
-      aside: note ? <span>{note}</span> : undefined,
+      title: "항목",
+      aside: <span>{row.orderSummary}</span>,
       body: (
         <Sc>
-          {detail.items.map((row, index) => (
-            <ItRow key={`${row.name}-${index}`}>
-              <span>{row.name}</span>
-              <Dim>{row.option}</Dim>
-              <span className="text-sz-n-500">×{row.quantity}</span>
-              {row.status && (
-                <ClaimBadge tone={row.status.tone} hideDot>
-                  {row.status.label}
+          {row.orderItems.map((item, index) => {
+            const claimed = item.claimedQuantity > 0;
+            return (
+              <ItRow key={`${item.productName}-${item.optionName}-${index}`}>
+                <span className={claimed ? undefined : "text-sz-n-400"}>
+                  {item.productName}
+                </span>
+                {item.optionName && <Dim>{item.optionName}</Dim>}
+                <span className="text-sz-n-500">
+                  ×{claimed ? item.claimedQuantity : item.orderedQuantity}
+                  {claimed && item.orderedQuantity !== item.claimedQuantity && (
+                    <> / 주문 {item.orderedQuantity}</>
+                  )}
+                </span>
+                <ClaimBadge tone={claimed ? "INFO" : "NEUTRAL"} hideDot>
+                  {item.itemStatusLabel}
                 </ClaimBadge>
+                <RowEnd className={claimed ? undefined : "text-sz-n-400"}>
+                  {won(
+                    item.price *
+                      (claimed ? item.claimedQuantity : item.orderedQuantity)
+                  )}
+                </RowEnd>
+              </ItRow>
+            );
+          })}
+          {row.exchangeOptionName && (
+            <ItRow>
+              <Sub>교환 옵션</Sub>
+              <span>
+                {row.optionName ?? "—"} → <b>{row.exchangeOptionName}</b>
+              </span>
+              {claim.exchangeFeeCharged !== null && (
+                <RowEnd className="text-[11px] text-sz-n-500">
+                  {claim.exchangeFeeCharged
+                    ? "교환 배송비 결제됨"
+                    : "교환 배송비 없음"}
+                </RowEnd>
               )}
-              <RowEnd className={row.dimmed ? "text-sz-n-400" : undefined}>
-                {won(row.price)}
-              </RowEnd>
             </ItRow>
-          ))}
+          )}
         </Sc>
       ),
     });
   }
 
-  // 검수 반려 6항목 — 사유 · 법적 근거 · 범위 · 귀책 · 증빙 · 메시지(파트너 검수 반려·소비자 C10-5와 1:1)
-  if (detail.rejection) {
-    const rejection = detail.rejection;
+  // 검수 반려 6항목 — 사유 · 법적 근거 · 범위 · 귀책 · 증빙 · 메시지(파트너 검수 반려·소비자 C10-5와 같은 값)
+  if (claim.rejection) {
+    const rejection = claim.rejection;
+    const partial = rejection.splitFromClaimNumber !== null;
     blocks.push({
       key: "rejection",
-      title:
-        rejection.scope === "PARTIAL" ? (
-          "반려분 (6항목)"
-        ) : (
-          <>
-            검수 반려{" "}
-            <Sub className="font-normal">· 브랜드 제출 = 소비자 C10-5</Sub>
-          </>
-        ),
+      title: (
+        <>
+          검수 반려{" "}
+          <Sub className="font-normal">· 브랜드 제출 = 소비자 C10-5</Sub>
+        </>
+      ),
       body: (
         <>
           <Grid2>
-            <Frow label="반려 사유">{rejection.reason}</Frow>
-            <Frow label="법적 근거">{rejection.legalBasis}</Frow>
+            <Frow label="반려 사유">{row.rejectReasonLabel ?? "—"}</Frow>
+            <Frow label="법적 근거">{rejection.legalBasisLabel ?? "—"}</Frow>
             <Frow label="범위">
-              <b>{rejection.scope === "ALL" ? "전체 반려" : "일부 반려"}</b>{" "}
+              <b>{partial ? "일부 반려" : "전체 반려"}</b>{" "}
               <Sub>
-                · {rejection.rejectedQty} / {rejection.claimedQty}개
+                · {row.quantity}개
+                {partial && ` · ${rejection.splitFromClaimNumber}에서 분할`}
               </Sub>
             </Frow>
-            <Frow label="귀책">{rejectionFault(rejection)}</Frow>
+            <Frow label="귀책">
+              {rejection.faultChangedToSeller ? (
+                <b>브랜드 귀책으로 인정</b>
+              ) : (
+                <>
+                  변경 없음 <Sub>· {detail.feeBearerLabel}</Sub>
+                </>
+              )}
+            </Frow>
           </Grid2>
           <Frow label="증빙">
-            <Sub>{rejection.evidence}</Sub>
+            <Photos urls={claim.sellerEvidences} />
+            {claim.rejectDetail && <Sub> · {claim.rejectDetail}</Sub>}
           </Frow>
           {rejection.consumerMessage && (
             <Frow label="소비자 메시지">“{rejection.consumerMessage}”</Frow>
@@ -213,62 +206,118 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
   }
 
   // 반려 보류 — 재발송비 결제를 기다리는 상태. 폐기 표기·폐기 액션은 없다(약관 반영 전, 결정 12)
-  if (detail.hold) {
-    const hold = detail.hold;
+  if (isHold) {
+    const fee = row.reshipFee;
+    const storage = row.storage;
     blocks.push({
       key: "hold",
       title: "반려 보류",
       body: (
         <Grid2>
           <Frow label="재발송비">
-            <Num>{won(hold.reshipFee)}</Num> · 결제 대기{" "}
-            <Sub>· D-{hold.payDueDays}</Sub>
+            {fee ? (
+              <>
+                <Num>{won(fee.amount)}</Num> · {fee.statusLabel}
+                {fee.status === "PENDING" && fee.dueAt && (
+                  <Sub> · {dDay(fee.dueAt)}</Sub>
+                )}
+              </>
+            ) : (
+              <Dim>청구 없음</Dim>
+            )}
           </Frow>
           <Frow label="고지">
-            {hold.noticeCount}회 <Sub>· {md(hold.lastNoticeAt)}</Sub>
+            {storage ? `${storage.noticeCount}회` : "—"}
+            {storage?.lastNoticeAt && <Sub> · {md(storage.lastNoticeAt)}</Sub>}
+            {claim.notices.length > 0 && (
+              <Sub>
+                {" "}
+                (
+                {claim.notices
+                  .map(
+                    (notice) =>
+                      `${notice.seq}회 ${md(notice.notifiedAt)}${
+                        notice.channel ? ` ${notice.channel}` : ""
+                      }`
+                  )
+                  .join(" · ")}
+                )
+              </Sub>
+            )}
           </Frow>
           <Frow label="보관 기한">
-            <Num>{md(hold.retainUntil)}</Num>{" "}
-            <Sub>· 이후 처리는 약관 반영 후</Sub>
+            {storage?.storageDueAt ? (
+              <>
+                <Num>{md(storage.storageDueAt)}</Num>{" "}
+                <Sub>
+                  ·{" "}
+                  {storage.phase === "EXPIRED"
+                    ? "기한 경과 · 약관 반영 후 처리"
+                    : "이후 처리는 약관 반영 후"}
+                </Sub>
+              </>
+            ) : (
+              <Dim>고지 2회 후 확정</Dim>
+            )}
           </Frow>
-          <Frow label="구매확정">
-            <b>타이머 정지</b>
+          <Frow label="반려일시">
+            <Num>{mdHm(row.rejectedAt)}</Num>
           </Frow>
         </Grid2>
       ),
     });
   }
 
-  if (detail.objection) {
-    const objection = detail.objection;
+  if (detail.dispute) {
+    const dispute = detail.dispute;
     blocks.push({
-      key: "objection",
+      key: "dispute",
       title: "소비자 이의",
+      aside: dispute.answered ? (
+        <ClaimBadge tone="NEUTRAL" hideDot>
+          답변 완료 {md(dispute.answeredAt)}
+        </ClaimBadge>
+      ) : (
+        <ClaimBadge tone="WARNING" hideDot>
+          답변 전
+        </ClaimBadge>
+      ),
       body: (
         <p className="m-0 text-[12px] leading-[1.7]">
-          “{objection.text}”{" "}
+          “{dispute.content}”{" "}
           <Sub>
-            · 1:1 문의 {objection.inquiryNo} · 사진 {objection.photoCount}장 ·{" "}
-            {mdHm(objection.receivedAt)}
+            · 1:1 문의 #{dispute.inquiryId} · 사진 {dispute.imageUrls.length}장
+            · {mdHm(dispute.createdAt)}
           </Sub>
+          {dispute.imageUrls.length > 0 && (
+            <span className="mt-1 block text-[11px]">
+              <Photos urls={dispute.imageUrls} />
+            </span>
+          )}
         </p>
       ),
     });
   }
 
-  // 회수 — 송장 → 입고 확인(검수 기한은 입고 + 2영업일)
-  if (detail.pickup) {
-    const pickup = detail.pickup;
+  // 회수 — 송장 → 도착 → 입고 확인(검수 기한 = 입고 + 2영업일)
+  if (row.collection || row.receivedAt) {
+    const collection = row.collection;
     blocks.push({
       key: "pickup",
       title: "회수",
+      aside:
+        collection && collection.size > 1 ? (
+          <span>
+            {collection.leadClaimNumber} 외 {collection.size - 1}건 한 박스
+          </span>
+        ) : undefined,
       body: (
         <Sc>
           <ItRow>
             <Sub>회수 송장</Sub>
-            {pickup.trackingNo ? (
+            {collection?.trackingNumber ? (
               <span>
-                {pickup.carrier} <Num>{pickup.trackingNo}</Num>{" "}
+                {collection.carrierLabel} <Num>{collection.trackingNumber}</Num>{" "}
                 <Dim>· 소비자 입력</Dim>
               </span>
             ) : (
@@ -276,31 +325,35 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
                 <Dim>소비자 입력 대기</Dim> <Sub>· 7일 미입력 시 자동 취소</Sub>
               </span>
             )}
-            {pickup.pickedUpAt && (
+            {collection?.lastTrackingLabel && (
               <RowEnd className="text-[11px] text-sz-n-500">
-                집화 <Num>{md(pickup.pickedUpAt)}</Num>
+                {collection.lastTrackingLabel}{" "}
+                <Num>{md(collection.lastTrackingAt)}</Num>
               </RowEnd>
             )}
           </ItRow>
-          {pickup.receivedAt && (
+          {row.receivedAt && (
             <ItRow>
               <Sub>입고 확인</Sub>
               <span>
-                {pickup.receivedBy} · <Num>{mdHm(pickup.receivedAt)}</Num>
+                브랜드 {detail.brandName} · <Num>{mdHm(row.receivedAt)}</Num>
               </span>
-              <RowEnd className="text-[11px] text-sz-n-500">
-                검수 기한{" "}
-                <b
-                  className={
-                    pickup.overdue
-                      ? "tabular-nums text-sz-warning-text"
-                      : "tabular-nums"
-                  }
-                >
-                  {md(pickup.inspectionDueDate)}
-                </b>
-                {pickup.overdue && " · 2영업일 초과"}
-              </RowEnd>
+              {row.inspectDueAt && (
+                <RowEnd className="text-[11px] text-sz-n-500">
+                  검수 기한{" "}
+                  <b
+                    className={
+                      detail.inspectOverdueBusinessDays !== null
+                        ? "tabular-nums text-sz-warning-text"
+                        : "tabular-nums"
+                    }
+                  >
+                    {md(row.inspectDueAt)}
+                  </b>
+                  {detail.inspectOverdueBusinessDays !== null &&
+                    ` · ${detail.inspectOverdueBusinessDays}영업일 초과`}
+                </RowEnd>
+              )}
             </ItRow>
           )}
         </Sc>
@@ -308,162 +361,116 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
     });
   }
 
-  // 구매확정 후 하자 — 법정 청약철회 기한: 공급일 + 3개월 / 하자 인지 + 30일 중 이른 날
-  if (detail.legalDeadline) {
-    const legal = detail.legalDeadline;
+  // 재발송 — 교환 재발송 · 반려 반송
+  if (row.reshipReason && !isHold) {
     blocks.push({
-      key: "legal",
-      title: "법정 청약철회 기한",
-      body: (
-        <Grid2>
-          <Frow label="공급일">
-            <Num>{md(legal.suppliedAt)}</Num>{" "}
-            <Sub>→ 3개월 {md(legal.suppliedLimit)}</Sub>
-          </Frow>
-          <Frow label="하자 인지">
-            <Num>{md(legal.defectKnownAt)}</Num>{" "}
-            <Sub>→ 30일 {md(legal.defectLimit)}</Sub>
-          </Frow>
-          <Frow label="적용 기한">
-            <b className={"tabular-nums"}>{md(legal.appliedDeadline)}</b>{" "}
-            <Sub>· 이른 날</Sub>
-          </Frow>
-          <Frow label="회수 송장">
-            {legal.trackingEntered ? (
-              "입력 완료"
-            ) : (
-              <>
-                <Dim>소비자 입력 대기</Dim> <Sub>· 7일 미입력 시 자동 취소</Sub>
-              </>
-            )}
-          </Frow>
-        </Grid2>
-      ),
-    });
-  }
-
-  // 금액(예정) — 검수 통과 즉시 PG 자동 환불이라 운영자 집행 단계가 없다. 그래서 「예정」이다
-  if (detail.amount) {
-    const amount = detail.amount;
-    const confirm = detail.purchaseConfirm;
-    blocks.push({
-      key: "amount",
-      title: "금액 (예정)",
-      body: (
-        <Grid2>
-          <Frow label="상품 금액">
-            <Num>{won(amount.productAmount)}</Num>
-          </Frow>
-          <Frow label="최초 배송비 차감">
-            {amount.firstShippingDeduction > 0 ? (
-              <>
-                <Num>{minusWon(amount.firstShippingDeduction)}</Num>{" "}
-                <Sub>
-                  · {amount.freeShipping && "무료배송 · "}
-                  {party(detail.fault)} 귀책
-                </Sub>
-              </>
-            ) : (
-              <>
-                <Num>없음</Num> <Sub>· {party(detail.fault)} 귀책</Sub>
-              </>
-            )}
-          </Frow>
-          <Frow label="통과 시 환불">
-            <b className={"tabular-nums"}>{won(amount.refundOnPass)}</b>{" "}
-            <Sub>· PG 자동</Sub>
-          </Frow>
-          {confirm && (
-            <Frow label="구매확정">
-              <b>타이머 정지</b>
-              {confirm.remainingDays !== null && (
-                <>
-                  {" "}
-                  <Sub>· 남은 {confirm.remainingDays}일</Sub>
-                </>
-              )}
-            </Frow>
-          )}
-        </Grid2>
-      ),
-    });
-  } else if (detail.purchaseConfirm && !detail.hold) {
-    // 교환은 금액이 오가지 않는다 — 구매확정 타이머만 남는다
-    const confirm = detail.purchaseConfirm;
-    blocks.push({
-      key: "confirm",
-      title: "구매확정",
-      body: (
-        <Frow label="구매확정">
-          {confirm.timer === "RESTARTED" ? (
-            <b>{confirm.remainingDays}일 새로 시작</b>
-          ) : (
-            <>
-              <b>타이머 정지</b>
-              {confirm.remainingDays !== null && (
-                <>
-                  {" "}
-                  <Sub>· 남은 {confirm.remainingDays}일</Sub>
-                </>
-              )}
-            </>
-          )}
-        </Frow>
-      ),
-    });
-  }
-
-  // 환불 계산식 — 상품 금액 − 최초 배송비 − 재발송비(일부 반려). 소비자가 「왜 이 금액만」 물을 때의 근거다
-  if (detail.refundCalc) {
-    const calc = detail.refundCalc;
-    blocks.push({
-      key: "calc",
-      title: calc.title,
+      key: "reship",
+      title: "재발송",
       body: (
         <Sc>
-          {calc.lines.map((line) => (
-            <ItRow key={line.label}>
-              <Sub>
-                {line.kind === "TOTAL" ? (
-                  <b className={"text-sz-n-900"}>{line.label}</b>
-                ) : (
-                  line.label
-                )}
-              </Sub>
+          <ItRow>
+            <Sub>{row.reshipReasonLabel}</Sub>
+            <span>{row.shipLabel ?? row.productLabel}</span>
+            <RowEnd className="text-[11px] text-sz-n-500">
+              {row.reshipTrackingNumber ? (
+                <>
+                  {row.reshipCarrierLabel} <Num>{row.reshipTrackingNumber}</Num>
+                </>
+              ) : (
+                <Dim>송장 등록 전</Dim>
+              )}
+            </RowEnd>
+          </ItRow>
+          {row.reshipFee && (
+            <ItRow>
+              <Sub>재발송비</Sub>
               <span>
-                {line.kind === "TOTAL" ? (
-                  <b className={"tabular-nums"}>{won(line.amount)}</b>
-                ) : (
-                  <Num>
-                    {line.kind === "MINUS"
-                      ? minusWon(line.amount)
-                      : won(line.amount)}
-                  </Num>
-                )}
+                <Num>{won(row.reshipFee.amount)}</Num> ·{" "}
+                {row.reshipFee.statusLabel}
               </span>
-              <RowEnd className="text-[11px] text-sz-n-500">{line.note}</RowEnd>
             </ItRow>
-          ))}
+          )}
         </Sc>
       ),
     });
   }
 
-  // 정산 반영 — 이미 확정된 회차면 통과 시 다음 정산에서 차감
-  if (detail.settlement) {
-    const settlement = detail.settlement;
+  // 금액 — 반품만. 판정 전은 예정, 판정이 끝났으면 확정액(서버 `refund`가 같은 식으로 내린다)
+  if (claim.refund) {
+    const refund = claim.refund;
+    const settled = row.outcome !== null;
     blocks.push({
-      key: "settlement",
-      title: "정산 반영",
+      key: "amount",
+      title: settled ? "환불 계산" : "금액 (예정)",
+      body: (
+        <Sc>
+          <ItRow>
+            <Sub>상품 금액</Sub>
+            <Num>{won(refund.itemAmount)}</Num>
+            <RowEnd className="text-[11px] text-sz-n-500">
+              단가 × 신청 수량
+            </RowEnd>
+          </ItRow>
+          <ItRow>
+            <Sub>반품 배송비 차감</Sub>
+            <Num>
+              {refund.requestDeduction > 0
+                ? minusWon(refund.requestDeduction)
+                : "없음"}
+            </Num>
+            <RowEnd className="text-[11px] text-sz-n-500">
+              요청당 1회 · {detail.feeBearerLabel}
+            </RowEnd>
+          </ItRow>
+          <ItRow>
+            <Sub>
+              <b className="text-sz-n-900">
+                {settled ? "환불액" : "통과 시 환불"}
+              </b>
+            </Sub>
+            <b className="tabular-nums">{won(refund.requestExpectedAmount)}</b>
+            <RowEnd className="text-[11px] text-sz-n-500">
+              {refund.basisLabel}
+            </RowEnd>
+          </ItRow>
+        </Sc>
+      ),
+    });
+  }
+
+  // 처리 결과 — 완료 탭 단계만
+  if (claim.result || row.outcome?.finalized) {
+    const result = claim.result;
+    blocks.push({
+      key: "result",
+      title: "처리 결과",
       body: (
         <Grid2>
-          <Frow label="정산">
-            <Num>{md(settlement.confirmedRound)}</Num> 회차 확정
+          <Frow label="결과">
+            <b>{row.outcome?.label ?? "—"}</b>
+            {row.completedAt && <Sub> · {mdHm(row.completedAt)}</Sub>}
           </Frow>
-          <Frow label="통과 시">
-            <b>다음 정산에서 차감</b>{" "}
-            <Sub>· {settlement.deductTargets.join(" · ")}</Sub>
-          </Frow>
+          {row.amount !== null && (
+            <Frow label="금액">
+              <Num>{won(row.amount)}</Num>
+            </Frow>
+          )}
+          {result?.reshipDeliveredAt && (
+            <Frow label="재발송 도착">
+              <Num>{mdHm(result.reshipDeliveredAt)}</Num>
+            </Frow>
+          )}
+          {result?.confirmDueAt && (
+            <Frow label="구매확정 예정">
+              <Num>{md(result.confirmDueAt)}</Num> <Sub>· 7일 새로 시작</Sub>
+            </Frow>
+          )}
+          {result?.rejectionEnd && (
+            <Frow label="반려 종결">
+              {result.rejectionEnd === "RETURNED" ? "반송 완료" : "폐기"}
+              {result.disposedAt && <Sub> · {md(result.disposedAt)}</Sub>}
+            </Frow>
+          )}
         </Grid2>
       ),
     });
@@ -472,20 +479,23 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
   blocks.push({
     key: "history",
     title: "이력",
-    body: (
-      <div className="pt-0.5">
-        {detail.history.map((row, index) => (
-          <HistoryItem
-            key={`${row.label}-${index}`}
-            tone={row.tone}
-            label={row.label}
-            meta={[row.actor, row.extra, mdHm(row.at)]
-              .filter(Boolean)
-              .join(" · ")}
-          />
-        ))}
-      </div>
-    ),
+    body:
+      claim.history.length > 0 ? (
+        <div className="pt-0.5">
+          {claim.history.map((item, index) => (
+            <HistoryItem
+              key={`${item.eventType}-${item.occurredAt}-${index}`}
+              tone={historyTone(item.eventType)}
+              label={item.eventLabel}
+              meta={[item.actorLabel, item.detail, mdHm(item.occurredAt)]
+                .filter(Boolean)
+                .join(" · ")}
+            />
+          ))}
+        </div>
+      ) : (
+        <Dim>이력이 없습니다</Dim>
+      ),
   });
 
   return (

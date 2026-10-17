@@ -9,15 +9,17 @@ import {
   FormLabel,
   FormShell,
   FormWarn,
+  TargetGroupField,
 } from "@/features/order/components/detail/forms/FormParts";
 import { RailCard, RailText } from "@/features/order/components/detail/parts";
-import {
-  INVOICE_MAX_LENGTH,
-  INVOICE_MIN_LENGTH,
-  TRACKING_CARRIERS,
-} from "@/features/order/constants/labels";
+import { TRACKING_CARRIERS } from "@/features/order/constants/labels";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/features/order/constants/params";
-import { useProxyInvoice } from "@/features/order/hooks/useOrderMutations";
+import { useRegisterShipment } from "@/features/order/hooks/useOrderMutations";
+import type {
+  AdminOrderDetail,
+  AdminOrderGroupDetail,
+  DeliveryCarrier,
+} from "@/features/order/types";
 import {
   getOrderErrorCode,
   getOrderErrorMessage,
@@ -26,51 +28,62 @@ import { cn } from "@/lib/utils";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
-/**
- * 시안 B4 — 송장 대행 등록. 발송 기한 경과 후 자동 알림 3회 무응답일 때만 열린다.
- * 택배사는 추적 연동 목록 하나에서만 고른다(자유 입력 없음). 대행 사유 필수 ·
- * 출처가 「운영자 대행」으로 남아 브랜드에 통지된다.
- * 빈 값은 버튼 비활성만 — 에러 문구는 송장번호 형식 오류·중복에만 뜬다.
- */
-export default function ProxyInvoiceForm(props: { orderNo: string }) {
-  const { orderNo } = props;
-  const [carrier, setCarrier] = useState(TRACKING_CARRIERS[0]);
-  const [invoiceNo, setInvoiceNo] = useState("");
-  const [reason, setReason] = useState("");
-  const [touched, setTouched] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
-  const { mutateAsync, isPending } = useProxyInvoice();
+/** 폼 안에 직접 그리는 서버 오류 — 송장 형식 · 지원하지 않는 택배사 · 중복 송장 */
+const INLINE_ERROR_CODES = ["INVOICE_FORMAT_INVALID", "INVOICE_DUPLICATE"];
 
-  const formatInvalid =
-    invoiceNo.length > 0 &&
-    (invoiceNo.length < INVOICE_MIN_LENGTH ||
-      invoiceNo.length > INVOICE_MAX_LENGTH);
+/**
+ * 시안 B4 — 송장 대행 등록. 상품준비중 ∧ 발송 기한 경과 ∧ 자동 알림 3회 무응답일 때만 열린다
+ * (`actions.canRegisterShipment`). 택배사는 추적 연동 목록 하나에서만 고른다(자유 입력 없음).
+ * 대행 사유 필수(300자) · 이력에 「운영자 대행」으로 남는다.
+ * 빈 값은 버튼 비활성만 — 송장 형식 · 중복은 서버가 판정하고 그 문구를 칸 아래에 띄운다.
+ */
+export default function ProxyInvoiceForm(props: {
+  detail: AdminOrderDetail;
+  groups: Array<AdminOrderGroupDetail>;
+}) {
+  const { detail, groups } = props;
+  const [groupId, setGroupId] = useState(groups[0]?.deliveryGroupId ?? 0);
+  const [carrier, setCarrier] = useState<DeliveryCarrier>(
+    TRACKING_CARRIERS[0].value
+  );
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [note, setNote] = useState("");
+  const [serverError, setServerError] = useState<string | null>(null);
+  const { mutateAsync, isPending } = useRegisterShipment();
+
   const canSubmit =
-    invoiceNo.length > 0 && !formatInvalid && reason.trim().length > 0;
+    groupId > 0 && trackingNumber.length > 0 && note.trim().length > 0;
 
   const handleSubmit = async () => {
     try {
       await mutateAsync({
-        orderNo,
-        body: { carrier, invoiceNo, reason: reason.trim() },
+        orderId: detail.orderId,
+        deliveryGroupId: groupId,
+        body: { carrier, trackingNumber, note: note.trim() },
       });
-      toast.success("운영자 대행 송장을 등록했습니다 — 브랜드에 통지됩니다");
+      toast.success("운영자 대행 송장을 등록했습니다");
     } catch (error) {
-      if (getOrderErrorCode(error) === "DUPLICATE_INVOICE") {
-        setServerError(
-          getOrderErrorMessage(error) ?? "이미 등록된 송장번호입니다."
-        );
+      const message = getOrderErrorMessage(error);
+      if (INLINE_ERROR_CODES.includes(getOrderErrorCode(error) ?? "")) {
+        setServerError(message ?? "송장번호를 확인해 주세요.");
         return;
       }
-      toast.error("송장 대행 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      // 이 요청은 인터셉터 토스트를 껐다 — 나머지 오류는 서버 문구로 직접 알린다
+      toast.error(message ?? "송장 대행 등록에 실패했습니다.");
     }
   };
-
-  const showFormatError = touched && formatInvalid;
 
   return (
     <RailCard title="송장 대행 등록">
       <FormShell>
+        {groups.length > 1 && (
+          <TargetGroupField
+            id="proxy-group"
+            groups={groups}
+            value={groupId}
+            onChange={setGroupId}
+          />
+        )}
         <FormLabel required htmlFor="proxy-carrier">
           택배사
         </FormLabel>
@@ -79,11 +92,14 @@ export default function ProxyInvoiceForm(props: { orderNo: string }) {
           className={FORM_SELECT_CLASS}
           style={MODAL_SELECT_CHEVRON_STYLE}
           value={carrier}
-          onChange={(event) => setCarrier(event.target.value)}
+          onChange={(event) => {
+            setCarrier(event.target.value as DeliveryCarrier);
+            setServerError(null);
+          }}
         >
-          {TRACKING_CARRIERS.map((name) => (
-            <option key={name} value={name}>
-              {name}
+          {TRACKING_CARRIERS.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
             </option>
           ))}
         </select>
@@ -99,22 +115,15 @@ export default function ProxyInvoiceForm(props: { orderNo: string }) {
           className={cn(
             FORM_INPUT_CLASS,
             "tabular-nums",
-            (showFormatError || serverError) && "border-sz-danger-text"
+            serverError && "border-sz-danger-text"
           )}
-          value={invoiceNo}
+          value={trackingNumber}
           onChange={(event) => {
-            // 숫자만 — 붙여넣은 하이픈·공백은 걸러낸다
-            setInvoiceNo(event.target.value.replace(/\D/g, ""));
+            // 숫자만 — 붙여넣은 하이픈·공백은 걸러낸다(서버도 숫자만 남겨 저장한다)
+            setTrackingNumber(event.target.value.replace(/\D/g, ""));
             setServerError(null);
           }}
-          onBlur={() => setTouched(true)}
         />
-        {showFormatError && (
-          <FormError>
-            송장번호 형식이 올바르지 않습니다(숫자 {INVOICE_MIN_LENGTH}~
-            {INVOICE_MAX_LENGTH}자리).
-          </FormError>
-        )}
         {serverError && <FormError>{serverError}</FormError>}
 
         <FormLabel required htmlFor="proxy-reason">
@@ -122,15 +131,16 @@ export default function ProxyInvoiceForm(props: { orderNo: string }) {
         </FormLabel>
         <textarea
           id="proxy-reason"
+          maxLength={300}
           className={FORM_TEXTAREA_CLASS}
           placeholder="브랜드 무응답 경위와 송장 확보 경로를 적습니다"
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
+          value={note}
+          onChange={(event) => setNote(event.target.value)}
         />
 
         <FormWarn tone="info">
-          송장 출처가 <b>「운영자 대행」</b>으로 기록되며 <b>브랜드에게 통지</b>
-          됩니다. 형식 오류·중복 송장은 등록되지 않습니다.
+          이력에 <b>「운영자 대행」</b>으로 기록됩니다. 형식 오류·중복 송장은
+          등록되지 않습니다.
         </FormWarn>
         <OrderBtn
           variant="primary"
@@ -143,7 +153,7 @@ export default function ProxyInvoiceForm(props: { orderNo: string }) {
         </OrderBtn>
       </FormShell>
       <RailText>
-        세 칸이 모두 채워질 때까지 버튼은 <b>비활성</b>입니다 — 에러 문구는 형식
+        칸이 모두 채워질 때까지 버튼은 <b>비활성</b>입니다 — 에러 문구는 형식
         오류·중복에만 뜹니다.
       </RailText>
     </RailCard>

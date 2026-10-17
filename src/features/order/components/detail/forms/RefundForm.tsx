@@ -1,83 +1,73 @@
 import OrderBtn from "@/features/order/components/shared/OrderBtn";
 import {
+  FORM_INPUT_CLASS,
   FORM_SELECT_CLASS,
   FORM_TEXTAREA_CLASS,
 } from "@/features/order/components/shared/styles";
 import {
-  CheckRow,
+  FormHint,
   FormLabel,
   FormShell,
   FormWarn,
+  TargetGroupField,
 } from "@/features/order/components/detail/forms/FormParts";
 import { RailCard } from "@/features/order/components/detail/parts";
-import { REFUND_CATEGORIES } from "@/features/order/constants/labels";
+import { REFUND_REASONS } from "@/features/order/constants/labels";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/features/order/constants/params";
-import { useRefundOrder } from "@/features/order/hooks/useOrderMutations";
-import type { OrderDetail, OrderRefundRequest } from "@/features/order/types";
-import { useMemo, useState } from "react";
+import { useEnqueueRefund } from "@/features/order/hooks/useOrderMutations";
+import type {
+  AdminOrderDetail,
+  AdminOrderGroupDetail,
+  OperatorRefundReason,
+} from "@/features/order/types";
+import { formatWon } from "@/features/order/utils/format";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
 import toast from "react-hot-toast";
 
 /**
- * 시안 B5 — 운영자 사유 환불(반려 이의 인용 · 위해성 리콜 · 기타). 운영자가 실행하는 유일한 환불이다 —
- * 취소·반품 승인·반송 완료는 모두 PG 자동이다. 이 화면은 **환불 대기 편입까지**이고 집행은
- * 환불 관리의 재확인 다이얼로그에서 한다. 정산 확정된 항목이면 클로백이 생기므로 누르기 전에 적어 둔다.
- * 구매확정 후 하자는 환불이 아니라 반품을 대신 연다(OpenReturnForm).
+ * 시안 B5 — 운영자 사유 환불(발송분 · 배송중 · 배송완료 · 구매확정). 이 화면은 **환불 대기 편입까지**이고
+ * 집행은 환불 관리의 재확인 다이얼로그에서 한다. 서버는 항목 체크 + 수량 대신 **금액 하나**를 받고,
+ * 사유는 위해성 리콜 · 구매확정 후 하자 2종이다(반려 이의 인용 · 검수 무응답은 반품·교환 화면 전용).
+ * 금액 상한은 「결제 취소 가능 잔액 − 아직 나가지 않은 환불」이라 서버가 넘으면 409로 잔액을 알려 준다.
  */
 export default function RefundForm(props: {
-  detail: OrderDetail;
+  detail: AdminOrderDetail;
+  groups: Array<AdminOrderGroupDetail>;
   onClose: () => void;
 }) {
-  const { detail, onClose } = props;
-  const [selected, setSelected] = useState<Record<string, number>>({});
-  const [category, setCategory] =
-    useState<OrderRefundRequest["category"]>("RECALL");
-  const [reason, setReason] = useState("");
-  const { mutateAsync, isPending } = useRefundOrder();
+  const { detail, groups, onClose } = props;
+  const [groupId, setGroupId] = useState(groups[0]?.deliveryGroupId ?? 0);
+  const [reason, setReason] = useState<OperatorRefundReason>("RECALL");
+  const [amountText, setAmountText] = useState("");
+  const [detailText, setDetailText] = useState("");
+  const { mutateAsync, isPending } = useEnqueueRefund();
 
-  // 이미 취소·환불 대기에 든 항목은 대상에서 뺀다
-  const items = useMemo(
-    () =>
-      detail.subOrders
-        .flatMap((sub) => sub.items)
-        .filter(
-          (item) => item.status.label !== "취소·환불" && !item.extraBadge
-        ),
-    [detail.subOrders]
-  );
-  const chosen = items.filter((item) => selected[item.id] !== undefined);
-  const hasSettled = chosen.some((item) => item.settled);
-  const canSubmit = chosen.length > 0 && reason.trim().length > 0;
-
-  const toggle = (id: string, qty: number) =>
-    setSelected((prev) => {
-      const next = { ...prev };
-      if (next[id] === undefined) {
-        next[id] = qty;
-      } else {
-        delete next[id];
-      }
-      return next;
-    });
+  const group = groups.find((g) => g.deliveryGroupId === groupId);
+  const amount = Number(amountText);
+  const cancellable = detail.payment
+    ? detail.payment.amount - detail.payment.cancelledAmount
+    : null;
+  const settled = Boolean(group?.settlement?.confirmedAt);
+  const canSubmit =
+    groupId > 0 &&
+    Number.isInteger(amount) &&
+    amount >= 1 &&
+    detailText.trim().length > 0;
 
   const handleSubmit = async () => {
     try {
       await mutateAsync({
-        orderNo: detail.orderNo,
-        body: {
-          items: chosen.map((item) => ({
-            itemId: item.id,
-            qty: selected[item.id],
-          })),
-          category,
-          reason: reason.trim(),
-        },
+        orderId: detail.orderId,
+        deliveryGroupId: groupId,
+        body: { reason, amount, detail: detailText.trim() },
       });
       toast.success(
         "환불 대기에 편입했습니다 — 환불 관리에서 재확인 후 실행합니다"
       );
       onClose();
     } catch {
-      toast.error("환불 대기 편입에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      // 잔액 초과 · 상태 변경 등은 apiInstance가 서버 문구로 알린다
     }
   };
 
@@ -95,20 +85,12 @@ export default function RefundForm(props: {
       }
     >
       <FormShell>
-        <FormLabel required>대상 항목</FormLabel>
-        {items.map((item) => (
-          <CheckRow
-            key={item.id}
-            checked={selected[item.id] !== undefined}
-            label={`${item.name} ${item.option}`}
-            qty={selected[item.id] ?? 0}
-            maxQty={item.qty}
-            onToggle={() => toggle(item.id, item.qty)}
-            onQtyChange={(qty) =>
-              setSelected((prev) => ({ ...prev, [item.id]: qty }))
-            }
-          />
-        ))}
+        <TargetGroupField
+          id="refund-group"
+          groups={groups}
+          value={groupId}
+          onChange={setGroupId}
+        />
 
         <FormLabel required htmlFor="refund-category">
           사유 카테고리
@@ -117,44 +99,64 @@ export default function RefundForm(props: {
           id="refund-category"
           className={FORM_SELECT_CLASS}
           style={MODAL_SELECT_CHEVRON_STYLE}
-          value={category}
+          value={reason}
           onChange={(event) =>
-            setCategory(event.target.value as OrderRefundRequest["category"])
+            setReason(event.target.value as OperatorRefundReason)
           }
         >
-          {REFUND_CATEGORIES.map((item) => (
+          {REFUND_REASONS.map((item) => (
             <option key={item.value} value={item.value}>
               {item.label}
             </option>
           ))}
         </select>
 
+        <FormLabel required htmlFor="refund-amount">
+          환불 금액
+        </FormLabel>
+        <input
+          id="refund-amount"
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="원 단위 숫자"
+          className={cn(FORM_INPUT_CLASS, "tabular-nums")}
+          value={amountText}
+          onChange={(event) =>
+            setAmountText(event.target.value.replace(/\D/g, ""))
+          }
+        />
+        {cancellable !== null && (
+          <FormHint>
+            결제 취소 가능 잔액 {formatWon(cancellable)} — 아직 나가지 않은
+            환불만큼 줄어듭니다
+          </FormHint>
+        )}
+
         <FormLabel required htmlFor="refund-reason">
           근거
         </FormLabel>
         <textarea
           id="refund-reason"
+          maxLength={500}
           className={FORM_TEXTAREA_CLASS}
           placeholder="환불 근거를 적습니다"
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
+          value={detailText}
+          onChange={(event) => setDetailText(event.target.value)}
         />
 
         <FormWarn>
-          {hasSettled ? (
+          {settled ? (
             <>
-              선택 항목 중 <b>정산 확정</b> 항목이 있어 환불되면{" "}
-              <b>다음 정산에서 차감</b>됩니다(클로백). 환불은{" "}
-              <b>「환불 관리」에서 재확인 후 실행</b>되며 여기서는{" "}
-              <b>대기 편입까지</b>입니다.
+              이 하위주문은 <b>정산 확정</b>이라 환불되면{" "}
+              <b>다음 정산에서 차감</b>됩니다(클로백).
             </>
           ) : (
             <>
-              선택 항목은 <b>정산 전</b>이라 클로백이 없습니다. 환불은{" "}
-              <b>「환불 관리」에서 재확인 후 실행</b>되며 여기서는{" "}
-              <b>대기 편입까지</b>입니다.
+              이 하위주문은 <b>정산 전</b>이라 클로백이 없습니다.
             </>
-          )}
+          )}{" "}
+          환불은 <b>「환불 관리」에서 재확인 후 실행</b>되며 여기서는{" "}
+          <b>대기 편입까지</b>입니다.
         </FormWarn>
         <OrderBtn
           variant="primary"

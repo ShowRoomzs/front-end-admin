@@ -6,19 +6,19 @@ import {
 } from "@/features/refund/constants/params";
 import type {
   RefundRouteFilter,
-  RefundStatus,
   RefundSummary,
+  RefundTab,
 } from "@/features/refund/types";
 import { cn } from "@/lib/utils";
 
 interface RefundFilterCardProps {
-  tab: RefundStatus;
-  /** 서버가 내린 탭 카운트 — 아직 없으면 칩을 그리지 않는다(0으로 거짓 표시하지 않는다) */
-  counts: RefundSummary["tabCounts"] | undefined;
+  tab: RefundTab;
+  /** 서버 요약 `tabs` — 아직 없으면 칩을 그리지 않는다(0으로 거짓 표시하지 않는다) */
+  tabs: RefundSummary["tabs"] | undefined;
   /** 입력 중인 값 — [검색]을 눌러야 목록에 반영된다 */
   route: RefundRouteFilter;
   keyword: string;
-  onTabChange: (tab: RefundStatus) => void;
+  onTabChange: (tab: RefundTab) => void;
   onRouteChange: (route: RefundRouteFilter) => void;
   onKeywordChange: (keyword: string) => void;
   onSearch: () => void;
@@ -29,7 +29,7 @@ interface RefundFilterCardProps {
 export default function RefundFilterCard(props: RefundFilterCardProps) {
   const {
     tab,
-    counts,
+    tabs,
     route,
     keyword,
     onTabChange,
@@ -44,7 +44,7 @@ export default function RefundFilterCard(props: RefundFilterCardProps) {
       <div className="flex" role="tablist">
         {REFUND_TABS.map((item) => {
           const isActive = item.value === tab;
-          const count = counts?.[item.value];
+          const count = tabs?.[item.value]?.count;
           return (
             <button
               key={item.value}

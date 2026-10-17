@@ -1,42 +1,123 @@
-import type { OrderRailNotice, Rich } from "@/features/order/types";
+import type { Rich } from "@/features/order/components/shared/RichText";
+import type {
+  ClaimReason,
+  DeliveryCarrier,
+  OperatorRefundReason,
+  OrderBadgeData,
+  OrderBadgeTone,
+  RefundTaskStatus,
+  SellerCancelReason,
+  TrackingAlert,
+} from "@/features/order/types";
+
+/*
+  서버가 라벨을 내리지 않는 값만 여기 둔다 — 상태 · 추적 경고 · 택배사 · 환불 출처 라벨은 응답의
+  `*Label` 필드를 그대로 쓴다. 아래 표는 전부 백엔드 enum의 라벨을 옮긴 것이다.
+*/
 
 /**
- * 송장 대행 등록의 택배사 — 추적 연동 목록 하나로 출고·회수·재발송이 공통이다.
- * 이 목록 밖의 택배사는 추적이 원래 없는 건이 되므로 자유 입력을 두지 않는다(시안 B3·B4).
+ * 송장 대행 등록의 택배사 — `DeliveryCarrier.selectable()`(추적 연동 업체 · 선언 순서).
+ * 쿠팡택배는 추적 코드가 없어 고를 수 없다.
  */
-export const TRACKING_CARRIERS = [
-  "CJ대한통운",
-  "한진택배",
-  "롯데글로벌로지스",
-  "우체국택배",
-  "로젠택배",
-  "대신택배",
-  "경동택배",
-  "일양로지스",
-  "합동택배",
-  "천일택배",
-  "건영택배",
+export const TRACKING_CARRIERS: Array<{
+  value: DeliveryCarrier;
+  label: string;
+}> = [
+  { value: "CJ", label: "CJ대한통운" },
+  { value: "EPOST", label: "우체국택배" },
+  { value: "HANJIN", label: "한진택배" },
+  { value: "LOTTE", label: "롯데택배" },
+  { value: "LOGEN", label: "로젠택배" },
+  { value: "KYUNGDONG", label: "경동택배" },
+  { value: "DAESIN", label: "대신택배" },
+  { value: "ILYANG", label: "일양로지스" },
+  { value: "CU", label: "CU 편의점택배" },
+  { value: "GS25", label: "GS25 편의점택배" },
+  { value: "HAPDONG", label: "합동택배" },
+  { value: "WOORI", label: "우리택배" },
 ];
 
-/** 송장번호 자릿수 — 택배사 공통 10~14자리 숫자 */
-export const INVOICE_MIN_LENGTH = 10;
-export const INVOICE_MAX_LENGTH = 14;
+/** `TrackingAlert` 톤 — 목록 응답에 경고 톤이 없어 enum 정의를 옮겼다 */
+export const TRACKING_ALERT_TONE: Record<TrackingAlert, OrderBadgeTone> = {
+  PICKUP_UNCONFIRMED: "WARNING",
+  STALLED: "DANGER",
+};
 
-/** 운영자 사유 환불 — 반려 이의 인용 · 위해성 리콜 · 기타 3종 */
-export const REFUND_CATEGORIES = [
+/** 운영자 사유 환불 — 06a가 받는 2종(`OperatorRefundReason`) */
+export const REFUND_REASONS: Array<{
+  value: OperatorRefundReason;
+  label: string;
+}> = [
   { value: "RECALL", label: "위해성 리콜" },
-  { value: "OBJECTION_ACCEPTED", label: "반려 이의 인용" },
-  { value: "OTHER", label: "기타(직접 입력)" },
-] as const;
+  { value: "POST_CONFIRM_DEFECT", label: "구매확정 후 하자" },
+];
 
-/** 반품 대신 열기 하자 유형 — 단순 변심이 없다(셀프 반품을 열지 않은 이유) */
-export const DEFECT_TYPES = [
-  { value: "DEFECT", label: "불량 · 파손" },
-  { value: "MISMATCH", label: "표시·광고와 다름" },
-  { value: "WRONG_ITEM", label: "오배송" },
-] as const;
+/** 대행 직권 취소 사유(`SellerCancelReason`) — DEFECT만 대행 조건 없이 열린다 */
+export const CANCEL_REASONS: Array<{
+  value: SellerCancelReason;
+  label: string;
+}> = [
+  { value: "DEFECT", label: "상품 하자" },
+  { value: "SOLD_OUT", label: "품절" },
+  { value: "UNDELIVERABLE_AREA", label: "배송 불가 지역" },
+  { value: "ETC", label: "기타" },
+];
+
+/** 반품 대신 열기 하자 유형 — 브랜드 귀책 사유만(`ClaimReason`) */
+export const DEFECT_REASONS: Array<{ value: ClaimReason; label: string }> = [
+  { value: "DAMAGED_OR_DEFECTIVE", label: "배송 상품 파손 및 불량" },
+  { value: "WRONG_OR_LATE_DELIVERY", label: "오배송 및 배송 지연" },
+];
+
+/** 결제 상태(`PaymentStatus`) — 응답이 이름만 내린다 */
+export const PAYMENT_STATUS_BADGE: Record<string, OrderBadgeData> = {
+  READY: { label: "결제 대기", tone: "NEUTRAL" },
+  PAID: { label: "결제 완료", tone: "SUCCESS" },
+  FAILED: { label: "결제 실패", tone: "DANGER" },
+  EXPIRED: { label: "만료", tone: "NEUTRAL" },
+  SUPERSEDED: { label: "대체됨", tone: "NEUTRAL" },
+  CANCELLED: { label: "취소", tone: "NEUTRAL" },
+  CANCEL_REQUESTED: { label: "취소 요청", tone: "WARNING" },
+  CANCELLED_MISMATCH: { label: "불일치 자동 취소", tone: "NEUTRAL" },
+  CANCEL_FAILED: { label: "취소 실패", tone: "DANGER" },
+};
+
+/** 항목 상태(`OrderProductStatus`) — 응답이 이름만 내린다 */
+export const ITEM_STATUS_BADGE: Record<string, OrderBadgeData> = {
+  PENDING: { label: "결제 대기", tone: "NEUTRAL" },
+  PAID: { label: "결제 완료", tone: "INFO" },
+  PURCHASE_CONFIRMED: { label: "구매 확정", tone: "SUCCESS" },
+  CANCELLED: { label: "취소", tone: "NEUTRAL" },
+  RETURNED: { label: "반품", tone: "NEUTRAL" },
+};
+
+/** 환불 큐 상태(`RefundTaskStatus`) — enum에 라벨이 없어 환불 관리 화면의 말로 옮겼다 */
+export const REFUND_STATUS_BADGE: Record<RefundTaskStatus, OrderBadgeData> = {
+  PENDING: { label: "집행 대기", tone: "WARNING" },
+  EXECUTING: { label: "집행 중", tone: "INFO" },
+  DONE: { label: "환불 완료", tone: "SUCCESS" },
+  FAILED: { label: "환불 실패", tone: "DANGER" },
+  VOID: { label: "철회", tone: "NEUTRAL" },
+};
+
+/** 이력 주체(`FulfillmentActorType`) */
+export const ACTOR_LABEL: Record<string, string> = {
+  SYSTEM: "시스템",
+  SELLER: "브랜드",
+  ADMIN: "운영자",
+  CONSUMER: "소비자",
+  TRACKER: "배송 추적",
+};
 
 /** 레일 「조치할 것이 없습니다」 카드 문구 */
+export type OrderRailNotice =
+  | "RETURNED"
+  | "CANCEL_REQUESTED"
+  | "EXCHANGING"
+  | "RETURN_OPENED"
+  | "CANCELED"
+  | "NO_ACTION";
+
 export const RAIL_NOTICE_TEXT: Record<OrderRailNotice, Rich> = {
   RETURNED: [
     "조치할 것이 없습니다 — 반송 건은 ",
