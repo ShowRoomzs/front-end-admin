@@ -19,6 +19,7 @@ export const INQUIRY_INITIAL_PARAMS: InquiryListParams = {
   status: "ALL",
   type: null,
   keyword: "",
+  userId: "",
 };
 
 /** 목록 응답이 오기 전 탭 배지에 쓰는 자리값 */

@@ -113,7 +113,7 @@ export default function SignatureSaveModal(props: SignatureSaveModalProps) {
       </ModalWarn>
       {bothAfter && !bothBefore && (
         <ModalWarn icon="info">
-          양측 서명이 모두 완료로 바뀌므로 저장 후 상태가 <b>체결 처리 대기</b>
+          양측 서명이 모두 완료로 바뀌므로 저장 후 상태가 <b>공구 생성 대기</b>
           가 됩니다. 잘못 입력했으면 <b>체결 완료 전까지 체크를 해제</b>해
           되돌릴 수 있습니다.
         </ModalWarn>

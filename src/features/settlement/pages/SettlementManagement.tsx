@@ -16,6 +16,7 @@ import {
   ALL_SORT_OPTIONS,
   FIXED_SORT_LABEL,
   PAGE_SIZES,
+  REVIEW_PERIOD_LABEL,
   SETTLEMENT_INITIAL_PARAMS,
   SETTLEMENT_LIST_PATH,
   SETTLEMENT_NO_PREFIX,
@@ -59,7 +60,7 @@ const EMPTY_TEXT: Record<SettlementTab, { title: string; desc: string }> = {
   },
   REVIEWING: {
     title: "정산 확인 중인 회차가 없습니다",
-    desc: "주문이 모두 종결되면 금액이 공개되고 3영업일 확인 기간이 시작됩니다.",
+    desc: `주문이 모두 종결되면 금액이 공개되고 ${REVIEW_PERIOD_LABEL} 확인 기간이 시작됩니다.`,
   },
   ADJUSTING: {
     title: "조정 협의 중인 회차가 없습니다",
@@ -71,7 +72,7 @@ const EMPTY_TEXT: Record<SettlementTab, { title: string; desc: string }> = {
   },
   EVIDENCE: {
     title: "처리할 증빙이 없습니다",
-    desc: "세금계산서 확인 · 브랜드 세금계산서 발행 · 주민번호 미등록 건이 이 탭에 모입니다.",
+    desc: "세금계산서 대조 · 브랜드 세금계산서 발행 건이 이 탭에 모입니다.",
   },
   CLAWBACK: {
     title: "차감 건이 없습니다",

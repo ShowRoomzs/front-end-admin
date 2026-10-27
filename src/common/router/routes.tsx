@@ -4,9 +4,13 @@ import LoginPage from "@/features/auth/pages/LoginPage";
 import PlaceholderPage from "@/common/components/PlaceholderPage";
 import CategoryManagement from "@/features/category/pages/CategoryManagement";
 import ConsumerManagement from "@/features/consumer/pages/ConsumerManagement";
+import ConsumerDetail from "@/features/consumer/pages/ConsumerDetail";
 import SellerRegistrationManagement from "@/features/seller/pages/SellerRegistrationManagement";
 import SellerRegistrationDetail from "@/features/seller/pages/SellerRegistrationDetail";
-import SellerUserManagement from "@/features/seller/pages/SellerUserManagement";
+import BrandMemberList from "@/features/brandMember/pages/BrandMemberList";
+import BrandMemberDetail from "@/features/brandMember/pages/BrandMemberDetail";
+import InfluencerMemberList from "@/features/influencerMember/pages/InfluencerMemberList";
+import InfluencerMemberDetail from "@/features/influencerMember/pages/InfluencerMemberDetail";
 import FilterManagement from "@/features/filter/pages/FilterManagement";
 import SocialLoginManagement from "@/features/user/pages/SocialLoginManagement";
 import LoginHistoryManagement from "@/features/user/pages/LoginHistoryManagement";
@@ -40,6 +44,10 @@ import ClaimManagement from "@/features/claim/pages/ClaimManagement";
 import RefundManagement from "@/features/refund/pages/RefundManagement";
 import ExceptionManagement from "@/features/exception/pages/ExceptionManagement";
 import ThreadPage from "@/features/thread/pages/ThreadPage";
+import AdminHome from "@/features/home/pages/AdminHome";
+import MetricsPage from "@/features/metrics/pages/MetricsPage";
+import PostMonitoring from "@/features/post/pages/PostMonitoring";
+import PostDetail from "@/features/post/pages/PostDetail";
 
 export const authRoutes: Array<RouteObject> = [
   {
@@ -59,7 +67,13 @@ export const mainRoutes: Array<RouteObject> = [
     children: [
       {
         index: true,
-        element: <PlaceholderPage title="홈" />,
+        // 홈(ui-admin-00) — 할 일 표 · 오늘 일정 · 오늘 지표 · 연동 상태
+        element: <AdminHome />,
+      },
+      // 운영 지표(ui-admin-21 rev.5)
+      {
+        path: "metrics",
+        element: <MetricsPage />,
       },
       // 입점 관리(브랜드) · 회원 관리(브랜드)
       {
@@ -73,9 +87,14 @@ export const mainRoutes: Array<RouteObject> = [
             path: "registration/:id",
             element: <SellerRegistrationDetail />,
           },
+          // 브랜드 회원 목록 · 상세(ui-admin-14 · 15 rev.7)
           {
             path: "list",
-            element: <SellerUserManagement />,
+            element: <BrandMemberList />,
+          },
+          {
+            path: "list/:marketId",
+            element: <BrandMemberDetail />,
           },
           // 입점 관리(변경 요청) — 브랜드가 요청한 사업자 정보·정산 계좌 변경 검토
           {
@@ -93,10 +112,6 @@ export const mainRoutes: Array<RouteObject> = [
         path: "product",
         children: [
           {
-            path: "inspection",
-            element: <PlaceholderPage title="상품 검수" />,
-          },
-          {
             path: "list",
             element: <ProductListManagement />,
           },
@@ -112,10 +127,6 @@ export const mainRoutes: Array<RouteObject> = [
             path: "filter",
             element: <FilterManagement />,
           },
-          {
-            path: "review",
-            element: <PlaceholderPage title="리뷰 관리" />,
-          },
         ],
       },
       // 입점 관리(인플루언서) · 회원 관리(인플루언서)
@@ -130,9 +141,14 @@ export const mainRoutes: Array<RouteObject> = [
             path: "registration/:id",
             element: <CreatorApplicationDetail />,
           },
+          // 인플루언서 회원 목록 · 상세(ui-admin-16 rev.7 · 18 rev.2)
           {
             path: "list",
-            element: <PlaceholderPage title="인플루언서 회원 관리" />,
+            element: <InfluencerMemberList />,
+          },
+          {
+            path: "list/:creatorId",
+            element: <InfluencerMemberDetail />,
           },
         ],
       },
@@ -162,9 +178,14 @@ export const mainRoutes: Array<RouteObject> = [
             path: "group-buy-posts",
             element: <PlaceholderPage title="공구 게시물" />,
           },
+          // 일반 게시물 모니터링(ui-admin-11) — 목록 · 상세. 신고 · 노출 중지 · 이의 심사는 상세의 모달이다
           {
             path: "posts",
-            element: <PlaceholderPage title="일반 게시물" />,
+            element: <PostMonitoring />,
+          },
+          {
+            path: "posts/:id",
+            element: <PostDetail />,
           },
           {
             path: "threads",
@@ -173,35 +194,23 @@ export const mainRoutes: Array<RouteObject> = [
           },
         ],
       },
-      // 배너/프로모션 관리
-      {
-        path: "banner",
-        children: [
-          {
-            path: "list",
-            element: <PlaceholderPage title="배너 목록" />,
-          },
-          {
-            path: "register",
-            element: <PlaceholderPage title="배너 등록" />,
-          },
-        ],
-      },
+      /*
+        상품 검수 · 리뷰 · 배너 · 제재 · 수수료율 · 노출 옵션 요금 · 푸시 알림 자리 표시 라우트를 지웠다
+        (2026-10-21 사용자 결정). 메뉴에서 닿지 않는 고아 경로였고 대응하는 시안이 없다 — 시안이 나오면
+        그때 메뉴와 함께 만든다.
+      */
       // 회원 관리
       {
         path: "member",
         children: [
-          /*
-            소비자 회원 목록 (§25-3). 상세(§25-4)는 아직 라우트를 두지 않는다 —
-            서버 상세 응답이 구버전이라 마스킹 해제·본인확인 정보·배송지 목록이 없다.
-          */
+          // 소비자 회원 목록(§25-3 · ui-admin-12) · 상세(ui-admin-13 rev.7)
           {
             path: "list",
             element: <ConsumerManagement />,
           },
           {
-            path: "sanction",
-            element: <PlaceholderPage title="제재 관리" />,
+            path: "list/:userId",
+            element: <ConsumerDetail />,
           },
           {
             path: "social-login",
@@ -250,20 +259,6 @@ export const mainRoutes: Array<RouteObject> = [
           {
             path: "group-buy/:id",
             element: <SettlementDetail />,
-          },
-        ],
-      },
-      // 수수료 정책 관리
-      {
-        path: "fee",
-        children: [
-          {
-            path: "rate",
-            element: <PlaceholderPage title="수수료율 설정" />,
-          },
-          {
-            path: "exposure",
-            element: <PlaceholderPage title="노출 옵션 요금 설정" />,
           },
         ],
       },
@@ -329,10 +324,6 @@ export const mainRoutes: Array<RouteObject> = [
           {
             path: "notice/:noticeId",
             element: <NoticeFormPage />,
-          },
-          {
-            path: "push",
-            element: <PlaceholderPage title="푸시 알림" />,
           },
         ],
       },

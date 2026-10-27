@@ -1,7 +1,10 @@
 import { REFUND_SUMMARY_POLL_INTERVAL } from "@/features/refund/constants/params";
 import { REFUND_QUERY_KEYS } from "@/features/refund/constants/queryKeys";
 import { adminRefundService } from "@/features/refund/services/adminRefundService";
-import type { RefundListParams } from "@/features/refund/types";
+import type {
+  RefundListParams,
+  RefundTransferCompleteRequest,
+} from "@/features/refund/types";
 import { formatWon } from "@/features/refund/utils/format";
 import {
   keepPreviousData,
@@ -97,6 +100,25 @@ export function useExecuteRefund() {
       invalidate();
     },
     // 409(이미 처리 중 · 완료) 등 — 상태가 바뀌었을 수 있으니 다시 읽는다
+    onError: () => invalidate(),
+  });
+}
+
+/** M3 송금 완료 기록 — 돈은 운영자가 은행에서 보냈다. 이 요청은 기록만 남긴다 */
+export function useCompleteTransfer() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (v: {
+      refundTaskId: number;
+      refundNo: string;
+      body: RefundTransferCompleteRequest;
+    }) => adminRefundService.completeTransfer(v.refundTaskId, v.body),
+    onSuccess: (refund, v) => {
+      toast.success(
+        `${formatWon(refund.amount)} 송금 완료를 기록했습니다 — ${v.refundNo}`
+      );
+      invalidate();
+    },
     onError: () => invalidate(),
   });
 }

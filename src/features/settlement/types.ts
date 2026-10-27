@@ -53,9 +53,11 @@ export type SettlementEventType =
   | "ADJUSTMENT_ACCEPTED"
   | "ADJUSTMENT_DEADLINE_NOTICED"
   | "ADJUSTMENT_EXPIRED"
+  | "ADJUSTMENT_WITHDRAWN"
   | "AUTO_CONFIRMED"
   | "CONFIRMED_BY_AGREEMENT"
   | "CONFIRMED_BY_EXPIRY"
+  | "CONFIRMED_BY_WITHDRAWAL"
   | "TAX_INVOICE_REQUESTED"
   | "TAX_INVOICE_SUBMITTED"
   | "TAX_INVOICE_VERIFIED"
@@ -65,17 +67,23 @@ export type SettlementEventType =
   | "PAYOUT_PAID"
   | "PAYOUT_FAILED"
   | "PAYOUT_RETRIED"
+  | "PAYOUT_DEFERRED"
   | "PAYOUT_BLOCKED"
+  | "PAYOUT_HOLD_RELEASED"
   | "PAYOUT_CHECK_REQUIRED"
   | "WITHHOLDING_RECEIPT_GENERATED"
+  | "WITHHOLDING_RECEIPT_SKIPPED"
   | "CLAWBACK_REGISTERED"
   | "CLAWBACK_APPLIED"
-  | "CLAWBACK_UNRECOVERABLE";
+  | "CLAWBACK_UNRECOVERABLE"
+  | "RECALCULATED";
 
 export type SettlementActorType =
   "SYSTEM" | "PG" | "ADMIN" | "SELLER" | "CREATOR";
 
-export type SettlementConfirmReason = "AUTO" | "AGREED" | "EXPIRED";
+/** WITHDRAWN = 조정 요청 철회 → 원래 금액(1021 기-14) */
+export type SettlementConfirmReason =
+  "AUTO" | "AGREED" | "EXPIRED" | "WITHDRAWN";
 
 /** TaxDocumentType */
 export type TaxDocumentType =
@@ -96,6 +104,12 @@ export type TaxDocumentStatus =
 
 /** ClawbackStatus — 이월 중이면 PENDING */
 export type ClawbackStatus = "PENDING" | "APPLIED" | "UNRECOVERABLE";
+
+/**
+ * 차감 탭 행의 측별 상태 — 저장된 차감 3종 + 재계산 가상 행(1021 기-13 · 서버 `AdminClawbackRows`).
+ * 확인 기간 중 환불은 차감이 아니라 「재계산 → 확인 기간 재시작」이지만 같은 탭에 보인다.
+ */
+export type ClawbackRowStatus = ClawbackStatus | "RECALCULATED";
 
 // ── 목록 · 요약(7-1 ~ 7-3) ───────────────────────────
 
@@ -185,31 +199,33 @@ export interface SettlementListResponse<T> {
   toolbar: SettlementToolbar | null;
 }
 
-/** 증빙 탭 행의 유형 — 문서 4종 + 주민번호 미등록 가상 행 */
-export type EvidenceType = TaxDocumentType | "RESIDENT_NUMBER_MISSING";
-
-/** AdminSettlementEvidenceItem — 행 = 문서 1건 · 처리 끝(확인 · 발행 · 생성 완료)은 빠진다 */
+/**
+ * AdminSettlementEvidenceItem — 행 = 문서 1건 · 처리 끝(확인 · 발행 · 생성 완료)은 빠진다.
+ * 주민번호 미등록 가상 행(`RESIDENT_NUMBER_MISSING` · documentId null)은 기-12로 없어졌다 —
+ * 아직 배포된 옛 서버가 내려 주면 서비스가 걸러 낸다(화면에는 오지 않는다).
+ */
 export interface EvidenceListItem {
-  /** 가상 행(주민번호 미등록)은 null */
-  documentId: number | null;
+  documentId: number;
   settlementId: number;
   settlementNumber: string;
   groupBuyTitle: string;
   /** 인플루언서 건은 쇼룸명 · 브랜드 건은 브랜드명 */
   counterpartyName: string;
   creatorBusinessType: CreatorBusinessType;
-  type: EvidenceType;
+  type: TaxDocumentType;
   typeLabel: string;
   direction: string;
   inputAt: string | null;
   dueAt: string | null;
-  /** 문서 상태 · 가상 행은 WAITING_CREATOR */
-  status: TaxDocumentStatus | "WAITING_CREATOR";
+  status: TaxDocumentStatus;
   statusLabel: string;
   payoutImpact: "BLOCKING" | "NONE";
 }
 
-/** AdminSettlementClawbackItem — 행 = 차감 번호 1건(측별 행을 한 줄로) */
+/**
+ * AdminSettlementClawbackItem — 행 = 차감 번호 1건(측별 행을 한 줄로).
+ * 재계산 가상 행은 차감번호 「—」 · 측별 상태 RECALCULATED · 금액 0 · reasonLabel = 이력 문장이다.
+ */
 export interface ClawbackListItem {
   clawbackNumber: string;
   originSettlementId: number;
@@ -222,9 +238,9 @@ export interface ClawbackListItem {
   refundAmount: number;
   brandAmount: number;
   creatorAmount: number;
-  brandStatus: ClawbackStatus | null;
+  brandStatus: ClawbackRowStatus | null;
   brandStatusLabel: string | null;
-  creatorStatus: ClawbackStatus | null;
+  creatorStatus: ClawbackRowStatus | null;
   creatorStatusLabel: string | null;
   appliedSettlementNumber: string | null;
   unrecoverableReasonLabel: string | null;
@@ -288,8 +304,17 @@ export interface BrandAxis {
   originalRewardAmount: number;
   rewardAmount: number;
   rewardVat: RateAmount;
+  /** 재발송비(소비자 결제분) — 교환 · 반려 · 번복 재발송 합산(기-18 「+ 재발송비」 한 줄) */
   reshipFee: AmountCount;
+  /** 배송비(소비자 결제분) — 확정 거래액에서 뺀 배송비를 되돌린다(기-19) */
   consumerDeliveryFee: number;
+  /**
+   * + 반품 시 차감한 최초 배송비(1021 기-18 · origin/main V211).
+   * 백엔드 배포 전 서버는 내리지 않는다(undefined) — 화면은 0으로 읽는다.
+   */
+  returnDeductionFee?: AmountCount;
+  /** ± 운임 정산(1021 기-93) — 부호 있는 금액(− 소비자→브랜드 귀책 환급 · + 브랜드→소비자 귀책 회수). 배포 전 undefined */
+  freightAdjustment?: AmountCount;
   payoutBeforeClawback: number;
   clawbackAmount: number;
   payoutAmount: number;
@@ -336,11 +361,14 @@ export interface AdjustmentProposal {
   preview: { creatorNetAmount: number; brandPayoutAmount: number };
 }
 
+export type AdjustmentStatus = "OPEN" | "AGREED" | "EXPIRED" | "WITHDRAWN";
+
 export interface Adjustment {
   adjustmentId: number;
-  /** 20b 이슈 스레드 — 어드민 소통 스레드 화면이 아직 없다 */
-  threadId: number;
-  status: "OPEN" | "AGREED" | "EXPIRED";
+  /** 20b 이슈 스레드 — `/monitoring/threads?threadId=`로 연다(없으면 링크를 그리지 않는다) */
+  threadId: number | null;
+  /** WITHDRAWN = 요청자 철회 · 원래 금액으로 확정(1021 기-14) */
+  status: AdjustmentStatus;
   statusLabel: string;
   requesterType: "SELLER" | "CREATOR";
   openedAt: string;
@@ -382,7 +410,7 @@ export interface Payout {
 export interface Payouts {
   rows: Array<Payout>;
   pgFeeAmount: number;
-  /** 수취자 합 + PG 수수료 + 원천징수 = 확정 거래액 + 재발송비 + 소비자 배송비 */
+  /** 수취자 합 + PG 수수료 + 원천징수 = 확정 거래액 + 재발송비 + 소비자 배송비 + 반품 시 차감한 최초 배송비 ± 운임 정산 */
   check: {
     total: number;
     inflowAmount: number;
@@ -565,4 +593,25 @@ export interface BrandInvoicePayload {
   approvalNumber: string;
   /** YYYY-MM-DD */
   issuedDate: string;
+}
+
+// ── 운영자 사업자 정보(기-35) ────────────────────────
+
+/**
+ * `GET /v1/common/company-info`(CompanyInfoResponse · 1021 설계서 10-1) — M4 「공급받는자」가 읽는다.
+ * 빈 값은 서버가 null로 내린다. 정산 화면은 상호 · 대표자 · 사업자등록번호만 쓴다.
+ */
+export interface CompanyInfo {
+  name: string | null;
+  representative: string | null;
+  registrationNumber: string | null;
+  address: string | null;
+  mailOrderReportNumber: string | null;
+  privacyOfficer: { name: string | null; phone: string | null };
+  customerService: {
+    phone: string | null;
+    email: string | null;
+    hours: string | null;
+  };
+  copyright: string | null;
 }

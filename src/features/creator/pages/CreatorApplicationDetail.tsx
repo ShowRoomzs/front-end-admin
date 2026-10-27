@@ -201,9 +201,9 @@ export default function CreatorApplicationDetail() {
               <div className="my-2 flex gap-2 rounded-[6px] bg-sz-n-100 px-3.5 py-3 text-[11px] leading-relaxed text-sz-n-600">
                 <span>ⓘ</span>
                 <span>
-                  반려 처리 시 <b>실명·생년월일 등 개인정보가 파기</b>됩니다. 단,{" "}
-                  <b>연락처는 단방향 해시로 보존</b>해 동일인의 반복·악용 신청을
-                  대조할 수 있게 합니다.
+                  반려 처리 시 <b>실명·생년월일 등 개인정보가 파기</b>됩니다.
+                  단, <b>연락처는 단방향 해시로 보존</b>해 동일인의 반복·악용
+                  신청을 대조할 수 있게 합니다.
                 </span>
               </div>
             )}
@@ -291,7 +291,10 @@ export default function CreatorApplicationDetail() {
           </DetailCard>
 
           {/* 필수 약관 3종은 노출하지 않고 마케팅 동의만 확인한다(§9-2) */}
-          <DetailCard title="약관 동의" note={isRejected ? "파기됨" : undefined}>
+          <DetailCard
+            title="약관 동의"
+            note={isRejected ? "파기됨" : undefined}
+          >
             <FieldRow label="마케팅 정보 수신 동의">
               {isRejected ? (
                 <PurgedValue />
@@ -343,17 +346,25 @@ export default function CreatorApplicationDetail() {
               )}
             </div>
 
+            {/*
+              B3 반려 사유(기-36) — 위 줄은 신청자에게 통지된 정형 사유, 아래 줄은 내부 기록 전용 상세 사유다.
+              시안의 「신청자 통지됨」 배지는 서버가 발송 결과를 내려 주지 않아 아직 그리지 않는다(백엔드 요청 noticeSent).
+            */}
             {isRejected && detail.rejectReasonType && (
-              <div className="mt-2.5 rounded-[6px] bg-sz-danger-bg px-3.5 py-3">
+              <div className="mt-2.5 rounded-[6px] bg-sz-danger-bg px-[13px] py-[11px]">
                 <div className="mb-1 text-[11px] font-semibold text-sz-danger-text">
-                  반려 사유 · 신청자 미노출
-                </div>
-                <div className="text-[11px] leading-relaxed text-sz-n-700">
+                  반려 사유 ·{" "}
                   {CREATOR_REJECTION_REASON_LABELS[detail.rejectReasonType] ??
                     detail.rejectReasonType}
-                  {detail.rejectReasonDetail &&
-                    ` - ${detail.rejectReasonDetail}`}
                 </div>
+                {detail.rejectReasonDetail && (
+                  <div className="text-[11px] leading-[1.6] text-sz-n-700">
+                    <span className="mr-1.5 inline-flex rounded-[10px] bg-sz-neutral-bg px-1.5 text-[10px] font-medium text-sz-neutral-text">
+                      내부
+                    </span>
+                    {detail.rejectReasonDetail}
+                  </div>
+                )}
               </div>
             )}
 
@@ -418,6 +429,7 @@ export default function CreatorApplicationDetail() {
       <ApplicationRejectionModal
         open={isRejectionOpen}
         onOpenChange={setIsRejectionOpen}
+        applicationId={detail.applicationId}
         accountId={detail.accountId}
         isSubmitting={isSubmitting}
         onReject={handleReject}

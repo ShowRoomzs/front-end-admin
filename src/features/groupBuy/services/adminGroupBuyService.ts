@@ -87,6 +87,7 @@ export const adminGroupBuyService = {
     return data;
   },
 
+  /** 게시물 노출 중지(M5) — 1021 기-08로 화면 명칭만 바뀌었고 서버 경로 /post/hide는 그대로다 */
   hidePost: async (groupBuyId: number, body: PostHideBody) => {
     const { data } = await apiInstance.post<ActionResponse>(
       `${BASE}/${groupBuyId}/post/hide`,
@@ -95,7 +96,7 @@ export const adminGroupBuyService = {
     return data;
   },
 
-  /** 숨김 해제 — 읽은 판본을 돌려준다. 그사이 수정됐으면 409 GROUP_BUY_POST_CHANGED_SINCE_VIEW */
+  /** 노출 중지 해제(/post/unhide) — 읽은 판본을 돌려준다. 그사이 수정됐으면 409 GROUP_BUY_POST_CHANGED_SINCE_VIEW */
   unhidePost: async (groupBuyId: number, expectedRevisionNo: number) => {
     const { data } = await apiInstance.post<ActionResponse>(
       `${BASE}/${groupBuyId}/post/unhide`,

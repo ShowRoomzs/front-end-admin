@@ -1,10 +1,14 @@
+import dayjs from "dayjs";
 import { apiInstance } from "@/common/lib/apiInstance";
 import type { BaseParams, PageInfo } from "@/common/types";
-import type { CREATOR_APPLICATION_STATUS } from "@/features/creator/constants/params";
+import {
+  CREATOR_REAPPLY_COOLDOWN_DAYS,
+  CREATOR_REJECTION_REASONS,
+  type CREATOR_APPLICATION_STATUS,
+} from "@/features/creator/constants/params";
 
 export type CreatorApplicationStatus =
-  | keyof typeof CREATOR_APPLICATION_STATUS
-  | null; // null은 전체 조회
+  keyof typeof CREATOR_APPLICATION_STATUS | null; // null은 전체 조회
 
 /** 목록 검색 조건 — 백엔드 CreatorApplicationSearchCondition + PagingRequest와 1:1 */
 export interface CreatorApplicationParams extends BaseParams {
@@ -72,9 +76,7 @@ export type CreatorRejectionReasonType =
   | "OTHER";
 
 export type CreatorProcessingHistoryType =
-  | "APPLICATION_RECEIVED"
-  | "APPLICATION_APPROVED"
-  | "APPLICATION_REJECTED";
+  "APPLICATION_RECEIVED" | "APPLICATION_APPROVED" | "APPLICATION_REJECTED";
 
 export interface CreatorProcessingHistoryItem {
   type: CreatorProcessingHistoryType;
@@ -122,6 +124,24 @@ export interface CreatorApplicationDetailInfo {
   processingHistory: Array<CreatorProcessingHistoryItem> | null;
 }
 
+/**
+ * 반려 통지 미리보기 — `GET /admin/creator/applications/{id}/reject-preview`
+ * (`CreatorRejectionNoticeResponse`). 실제 발송 메일과 같은 템플릿으로 만든다.
+ * 날짜 두 개는 KST 날짜(`LocalDate`, `YYYY-MM-DD`)라 시각 보정을 하지 않는다.
+ */
+export interface CreatorRejectionNoticePreview {
+  reasonType: CreatorRejectionReasonType;
+  /** 운영자 화면 라벨 */
+  internalLabel: string;
+  /** 신청자에게 가는 사유 라벨 */
+  noticeLabel: string;
+  rejectedOn: string;
+  reapplyAvailableOn: string;
+  subject: string;
+  /** 줄바꿈(\n) 단락 — 상세 사유는 담기지 않는다 */
+  body: string;
+}
+
 export interface CreatorApplicationRejectData {
   rejectReasonType: CreatorRejectionReasonType;
   rejectReasonDetail?: string;
@@ -147,7 +167,9 @@ export const creatorService = {
   },
   /** 승인은 사유 입력이 없다 — 바디 없이 호출한다(§9-3) */
   approveCreatorApplication: async (applicationId: number) => {
-    await apiInstance.post(`/admin/creator/applications/${applicationId}/approve`);
+    await apiInstance.post(
+      `/admin/creator/applications/${applicationId}/approve`
+    );
   },
   rejectCreatorApplication: async (
     applicationId: number,
@@ -157,5 +179,41 @@ export const creatorService = {
       `/admin/creator/applications/${applicationId}/reject`,
       data
     );
+  },
+  /**
+   * 반려 통지 미리보기(기-36 C1).
+   *
+   * 이 API는 개발 서버에 아직 배포되지 않았다(back-end main 10-24). 실패하면
+   * 같은 규칙(사유별 통지 라벨 · 오늘 + 14일)으로 화면에서 만든다 — 가짜 값이
+   * 아니라 서버 템플릿과 같은 계산이라 배포 전에도 운영자가 볼 수 있다.
+   * 백엔드 배포 후에는 catch 분기를 지워도 된다.
+   */
+  getRejectionNoticePreview: async (
+    applicationId: number,
+    reasonType: CreatorRejectionReasonType
+  ): Promise<CreatorRejectionNoticePreview> => {
+    try {
+      const { data } = await apiInstance.get<CreatorRejectionNoticePreview>(
+        `/admin/creator/applications/${applicationId}/reject-preview`,
+        { params: { reasonType } }
+      );
+      return data;
+    } catch {
+      const reason = CREATOR_REJECTION_REASONS.find(
+        (item) => item.value === reasonType
+      );
+      const today = dayjs();
+      return {
+        reasonType,
+        internalLabel: reason?.label ?? reasonType,
+        noticeLabel: reason?.noticeLabel ?? reasonType,
+        rejectedOn: today.format("YYYY-MM-DD"),
+        reapplyAvailableOn: today
+          .add(CREATOR_REAPPLY_COOLDOWN_DAYS, "day")
+          .format("YYYY-MM-DD"),
+        subject: "",
+        body: "",
+      };
+    }
   },
 };

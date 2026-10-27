@@ -5,6 +5,7 @@ import {
   B,
   GbBadge,
   GbCard,
+  PostStatusBadge,
   RailKpi,
 } from "@/features/groupBuy/components/shared/GbParts";
 import {
@@ -12,12 +13,14 @@ import {
   type Detail,
   actorText,
   d,
+  dueD,
   dDayFromNow,
   dLabel,
   dt,
   md,
   mdDate,
   num,
+  settlementTransferred,
   toHistoryItems,
   won,
 } from "@/features/groupBuy/utils/view";
@@ -135,7 +138,7 @@ export function CurrentStateCard(props: {
       if (openReview) {
         rows.push({
           label: "승인 기한",
-          value: `${d(openReview.dueAt)} · ${dLabel(openReview.daysLeft)}`,
+          value: `${dueD(openReview.dueAt)} · ${dLabel(openReview.daysLeft)}`,
         });
       }
       rows.push({ label: "시작일", value: d(timeline.startAt) });
@@ -220,10 +223,11 @@ export function CurrentStateCard(props: {
         ) : (
           <Hint>
             <B>직권 중단은 사전 통지가 원칙</B>입니다(제17조②) — 집행{" "}
-            <B>3영업일 전</B>까지 사유·집행 일시·소명 기한을 브랜드에 통지하고,
-            통지 기간에도 <B>공구는 계속 팔립니다</B>. <B>긴급 중단</B>은 소비자
-            위해·행정명령·피해 급증에만 쓰는 예외로 즉시 집행 후 사후
-            통지합니다(제17조③).
+            {/* 1021 기-21 — 사전 통지 · 소명 기한은 인플루언서에게도 간다(서버 main: 양측 운영팀 채널 카드) */}
+            <B>3영업일 전</B>까지 사유·집행 일시·소명 기한을 브랜드와
+            인플루언서에게 통지하고, 통지 기간에도 <B>공구는 계속 팔립니다</B>.{" "}
+            <B>긴급 중단</B>은 소비자 위해·행정명령·피해 급증에만 쓰는 예외로
+            즉시 집행 후 사후 통지합니다(제17조③).
           </Hint>
         );
       break;
@@ -231,10 +235,19 @@ export function CurrentStateCard(props: {
     case "hidden": {
       rows.push(progress, endRow, {
         label: "게시물",
-        value: <GbBadge tone={post.statusTone}>{post.statusLabel}</GbBadge>,
+        value: (
+          <PostStatusBadge
+            status={post.status}
+            label={post.statusLabel}
+            tone={post.statusTone}
+          />
+        ),
       });
       if (post.hidden) {
-        rows.push({ label: "숨김 경과", value: `${post.hidden.hiddenDays}일` });
+        rows.push({
+          label: "노출 중지 경과",
+          value: `${post.hidden.hiddenDays}일`,
+        });
       }
       buttons = (
         <>
@@ -244,7 +257,7 @@ export function CurrentStateCard(props: {
               className="w-full flex-1"
               onClick={actions.onUnhide}
             >
-              숨김 해제
+              노출 중지 해제
             </Btn>
           )}
           {permissions.canNoticeSuspension && (
@@ -260,8 +273,8 @@ export function CurrentStateCard(props: {
       );
       hint = (
         <Hint>
-          <B>숨김 해제</B>는 인플루언서가 본문을 고친 뒤 운영자가 확인하고
-          누릅니다 — 자동 복귀가 아닙니다. 숨김 상태에서는{" "}
+          <B>노출 중지 해제</B>는 인플루언서가 본문을 고친 뒤 운영자가 확인하고
+          누릅니다 — 자동 복귀가 아닙니다. 노출 중지 상태에서는{" "}
           <B>새 소비자가 이 공구를 볼 경로가 없어</B> 판매가 사실상 멈추므로
           오래 두지 마세요. 고쳐지지 않으면 <B>직권 중단</B>으로 넘어갑니다.
         </Hint>
@@ -428,7 +441,17 @@ export function CurrentStateCard(props: {
       const settlement = afterEnd?.settlement;
       const orderClosure = afterEnd?.orderClosure;
       const blockers = settlement?.blockers ?? [];
-      const fulfillment = afterEnd?.fulfillment;
+      /*
+        시안 rev.7 B5 · B5a(2026.10.06) — 공구 관리는 주문 종결까지다. 계약 이행 확인은 폐기됐고
+        (서버 afterEnd.fulfillment 항상 null) 정산 확인 · 지급은 정산 관리(07)로 옮겨 갔다.
+      */
+      const transferred = settlementTransferred(detail);
+      const adminOnly = (
+        <>
+          <B>정산 단계는 어드민에만 보입니다</B>(양측 화면에는 “받았는지
+          아직인지”만 노출).
+        </>
+      );
       rows.push({
         label: "종료",
         value: dt(groupBuy.endedAt ?? timeline.endAt),
@@ -436,7 +459,7 @@ export function CurrentStateCard(props: {
       if (groupBuy.status === "SETTLED") {
         rows.push({ label: "정산 완료", value: dt(groupBuy.settledAt) });
       } else {
-        if (settlement?.watch) {
+        if (settlement?.watch && !transferred) {
           rows.push({
             label: "종결 경과",
             value: `${settlement.watch.elapsedDays}일`,
@@ -448,103 +471,47 @@ export function CurrentStateCard(props: {
         });
         rows.push({
           label: "정산",
-          value: blockers.includes("FULFILLMENT_DISPUTE") ? (
-            <span className="text-sz-warning-text">보류 · 이행 미합의</span>
-          ) : fulfillment?.resolvedAt ? (
-            "대기 · 보류 해제됨"
-          ) : blockers.includes("FULFILLMENT_PENDING") ? (
-            "대기 · 이행 확인 전"
-          ) : (
-            "대기 · 이행 확인 완료"
-          ),
+          value: transferred ? "정산 관리로 이관" : "주문 종결 후 시작",
         });
+      }
+      // 정산 확인은 정산 관리 소관 — 서버가 열어 줄 때만(지금은 항상 false) 남겨 둔다
+      if (permissions.canConfirmSettlement) {
         buttons = (
           <Btn
             variant="primary"
             className="w-full flex-1"
-            disabled={!permissions.canConfirmSettlement}
             onClick={actions.onConfirmSettlement}
           >
             정산 확인
           </Btn>
         );
-        const reasons: Array<ReactNode> = [];
-        if (blockers.includes("UNCLOSED_ORDERS")) {
-          reasons.push(
-            <>
-              <B>
-                미종결 {orderClosure ? num(orderClosure.unclosedCount) : ""}건
-              </B>
-              (주문 처리는 판매 관리 소관)
-            </>
-          );
-        }
-        if (blockers.includes("FULFILLMENT_DISPUTE")) {
-          reasons.push(
-            <>
-              <B>이행 미합의</B>(3자 스레드 진행 중 · 정산 보류)
-            </>
-          );
-        }
-        if (blockers.includes("FULFILLMENT_PENDING")) {
-          reasons.push(
-            <>
-              <B>이행 확인 대기</B>(양측 확인 전)
-            </>
-          );
-        }
-        if (blockers.includes("CLOSURE_UNKNOWN")) {
-          reasons.push(
-            <>
-              <B>주문 종결 집계 불가</B>(판매 모듈 연동 전)
-            </>
-          );
-        }
-        // 시안 B5a · B5b — 이행이 끝나 미종결만 남으면 「남은 사유는 하나」로 말한다
-        const onlyUnclosed =
-          blockers.length === 1 &&
-          blockers[0] === "UNCLOSED_ORDERS" &&
-          !!fulfillment &&
-          (!!fulfillment.agreedAt ||
-            (!!fulfillment.brandToCreator && !!fulfillment.creatorToBrand));
-        hint = (
-          <Hint>
-            {onlyUnclosed ? (
-              <>
-                <B>
-                  {fulfillment?.agreedAt
-                    ? "이행 합의가 끝나"
-                    : "이행 확인이 끝나"}
-                </B>{" "}
-                남은 사유는 하나입니다 — {reasons[0]}. 0건이 되면 정산 확인이
-                열립니다.
-              </>
-            ) : reasons.length > 0 ? (
-              <>
-                정산이 멈춘 사유가{" "}
-                <B>{["하나", "둘", "셋", "넷"][reasons.length - 1]}</B>입니다 —{" "}
-                {reasons.map((reason, index) => (
-                  <span key={index}>
-                    {index > 0 && " "}
-                    {["①", "②", "③", "④"][index]} {reason}
-                  </span>
-                ))}
-                .{" "}
-                {reasons.length === 1
-                  ? "이 사유가 풀려야"
-                  : reasons.length === 2
-                    ? "둘 다 풀려야"
-                    : "모두 풀려야"}{" "}
-                확인이 열립니다.
-              </>
-            ) : (
-              <>정산 선행 조건이 모두 충족됐습니다.</>
-            )}{" "}
-            <B>정산 단계는 어드민에만 보입니다</B>(양측 화면에는 “받았는지
-            아직인지”만 노출).
-          </Hint>
-        );
       }
+      hint = (
+        <Hint>
+          {transferred ? (
+            <>
+              주문이 모두 종결돼 <B>정산 관리로 이관</B>됐습니다 — 공구 관리에
+              남은 조치가 없습니다.
+            </>
+          ) : blockers.includes("CLOSURE_UNKNOWN") || !orderClosure ? (
+            <>
+              <B>주문 종결 집계 불가</B>(판매 모듈 연동 전) — 집계되면 미종결
+              0건에서 정산 관리로 넘어갑니다.
+            </>
+          ) : (
+            <>
+              <B>미종결 {num(orderClosure.unclosedCount)}건</B>이 끝나면 정산
+              관리로 넘어갑니다(주문 처리는 거래 관리 소관).
+            </>
+          )}{" "}
+          {adminOnly}
+        </Hint>
+      );
+      break;
+    }
+    case "terminated": {
+      // 1021 기-05 계약 해지 — 오픈 전 종결이라 주문 · 정산이 없다(17 시안에 상태 없음)
+      rows.push({ label: "해지", value: dt(groupBuy.endedAt) });
       break;
     }
     case "suspended": {
@@ -703,11 +670,12 @@ export function OrderClosureCard(props: { detail: Detail }) {
             : undefined
         }
       />
-      <RailKpi label="정산 예정" value="미종결 0건 도달 후 영업일 5일 내" />
+      {/* 시안 rev.7 B5 · B5a — 이체 기한은 정산 관리(07: 확인 기간 → 확정 + 지급 N영업일) 소관이라 여기서 숫자를 쓰지 않는다 */}
+      <RailKpi label="정산 예정" value="종결 → 정산 관리 이관" />
       <p className="mt-3 text-[11px] leading-[1.55] text-sz-n-500">
         정산 트리거는 구매확정이 아니라 <B>모든 주문 항목의 종결</B>입니다 —
-        구매확정·환불·거절 확정 셋 다 종결로 셉니다.{" "}
-        <B>반품·교환 거절 확정은 즉시 구매확정</B>이라 거절 보류 1건이 공구 전체
+        구매확정·환불·반려 확정 셋 다 종결로 셉니다.{" "}
+        <B>반품·교환 반려 확정은 즉시 구매확정</B>이라 반려 보류 1건이 공구 전체
         정산을 붙잡지 않습니다.
       </p>
     </GbCard>
@@ -725,7 +693,15 @@ export function SettlementPreviewCard(props: { detail: Detail }) {
     .map((rate) => formatPercent(rate))
     .join(" · ");
   return (
-    <GbCard title="정산 예정 금액" note="미종결 결론에 따라 변동">
+    <GbCard
+      title="정산 예정 금액"
+      note={
+        // 시안 B5a — 이관 뒤에는 확정 금액을 정산 상세가 말한다
+        settlementTransferred(props.detail)
+          ? "종결 기준 · 확정 금액은 정산 상세"
+          : "미종결 결론에 따라 변동"
+      }
+    >
       <RailKpi
         label="확정 판매액"
         value={

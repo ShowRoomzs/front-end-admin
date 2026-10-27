@@ -18,7 +18,7 @@ import { useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 /**
- * C1·C2 — 변경 요청 목록.
+ * C1·C2 — 변경 요청 목록(브랜드 · 인플루언서 요청이 한 큐에 섞인다 · rev.7~8).
  *
  * 정렬은 서버가 고정한다(검토 대기 우선 · 오래된 순 최상단, SLA 초과가 맨 위).
  * 정렬 셀렉트와 표시 건수 셀렉트를 두지 않는 건 rev.2·rev.4에서 의도적으로 제거한 사항이다.
@@ -26,10 +26,17 @@ import { useLocation, useNavigate } from "react-router-dom";
 export default function ChangeRequestManagement() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { params, localParams, update, updateParam, updateParams, updateLocalParam } =
-    useParams<ChangeRequestParams>(CHANGE_REQUEST_INITIAL_PARAMS);
+  const {
+    params,
+    localParams,
+    update,
+    updateParam,
+    updateParams,
+    updateLocalParam,
+  } = useParams<ChangeRequestParams>(CHANGE_REQUEST_INITIAL_PARAMS);
 
-  const { data: changeRequestList, isLoading } = useGetChangeRequestList(params);
+  const { data: changeRequestList, isLoading } =
+    useGetChangeRequestList(params);
 
   // 상태별 건수는 목록 응답에 함께 온다(별도 집계 호출 불필요)
   const counts = changeRequestList?.statusCounts ?? CHANGE_REQUEST_EMPTY_COUNTS;
@@ -77,7 +84,7 @@ export default function ChangeRequestManagement() {
             검색 결과가 없습니다
           </div>
           <div className="text-[12px] text-sz-n-500">
-            다른 브랜드명으로 검색해 보세요.
+            다른 브랜드명 · 쇼룸명으로 검색해 보세요.
           </div>
         </div>
       );
@@ -91,7 +98,8 @@ export default function ChangeRequestManagement() {
             검토 대기 중인 변경 요청이 없습니다
           </div>
           <div className="text-[12px] text-sz-n-500">
-            브랜드가 파트너센터에서 변경을 요청하면 이 목록에 표시됩니다.
+            브랜드는 파트너센터, 인플루언서는 쇼룸 스튜디오에서 변경을 요청하면
+            이 목록에 표시됩니다.
           </div>
         </div>
       );
@@ -109,6 +117,15 @@ export default function ChangeRequestManagement() {
 
   return (
     <ListViewWrapper>
+      {/* 셸이 아니라 화면이 제목을 그린다 — 설명 줄이 붙기 때문이다(MainLayout SELF_TITLED_PATHS) */}
+      <div className="mb-4 shrink-0">
+        <h1 className="text-[20px] font-semibold text-sz-n-900">변경 요청</h1>
+        <p className="mt-0.5 text-[12px] text-sz-n-600">
+          브랜드 · 인플루언서가 요청한 사업자 정보 · 정산 계좌 · 사업자 구분
+          변경을 검토하고 승인 · 반려합니다.
+        </p>
+      </div>
+
       <ChangeRequestTabFilter
         status={params.status}
         onStatusChange={handleStatusChange}

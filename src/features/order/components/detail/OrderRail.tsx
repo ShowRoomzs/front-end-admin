@@ -1,3 +1,4 @@
+import { parseWallClock } from "@/common/utils/formatDate";
 import CorrectDeliveredAtForm from "@/features/order/components/detail/forms/CorrectDeliveredAtForm";
 import OpenReturnForm from "@/features/order/components/detail/forms/OpenReturnForm";
 import ProxyInvoiceForm from "@/features/order/components/detail/forms/ProxyInvoiceForm";
@@ -27,7 +28,8 @@ import type {
   OrderBadgeData,
 } from "@/features/order/types";
 import {
-  formatShortDateTime,
+  formatDueShort,
+  formatMonthDay,
   formatWon,
   purchaseConfirmText,
   subOrderSuffix,
@@ -108,10 +110,11 @@ function statusRows(detail: AdminOrderDetail) {
     const suffix = multi ? ` ${subOrderSuffix(group.subOrderNumber)}` : "";
     const request = group.cancelRequest;
     if (request) {
-      const hours = dayjs(request.respondDueAt).diff(dayjs(), "hour");
+      // 응답 마감은 영업일 기한(23:59:59 벽시계)이라 보정 없이 읽는다
+      const hours = parseWallClock(request.respondDueAt).diff(dayjs(), "hour");
       rows.push({
         label: `응답 마감${suffix}`,
-        value: formatShortDateTime(request.respondDueAt),
+        value: formatDueShort(request.respondDueAt),
       });
       rows.push({
         label: "남은 시간",
@@ -143,7 +146,7 @@ function statusRows(detail: AdminOrderDetail) {
     if (group.shipping.deliveredAt && group.status !== "CANCELLED") {
       rows.push({
         label: `배송완료${suffix}`,
-        value: `${dayjs(group.shipping.deliveredAt).format("MM.DD")}${
+        value: `${formatMonthDay(group.shipping.deliveredAt)}${
           group.shipping.deliveredSourceLabel
             ? ` (${group.shipping.deliveredSourceLabel})`
             : ""

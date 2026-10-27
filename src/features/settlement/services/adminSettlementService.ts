@@ -1,8 +1,15 @@
 import { apiInstance } from "@/common/lib/apiInstance";
+import {
+  DEV_MOCK_ENABLED,
+  mockDelay,
+  mockScenario,
+} from "@/common/utils/devMock";
 import { paramsToSearchParams } from "@/common/utils/paramsToSearchParams";
+import { LEGACY_RESIDENT_NUMBER_MISSING } from "@/features/settlement/constants/params";
 import type {
   BrandInvoicePayload,
   ClawbackListItem,
+  CompanyInfo,
   EvidenceListItem,
   RedistributePayload,
   SettlementDetail,
@@ -20,8 +27,47 @@ import type {
  * - 쓰기 3종(M3 · M4 · M5)은 갱신된 상세를 돌려준다. 실패 문구는 화면이 에러 코드로 직접 그리므로
  *   공용 토스트를 끈다(`suppressErrorToast`).
  * - 공구 쪽 `POST /admin/group-buys/{id}/settlement/confirm`은 폐기된 「운영자 확정」 흐름이라 쓰지 않는다.
+ *
+ * DEV 목업(개발 서버 전용 · 배포본은 항상 실호출) — origin/main(1021 반영)의 새 응답이 개발 서버에 아직 없다.
+ * 백엔드 배포 후 목업 분기와 `mocks/settlementMock.ts`를 삭제한다.
+ * - 상세 `?mock=` : `fees`(D1 + 배송비 · 재발송비 · 반품 시 차감한 최초 배송비) · `freight`(D3 − 운임 정산 ·
+ *   옛 주민번호 보류 코드 섞임) · `adjusting`(D4 · 이슈 스레드 링크) · `withdrawn`(기-14 철회 확정) ·
+ *   `evidence`(D7 사업자 · M4 대조 · M5 등록)
+ * - 목록 차감 탭 `?mock=clawback` : L6(차감 예정 · 미회수 「베타: 플랫폼 손실 처리」 · 재계산 가상 행)
+ * - 목록 증빙 탭 `?mock=evidence-legacy` : L5에 옛 서버의 주민번호 미등록 가상 행이 섞인 응답(걸러 내는지)
+ * - 운영자 사업자 정보(`GET /common/company-info`)는 DEV에서 늘 목업이다(M4 공급받는자).
  */
 const BASE = "/admin/settlements";
+
+/**
+ * 기-12 — 옛 서버가 내리던 「주민번호 미등록」 가상 행을 걸러 낸다. 건수 · 지급 보류 수도 그만큼 뺀다
+ * (이 페이지에서 걸러 낸 만큼만 — 증빙 탭은 기한순이라 가상 행(기한 없음)은 끝 페이지에 몰린다).
+ * 서버(origin/main)는 이미 내리지 않으므로 배포 뒤에는 아무것도 빠지지 않는다.
+ */
+function withoutLegacyEvidence(
+  data: SettlementListResponse<EvidenceListItem>
+): SettlementListResponse<EvidenceListItem> {
+  const content = data.content.filter(
+    (row) => (row.type as string) !== LEGACY_RESIDENT_NUMBER_MISSING
+  );
+  const removed = data.content.length - content.length;
+  if (removed === 0) return data;
+  const minus = (value: number | undefined) =>
+    value === undefined ? undefined : Math.max(0, value - removed);
+  return {
+    ...data,
+    content,
+    pageInfo: {
+      ...data.pageInfo,
+      totalResults: Math.max(0, data.pageInfo.totalResults - removed),
+    },
+    toolbar: data.toolbar && {
+      ...data.toolbar,
+      count: minus(data.toolbar.count),
+      payoutBlockedCount: minus(data.toolbar.payoutBlockedCount),
+    },
+  };
+}
 
 /** 고정 정렬 탭은 sort를 보내지 않는다(서버도 무시한다) · 증빙 탭은 검색을 받지 않는다 */
 function listQuery(params: SettlementListParams): URLSearchParams {
@@ -51,13 +97,23 @@ export const adminSettlementService = {
   },
 
   getEvidenceList: async (params: SettlementListParams) => {
+    if (DEV_MOCK_ENABLED && mockScenario() === "evidence-legacy") {
+      const { MOCK_LEGACY_EVIDENCE_LIST } =
+        await import("@/features/settlement/mocks/settlementMock");
+      return withoutLegacyEvidence(await mockDelay(MOCK_LEGACY_EVIDENCE_LIST));
+    }
     const { data } = await apiInstance.get<
       SettlementListResponse<EvidenceListItem>
     >(BASE, { params: listQuery({ ...params, tab: "EVIDENCE" }) });
-    return data;
+    return withoutLegacyEvidence(data);
   },
 
   getClawbackList: async (params: SettlementListParams) => {
+    if (DEV_MOCK_ENABLED && mockScenario() === "clawback") {
+      const { MOCK_CLAWBACK_LIST } =
+        await import("@/features/settlement/mocks/settlementMock");
+      return mockDelay(MOCK_CLAWBACK_LIST);
+    }
     const { data } = await apiInstance.get<
       SettlementListResponse<ClawbackListItem>
     >(BASE, { params: listQuery({ ...params, tab: "CLAWBACK" }) });
@@ -65,9 +121,33 @@ export const adminSettlementService = {
   },
 
   getDetail: async (settlementId: number) => {
+    const scenario = DEV_MOCK_ENABLED ? mockScenario() : null;
+    if (scenario) {
+      const { MOCK_DETAILS } =
+        await import("@/features/settlement/mocks/settlementMock");
+      const mock = MOCK_DETAILS[scenario];
+      if (mock) return mockDelay(mock);
+    }
     const { data } = await apiInstance.get<SettlementDetail>(
       `${BASE}/${settlementId}`,
       // 없는 정산(404)은 화면이 「찾을 수 없습니다」로 그린다
+      { suppressErrorToast: true }
+    );
+    return data;
+  },
+
+  /**
+   * 운영자 사업자 정보 `GET /v1/common/company-info`(인증 불요 · 1021 설계서 10-1) — M4 공급받는자(기-35).
+   * origin/main에만 있고 개발 서버에 아직 없다 — DEV는 목업(백엔드 배포 후 삭제). 실패하면 화면이 대체값을 쓴다.
+   */
+  getCompanyInfo: async () => {
+    if (DEV_MOCK_ENABLED) {
+      const { MOCK_COMPANY_INFO } =
+        await import("@/features/settlement/mocks/settlementMock");
+      return mockDelay(MOCK_COMPANY_INFO);
+    }
+    const { data } = await apiInstance.get<CompanyInfo>(
+      "/common/company-info",
       { suppressErrorToast: true }
     );
     return data;

@@ -4,7 +4,10 @@ import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
 import Btn from "@/features/contract/components/shared/Btn";
 import { INPUT_CLASS } from "@/features/contract/components/shared/styles";
-import { GbBadge } from "@/features/groupBuy/components/shared/GbParts";
+import {
+  GbBadge,
+  PostStatusBadge,
+} from "@/features/groupBuy/components/shared/GbParts";
 import {
   GROUP_BUY_INITIAL_PARAMS,
   GROUP_BUY_LIST_PATH,
@@ -354,9 +357,12 @@ export default function GroupBuyManagement() {
                             {periodFull(row.startAt, row.endAt)}
                           </td>
                           <td className={cn(CELL_CLASS, "text-center")}>
-                            <GbBadge tone={row.postStatusTone}>
-                              {row.postStatusLabel}
-                            </GbBadge>
+                            {/* 노출 중지(옛 HIDDEN 「숨김」 포함)는 시안 rev.7 라벨 · 경고 톤으로 덮어쓴다 */}
+                            <PostStatusBadge
+                              status={row.postStatus}
+                              label={row.postStatusLabel}
+                              tone={row.postStatusTone}
+                            />
                           </td>
                           <td className={cn(CELL_CLASS, "text-center")}>
                             <GbBadge tone={row.statusTone}>

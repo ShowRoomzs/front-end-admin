@@ -6,6 +6,7 @@ import {
   EVENT_LABEL,
   HISTORY_TONE,
 } from "@/features/contract/constants/labels";
+import { ESTABLISHED_SUFFIX } from "@/features/contract/constants/provisional";
 import type {
   AdminContractCancelRequestInfo,
   AdminContractHistory,
@@ -34,14 +35,18 @@ const HIDDEN_EVENTS: Array<AdminContractHistory["eventType"]> = [
   "BRAND_SIGNED",
   "CREATOR_SIGNED",
   "BOTH_SIGNED_CONFIRMED",
-  // 체결 처리와 같은 순간에 남는다 — 시안은 「체결 완료 처리 · 공구 생성」 한 줄이고 번호는 본문에 있다
+  // 공구 생성 처리와 같은 순간에 남는다 — 시안은 「공구 생성 · GRB-…」 한 줄(CONCLUDED)이다
   "GROUP_BUY_CREATED",
+  // rev.8 ② — 재발송 요청은 20a 운영팀 채널에서 끝난다. 계약 관리에는 이력도 두지 않는다
+  "RESEND_REQUESTED",
+  "RESEND_HANDLED",
+  // 성립은 시스템 기록이다 — 시안 B7은 양측 서명 저장 줄에 「(계약 성립)」으로 붙인다
+  "ESTABLISHED",
 ];
 
 /** 모두싸인에서 운영자가 한 일 — 이력 메타에 「· 모두싸인」을 붙인다(시안 B3) */
 const VIA_MODUSIGN: Array<AdminContractHistory["eventType"]> = [
   "SIGNATURE_SENT",
-  "RESEND_HANDLED",
 ];
 
 /**
@@ -104,16 +109,25 @@ function documentEventLabel(entry: AdminContractHistory) {
   return type ? `${DOCUMENT_LABEL[type]} ${action}` : `체결 문서 ${action}`;
 }
 
+/** 서버 이력 한 줄만으로는 시안 문구를 못 만드는 값 — 상세 응답의 다른 블록에서 받는다 */
+export interface HistoryContext {
+  cancelRequest?: AdminContractCancelRequestInfo | null;
+  /** 시안 B7 「공구 생성 · GRB-…」 */
+  groupBuyNumber?: string | null;
+  /** 해지가 생성 공구를 함께 종료했는가 — 공구가 없던 해지면 「생성 공구 함께 종료」를 뺀다 */
+  groupBuyClosed?: boolean;
+}
+
 /**
  * 서버 이력 → 처리 이력(최신순). 어드민은 모든 수동 처리의 처리자를 **실명**으로 남긴다
  * (파트너·스튜디오 쪽은 「어드민」·「운영자」로 익명).
  */
 export function toHistoryItems(
   history: Array<AdminContractHistory>,
-  cancelRequest?: AdminContractCancelRequestInfo | null
+  context: HistoryContext = {}
 ): Array<HistoryItem> {
-  const items = toServerHistoryItems(history);
-  const requestItem = cancelRequestItem(cancelRequest);
+  const items = toServerHistoryItems(history, context);
+  const requestItem = cancelRequestItem(context.cancelRequest);
   if (!requestItem) {
     return items;
   }
@@ -164,7 +178,10 @@ function signatureUpdateSummary(
       item.occurredAt.slice(0, 16) === entry.occurredAt.slice(0, 16)
   );
   if (bothConfirmed) {
-    return "양측 서명 완료 확인";
+    // 기-05 — 양측 서명이 차는 순간 계약이 성립한다(시안 B7 「양측 서명 완료 확인(계약 성립)」)
+    return history.some((item) => item.eventType === "ESTABLISHED")
+      ? `양측 서명 완료 확인${ESTABLISHED_SUFFIX}`
+      : "양측 서명 완료 확인";
   }
   const parts = (entry.detail ?? "").split(" / ").map((change) => {
     const match = SIGNATURE_CHANGE.exec(change.trim());
@@ -181,8 +198,10 @@ function signatureUpdateSummary(
 }
 
 function toServerHistoryItems(
-  history: Array<AdminContractHistory>
+  history: Array<AdminContractHistory>,
+  context: HistoryContext
 ): Array<HistoryItem> {
+  const terminated = history.some((item) => item.eventType === "TERMINATED");
   return newestFirst(
     history.filter((entry) => !HIDDEN_EVENTS.includes(entry.eventType))
   ).map((entry) => {
@@ -221,6 +240,39 @@ function toServerHistoryItems(
         processedAt: entry.occurredAt,
         tone: HISTORY_TONE[entry.eventType] ?? "muted",
         processorName: `${actor} · 사유: ${detail}`,
+      };
+    }
+    // 시안 B7 「계약 해지 · 생성 공구 함께 종료 · 양측 운영팀 채널 카드 / 김운영 · 사유: …」
+    if (entry.eventType === "TERMINATED") {
+      return {
+        label:
+          context.groupBuyClosed === false
+            ? "계약 해지 · 양측 운영팀 채널 카드"
+            : label,
+        processedAt: entry.occurredAt,
+        tone: HISTORY_TONE[entry.eventType] ?? "muted",
+        processorName: detail ? `${actor} · 사유: ${detail}` : actor,
+      };
+    }
+    // 시안 B7 「해지 요청 · 운영팀 채널 / 무드코스메틱 · 상대방 동의 확인」 — 사유는 레일에 있다.
+    // 동의 확인은 해지 처리 때 운영자가 체크한 사실이라 해지된 계약에서만 붙인다
+    if (entry.eventType === "TERMINATION_REQUESTED") {
+      return {
+        label,
+        processedAt: entry.occurredAt,
+        tone: HISTORY_TONE[entry.eventType] ?? "muted",
+        processorName: terminated ? `${actor} · 상대방 동의 확인` : actor,
+      };
+    }
+    // 시안 B7 「공구 생성 · GRB-20260814-021」
+    if (entry.eventType === "CONCLUDED") {
+      return {
+        label: context.groupBuyNumber
+          ? `${label} · ${context.groupBuyNumber}`
+          : label,
+        processedAt: entry.occurredAt,
+        tone: HISTORY_TONE[entry.eventType] ?? "muted",
+        processorName: actor,
       };
     }
     return {

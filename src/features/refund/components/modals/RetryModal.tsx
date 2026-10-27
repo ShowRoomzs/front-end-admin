@@ -19,16 +19,33 @@ interface RetryModalProps {
 }
 
 /**
- * 「자동 재시도 N회」 — 시스템 실패 기록(`failure.attempts`, actorType SYSTEM) 중 최초 시도를 뺀 수.
- * 운영자 사유 환불은 자동 재시도하지 않는다(서버 배치가 PG 자동만 집는다).
+ * 시안 「자동 재시도 1회 · 실패 · 09.16 15:31」 — 서버 `autoRetry`(PG 자동만) 그대로.
+ * null이면 재시도가 없다 — 운영자 사유 환불은 자동 재시도하지 않는다.
+ * `exhausted`가 거짓이면 아직 상한 전이라 배치가 다시 시도한다.
  */
-function autoRetry(detail: RefundDetail) {
-  const system = (detail.failure?.attempts ?? []).filter(
-    (attempt) => attempt.actorType === "SYSTEM"
+function AutoRetryLine(props: { detail: RefundDetail }) {
+  const { autoRetry, origin } = props.detail;
+  const pending = autoRetry && !autoRetry.exhausted && (
+    <Sub> · 자동 재시도 예정</Sub>
   );
-  const count =
-    detail.origin === "PG_AUTO" ? Math.max(0, system.length - 1) : 0;
-  return { count, lastAt: count > 0 ? system[system.length - 1].at : null };
+  if (autoRetry && autoRetry.count > 0) {
+    return (
+      <>
+        {autoRetry.count}회 · 실패
+        <Sub>{` · ${formatMonthDayTime(autoRetry.lastAt)}`}</Sub>
+        {pending}
+      </>
+    );
+  }
+  return (
+    <>
+      <Dim>없음</Dim>
+      {origin === "OPERATOR" && (
+        <Sub> · 운영자 사유 환불은 자동 재시도하지 않습니다</Sub>
+      )}
+      {pending}
+    </>
+  );
 }
 
 /**
@@ -43,7 +60,6 @@ export default function RetryModal(props: RetryModalProps) {
   const handleClose = () => {
     if (!isPending) onClose();
   };
-  const retry = detail ? autoRetry(detail) : null;
 
   return (
     <ModalShell
@@ -114,25 +130,9 @@ export default function RetryModal(props: RetryModalProps) {
               </Sub>
             </DialogRow>
           )}
-          {retry && (
-            <DialogRow label="자동 재시도">
-              {retry.count > 0 ? (
-                <>
-                  {retry.count}회 · 실패
-                  {retry.lastAt && (
-                    <Sub>{` · ${formatMonthDayTime(retry.lastAt)}`}</Sub>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Dim>없음</Dim>
-                  {detail.origin === "OPERATOR" && (
-                    <Sub> · 운영자 사유 환불은 자동 재시도하지 않습니다</Sub>
-                  )}
-                </>
-              )}
-            </DialogRow>
-          )}
+          <DialogRow label="자동 재시도">
+            <AutoRetryLine detail={detail} />
+          </DialogRow>
           {!detail.executable && (
             <p className="mb-0 mt-2.5 text-[11px] leading-[1.7] text-sz-n-500">
               지금은 재시도할 수 없습니다 — {detail.statusLabel}

@@ -26,6 +26,7 @@ export function normalizeRefundParams(params: RefundListParams) {
     sort: REFUND_SORT_OPTIONS.some((item) => item.value === params.sort)
       ? params.sort
       : initial.sort,
+    userId: /^\d+$/.test(params.userId ?? "") ? params.userId : "",
     page: Number.isInteger(page) && page > 0 ? page : initial.page,
     size: REFUND_PAGE_SIZES.includes(size) ? size : initial.size,
   };

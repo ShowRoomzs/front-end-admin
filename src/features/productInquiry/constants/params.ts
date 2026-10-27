@@ -12,6 +12,7 @@ export const PRODUCT_INQUIRY_INITIAL_PARAMS: ProductInquiryListParams = {
   status: "ALL",
   type: null,
   keyword: "",
+  userId: "",
 };
 
 export const PRODUCT_INQUIRY_EMPTY_COUNTS: ProductInquiryStatusCounts = {

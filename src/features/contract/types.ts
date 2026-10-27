@@ -6,7 +6,10 @@ import type { BaseParams } from "@/common/types";
   중첩 record를 그대로 재사용하므로 모양이 파트너센터와 같다.
 */
 
-/** 상태 9종 — 3서피스 공통. 어드민에는 작성중이 도착하지 않는다 */
+/**
+ * 상태 10종 — 3서피스 공통. 어드민에는 작성중이 도착하지 않는다.
+ * `TERMINATED`(해지 · 1021 기-05)는 origin/main에 생겼고 개발 서버에는 아직 없다.
+ */
 export type ContractStatus =
   | "DRAFT"
   | "REVIEW_PENDING"
@@ -16,7 +19,8 @@ export type ContractStatus =
   | "CONCLUDED"
   | "DECLINED"
   | "EXPIRED"
-  | "CANCELED";
+  | "CANCELED"
+  | "TERMINATED";
 
 /** 배지 색 — 서버가 상태별로 하나만 내린다(같은 계약이 세 화면에서 같은 색) */
 export type ContractStatusTone =
@@ -31,8 +35,12 @@ export type AdminContractTab =
   | "CONCLUDED"
   | "CLOSED";
 
-/** 조치 큐 4종 — 선택하면 탭·정렬보다 우선한다 */
-export type AdminContractQueue = "REVIEW" | "CONCLUSION" | "EXPIRY" | "RESEND";
+/**
+ * 조치 큐 — 선택하면 탭·정렬보다 우선한다. 서버는 5종을 센다.
+ * `RESEND`는 rev.8 ②로 화면에서 뺐다(재발송 요청은 20a 운영팀 채널 카드) — 응답 호환으로만 남긴다.
+ */
+export type AdminContractQueue =
+  "REVIEW" | "CONCLUSION" | "EXPIRY" | "RESEND" | "TERMINATION";
 
 export type AdminContractSort =
   "REVIEW_REQUESTED_ASC" | "CREATED_DESC" | "START_AT_ASC";
@@ -61,6 +69,7 @@ export type ContractEventType =
   | "CREATOR_SIGNED"
   | "SIGNATURE_UPDATED"
   | "BOTH_SIGNED_CONFIRMED"
+  | "ESTABLISHED"
   | "RESEND_REQUESTED"
   | "RESEND_HANDLED"
   | "CONTRACT_PDF_GENERATED"
@@ -72,6 +81,10 @@ export type ContractEventType =
   | "CANCELED"
   | "FIXED_FEE_PAID"
   | "GROUP_BUY_CREATED"
+  | "TERMINATION_REQUESTED"
+  | "TERMINATION_REQUEST_WITHDRAWN"
+  | "TERMINATED"
+  | "DRAFT_APPROVAL_RECORDED"
   | "DELETED";
 
 /** 검토 반려 사유 — 서버 `ContractReviewRejectReason` */
@@ -83,13 +96,37 @@ export type ContractReviewRejectReason =
   | "ACCOUNT_STATUS"
   | "ETC";
 
-/** 직권 취소 사유 — 서버 `ContractCloseReasonCode`. ETC면 설명 필수 */
+/**
+ * 직권 취소 사유 — 서버 `ContractCloseReasonCode`. 앞 3종이 C6(1021 기-06) 선택지이고
+ * 뒤 4종은 1021 이전 선택지(저장된 행 표시용)다. ETC면 설명 필수.
+ */
 export type ContractCloseReasonCode =
+  | "PARTY_RENEGOTIATION"
+  | "PARTY_CANNOT_PROCEED"
+  | "CONTENT_ERROR_AFTER_REVIEW"
   | "CONDITION_REVIEW"
   | "OUT_OF_STOCK"
   | "SCHEDULE_CHANGE"
   | "NEGOTIATION_STOPPED"
   | "ETC";
+
+/** 해지 사유 — 서버 `ContractTerminationReasonCode`(C7 선택지) */
+export type ContractTerminationReasonCode =
+  | "TERMINATE_CANNOT_PROCEED"
+  | "TERMINATE_RENEGOTIATION"
+  | "TERMINATE_CONTENT_ERROR"
+  | "TERMINATE_OTHER";
+
+/** 정지 보류 보조 배지 — 서버 `api/common/sanction/SanctionHoldView` */
+export interface SanctionHoldView {
+  /** MINE · COUNTERPARTY · ADMIN */
+  kind: string;
+  label: string;
+  /** WARNING · NEUTRAL */
+  tone: string;
+  /** 어드민만 — 정지 당사자 BRAND · CREATOR · BOTH */
+  party: "BRAND" | "CREATOR" | "BOTH" | null;
+}
 
 /** 직권 취소 요청이 들어온 경로 — 서버 `ContractCancelRequestChannel`. 운영자가 취소 모달에서 고른다 */
 export type ContractCancelRequestChannel = "THREAD" | "PHONE" | "EMAIL" | "ETC";
@@ -115,13 +152,21 @@ export interface AdminContractListItem {
   status: ContractStatus;
   statusLabel: string;
   statusTone: ContractStatusTone;
+  /**
+   * 정지 보류(1017 설계서 8-4) — origin/main 필드. 개발 서버(10-21)는 아직 내리지 않아
+   * 선택 필드로 둔다(배포 후 `?` 제거).
+   */
+  sanctionHold?: SanctionHoldView | null;
 }
 
 /** 검색과 무관한 큐·탭 카운트 */
 export interface AdminContractSummary {
   queues: Partial<Record<AdminContractQueue, number>>;
   tabCounts: Partial<Record<AdminContractTab, number>>;
-  /** GNB 배지 — 조치 큐 합계 */
+  /**
+   * 서버의 조치 큐 합계 — `RESEND`까지 더한 값이라 화면 · 배지에는 쓰지 않는다.
+   * 화면 기준 합계는 `utils/summary.ts`의 `contractActionRequiredCount`.
+   */
   actionRequiredCount: number;
 }
 
@@ -151,6 +196,10 @@ export interface AdminContractInfo {
   } | null;
   /** 연결·소통 스레드 — 없으면 null */
   threadId: number | null;
+  /** 정지 보류 — `party`가 정지 당사자(B3-s). origin/main 필드 · 개발 서버 미배포 */
+  sanctionHold?: SanctionHoldView | null;
+  /** 서명 기한이 멈춰 있는가(당사자 정지 보류 중). origin/main 필드 · 개발 서버 미배포 */
+  signatureDeadlinePaused?: boolean;
 }
 
 export interface AdminContractStepper {
@@ -158,8 +207,11 @@ export interface AdminContractStepper {
   reviewApprovedActorName: string | null;
   signatureRequestedAt: string | null;
   signedCount: number;
+  /** 공구 생성 처리 시각(운영자) — 1021 이후 「체결」은 공구 생성을 뜻한다 */
   concludedAt: string | null;
   concludedActorName: string | null;
+  /** 계약 성립 = 양측 서명 완료 시각(기-05). origin/main 필드 · 개발 서버 미배포 */
+  establishedAt?: string | null;
 }
 
 export interface AdminContractReview {
@@ -182,6 +234,14 @@ export interface AdminContractSignature {
   asOfActorName: string | null;
   /** 기한 경과 일수 — 기한 전이면 0 */
   deadlinePassedDays: number;
+  /**
+   * C1 서명 기한 제안값(기-07) — 검토 대기에서만. origin/main 필드 · 개발 서버 미배포.
+   * 서버가 UTC 벽시계로 저장된 공구 시작의 **날짜**로 계산해(23:55) 다른 시각 필드와 시간대가
+   * 어긋나므로 화면은 쓰지 않고 `utils/contractView.ts#suggestedDeadlineParts`로 계산한다(백엔드 요청).
+   */
+  deadlineSuggestedAt?: string | null;
+  /** B3-s — 서명 진행중 ∧ 당사자 정지 보류 ∧ 기한 경과. origin/main 필드 · 개발 서버 미배포 */
+  deadlineOverdueWhileHeld?: boolean;
 }
 
 export interface ContractItem {
@@ -214,6 +274,10 @@ export interface ContractFixedFee {
   noticeAgreedAt: string | null;
   paidAt: string | null;
   obligationAlive: boolean;
+  /** 지급 시점 정의(툴팁 · 기-28). origin/main 필드 · 개발 서버 미배포 */
+  triggerDescription?: string | null;
+  /** 지급 시점 뒤 N영업일 — null이면 [정책값 미정]. origin/main 필드 · 개발 서버 미배포 */
+  paymentBusinessDays?: number | null;
 }
 
 export interface ContractSettlement {
@@ -259,8 +323,39 @@ export interface AdminContractCancelRequestInfo {
   processedByName: string | null;
 }
 
+/** 처리 대기 중인 해지 요청(기-05) — 서버 `TerminationRequestInfo` */
+export interface AdminContractTerminationRequestInfo {
+  requestId: number;
+  /** SELLER · CREATOR */
+  requesterType: ContractActorType;
+  requesterName: string | null;
+  /** 공구 중단 요청과 같은 4종(QUALITY_ISSUE …) */
+  reasonCode: string | null;
+  reasonLabel: string | null;
+  memo: string | null;
+  requestedAt: string | null;
+  /** 상대방 운영팀 채널에 붙은 「동의 확인」 카드 메시지 */
+  consentCardMessageId: number | null;
+}
+
+/** 해지 결과(B7) — 서버 `TerminationInfo`. 해지된 계약만 */
+export interface AdminContractTerminationInfo {
+  terminatedAt: string | null;
+  reasonCode: ContractTerminationReasonCode | null;
+  reasonLabel: string | null;
+  explanation: string | null;
+  /** 요청 없이 운영자가 처리했으면 null */
+  requesterType: ContractActorType | null;
+  requesterName: string | null;
+  requestReasonLabel: string | null;
+  requestMemo: string | null;
+  operatorName: string | null;
+  groupBuyClosed: boolean;
+}
+
+/** 서명 안내 재발송 — rev.8 ②로 화면에서 뺐다. 응답 호환으로만 남긴다 */
 export interface AdminContractResend {
-  /** 미처리 재발송 요청 수 — 조치 큐 「재발송 요청」 집계 */
+  /** 미처리 재발송 요청 수 */
   pendingCount: number;
   lastRequestedAt: string | null;
   lastRequesterType: ContractActorType | null;
@@ -277,11 +372,18 @@ export interface AdminContractPermissions {
   canApprove: boolean;
   canReject: boolean;
   canUpdateSignature: boolean;
+  /** 폐지 예정 — `canCreateGroupBuy`와 같은 값. 배포 전 서버는 이것만 내린다 */
   canConclude: boolean;
   canExpire: boolean;
+  /** rev.8 ②로 화면에서 쓰지 않는다 */
   canHandleResend: boolean;
   canUploadDocument: boolean;
+  /** 직권 취소 — 1021 이후 서명 진행중만(성립 뒤는 해지) */
   canCancel: boolean;
+  /** [공구 생성](C4) — origin/main 필드 · 개발 서버 미배포 */
+  canCreateGroupBuy?: boolean;
+  /** [해지 처리](C7) — 성립 뒤 ∧ 공구 오픈 전. origin/main 필드 · 개발 서버 미배포 */
+  canTerminate?: boolean;
 }
 
 export interface AdminContractHistory {
@@ -305,6 +407,10 @@ export interface AdminContractDetail {
   settlement: ContractSettlement;
   closure: ContractClosure;
   cancelRequest: AdminContractCancelRequestInfo | null;
+  /** 처리 대기 해지 요청 — origin/main 필드 · 개발 서버 미배포 */
+  terminationRequest?: AdminContractTerminationRequestInfo | null;
+  /** 해지 결과 — origin/main 필드 · 개발 서버 미배포 */
+  termination?: AdminContractTerminationInfo | null;
   documents: Array<AdminContractDocument>;
   resend: AdminContractResend;
   groupBuy: AdminContractGroupBuy;
@@ -343,13 +449,29 @@ export interface AdminContractCancelRequest {
   requestChannel: ContractCancelRequestChannel | null;
   /** 요청자가 브랜드·인플루언서면 필수(현재 이전·계약 생성 이후), 직권이면 null */
   requestedAt: string | null;
+  /**
+   * 상대방 동의를 운영팀 채널에서 확인함(C6 · 기-06) — 서버는 요청자가 브랜드·인플루언서일 때만
+   * 필수로 보지만 시안은 직권도 체크 2개를 모두 요구한다. 배포 전 서버는 이 필드를 무시한다.
+   */
+  counterpartyConsentConfirmed: boolean;
+}
+
+/** 해지 처리(C7) — 서버 `TerminateRequest` · POST /admin/contracts/{id}/terminate */
+export interface AdminContractTerminateRequest {
+  reasonCode: ContractTerminationReasonCode;
+  /** 필수 · 1000자 — 양측 운영팀 채널 카드에 그대로 나간다 */
+  explanation: string;
+  counterpartyConsentConfirmed: boolean;
+  groupBuyNotOpenedConfirmed: boolean;
+  /** 처리할 해지 요청 — 요청 없이 운영자가 처리하면 null */
+  requestId: number | null;
 }
 
 export interface AdminContractProcessResponse {
   contractId: number;
   status: ContractStatus;
   version: number;
-  /** 체결 처리 응답에만 — 함께 만들어진 공구 번호 */
+  /** 공구 생성 응답에만 — 함께 만들어진 공구 번호 */
   groupBuyNumber: string | null;
 }
 

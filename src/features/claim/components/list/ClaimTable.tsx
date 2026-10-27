@@ -19,6 +19,7 @@ import {
   elapsedLabel,
   feeBearerShort,
   md,
+  mdDue,
   mdHm,
   stageBadge,
   won,
@@ -165,7 +166,7 @@ const DEFAULT_COLUMNS: Array<Column> = [
           item.claim.overdue ? "text-sz-warning-text" : "text-sz-n-900"
         )}
       >
-        {elapsedLabel(item.claim)}
+        {elapsedLabel(item)}
       </span>
     ),
   },
@@ -255,7 +256,7 @@ const HOLD_COLUMNS: Array<Column> = [
       }
       return (
         <>
-          <span className={TNUM}>{md(storage.storageDueAt)}</span>
+          <span className={TNUM}>{mdDue(storage.storageDueAt)}</span>
           {storage.phase === "EXPIRED" && <Note>기한 경과</Note>}
         </>
       );

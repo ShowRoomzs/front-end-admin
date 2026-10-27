@@ -7,12 +7,16 @@ import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import { queryClient } from "@/common/lib/queryClient";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import { formatFileSize } from "@/common/utils/formatFileSize";
+import ApprovalImpactCard from "@/features/changeRequest/components/ApprovalImpactCard/ApprovalImpactCard";
 import ChangeDiffTable from "@/features/changeRequest/components/ChangeDiffTable/ChangeDiffTable";
 import ChangeRequestApprovalModal from "@/features/changeRequest/components/ChangeRequestApprovalModal/ChangeRequestApprovalModal";
 import ChangeRequestRejectionModal from "@/features/changeRequest/components/ChangeRequestRejectionModal/ChangeRequestRejectionModal";
 import CompareCheckNote from "@/features/changeRequest/components/CompareCheckNote/CompareCheckNote";
 import EvidencePreviewModal from "@/features/changeRequest/components/EvidencePreviewModal/EvidencePreviewModal";
-import { CHANGE_REQUEST_TYPE_LABELS } from "@/features/changeRequest/constants/params";
+import {
+  CHANGE_REQUESTER_DETAIL_PATHS,
+  CHANGE_REQUESTER_LABELS,
+} from "@/features/changeRequest/constants/params";
 import {
   CHANGE_REQUEST_DETAIL_QUERY_KEY,
   CHANGE_REQUEST_LIST_QUERY_KEY,
@@ -22,9 +26,19 @@ import { useGetChangeRequestDetail } from "@/features/changeRequest/hooks/useGet
 import { useGetChangeRequestRejectReasons } from "@/features/changeRequest/hooks/useGetChangeRequestRejectReasons";
 import {
   changeRequestService,
+  type ChangeRequestDetailInfo,
   type ChangeRequestHistoryItem,
+  type ChangeRequestProcessResponse,
+  type ChangeRequestRequester,
   type ChangeRequestStatusFilter,
 } from "@/features/changeRequest/services/changeRequestService";
+import {
+  getRequestPhrase,
+  getTypeMetaLabel,
+  isBusinessTypeChange,
+  isCreatorType,
+  resolveRequester,
+} from "@/features/changeRequest/utils/requester";
 import { getChangeRequestStatusBadge } from "@/features/changeRequest/utils/statusBadge";
 import { useCallback, useState, type ReactNode } from "react";
 import toast from "react-hot-toast";
@@ -48,11 +62,15 @@ const HISTORY_TONE: Record<
 };
 
 /**
- * C3·C4 — 변경 요청 상세.
+ * C3 · C3a · C3b · C4 · C4b — 변경 요청 상세.
  *
- * 대조표의 "변경 요청 값"은 **브랜드가 직접 입력한 값**이다. 운영자가 서류를 보고
+ * 대조표의 "변경 요청 값"은 **요청자가 직접 입력한 값**이다. 운영자가 서류를 보고
  * 타이핑하지 않는다 — 오타와 책임 소재를 피하려고 파트너센터 rev.7에서 새 값 입력형으로
  * 바뀌었고, 그 값이 요청 레코드에 남아 분쟁 시 근거가 된다(§16-4).
+ *
+ * 인플루언서 요청(rev.7~8)도 같은 화면이다 — 사업자 전환 · 비사업자 전환(C3a · C3b)은 「승인하면」
+ * 카드로 정산 영향을 승인 전에 보여주고, 계좌 변경(C4b · 기-22)은 브랜드 정산 계좌(C4)와 같은 흐름에
+ * 대조 기준만 본인 실명으로 바뀐다.
  */
 export default function ChangeRequestDetail() {
   const navigate = useNavigate();
@@ -112,8 +130,9 @@ export default function ChangeRequestDetail() {
       );
       invalidateAll();
       setIsApprovalOpen(false);
+      // C10 — 「글로우랩 정산 계좌 변경 요청을 승인했습니다.」
       toast.success(
-        `${result.brandName} ${CHANGE_REQUEST_TYPE_LABELS[result.type]} 변경 요청을 승인했습니다.`
+        `${processedName(result, detail)} ${getRequestPhrase(result.type)}을 승인했습니다.`
       );
       goToList();
     } finally {
@@ -139,7 +158,7 @@ export default function ChangeRequestDetail() {
         invalidateAll();
         setIsRejectionOpen(false);
         toast.success(
-          `${result.brandName} ${CHANGE_REQUEST_TYPE_LABELS[result.type]} 변경 요청을 반려했습니다.`
+          `${processedName(result, detail)} ${getRequestPhrase(result.type)}을 반려했습니다.`
         );
         goToList();
       } finally {
@@ -157,12 +176,17 @@ export default function ChangeRequestDetail() {
     );
   }
 
-  const typeLabel = CHANGE_REQUEST_TYPE_LABELS[detail.type];
+  const requester = resolveRequester(detail);
+  const isCreator = isCreatorType(detail.type);
   const { variant, label } = getChangeRequestStatusBadge(
     detail.status,
     detail.slaExceeded,
     true
   );
+  const showImpact =
+    isPending &&
+    isBusinessTypeChange(detail.type) &&
+    Boolean(detail.approvalImpact);
 
   // HistoryList는 최신순으로 받는다(정렬은 호출부 책임).
   // 서버가 새 이벤트를 추가해도 상세 화면 전체가 죽지 않도록 매핑에 없는 값은 그대로 흘린다.
@@ -183,25 +207,21 @@ export default function ChangeRequestDetail() {
       <div className="mb-4 flex items-end justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2.5 text-[20px] font-semibold text-sz-n-900">
-            {detail.brandName}
+            {requester.name}
             {/*
               우상단 버튼군은 "이 목록 안에서의 이동"이고 이건 다른 메뉴(회원 관리)로
               나가는 동작이라 성격이 달라 제목 옆 칩으로 뺐다(§16-2).
             */}
             <button
               type="button"
-              onClick={() =>
-                navigate(
-                  `/market/list?marketName=${encodeURIComponent(detail.brandName)}`
-                )
-              }
+              onClick={() => navigate(requesterDetailPath(requester))}
               className="inline-flex items-center rounded-[10px] border border-sz-n-200 bg-sz-n-100 px-2.5 py-0.5 text-[11px] font-medium leading-[1.7] text-sz-n-600 hover:border-sz-accent-100 hover:bg-sz-accent-50 hover:text-sz-accent-600"
             >
-              브랜드 상세 ↗
+              {CHANGE_REQUESTER_LABELS[requester.type] ?? "요청자"} 상세 ↗
             </button>
           </h1>
           <p className="mt-0.5 text-[12px] text-sz-n-600">
-            {typeLabel} 변경 요청 · {detail.requestCode}
+            {getRequestPhrase(detail.type)} · {detail.requestCode}
           </p>
         </div>
 
@@ -232,7 +252,12 @@ export default function ChangeRequestDetail() {
         <div className="flex flex-col gap-4">
           <DetailCard title="변경 대조" note="변경 항목만 강조 표시">
             <div className="pt-2">
-              <ChangeDiffTable rows={detail.diff} />
+              <ChangeDiffTable
+                rows={detail.diff}
+                type={detail.type}
+                holderCheck={detail.holderCheck}
+                approvalImpact={detail.approvalImpact}
+              />
             </div>
           </DetailCard>
 
@@ -240,15 +265,21 @@ export default function ChangeRequestDetail() {
             type={detail.type}
             changedFieldLabels={detail.changedFieldLabels}
             holderCheck={detail.holderCheck}
+            compareItems={detail.compareItems}
           />
 
-          <DetailCard title="브랜드가 작성한 변경 사유">
+          <DetailCard
+            title={
+              isCreator
+                ? "인플루언서가 작성한 변경 사유"
+                : "브랜드가 작성한 변경 사유"
+            }
+          >
             <p className="whitespace-pre-wrap py-2 text-[12px] leading-relaxed text-sz-n-700">
               {detail.reason ?? (
                 <span className="text-sz-n-500">
                   작성된 변경 사유가 없습니다.
-                  {detail.type === "SETTLEMENT_ACCOUNT" &&
-                    " (정산 계좌 변경은 사유 입력이 필수가 아닙니다 — 증빙 첨부는 필수)"}
+                  {EMPTY_REASON_NOTES[detail.type] ?? ""}
                 </span>
               )}
             </p>
@@ -285,12 +316,18 @@ export default function ChangeRequestDetail() {
 
             <div className="pt-2">
               <MetaRow label="요청 번호" value={detail.requestCode} />
-              <MetaRow label="요청 유형" value={typeLabel} />
+              <MetaRow
+                label="요청 유형"
+                value={getTypeMetaLabel(detail.type)}
+              />
               <MetaRow
                 label="요청일시"
                 value={formatDateTimeShort(detail.requestedAt)}
               />
-              <MetaRow label="요청자" value={detail.requesterName} />
+              <MetaRow
+                label="요청자"
+                value={requesterLabel(detail, requester)}
+              />
               {detail.processedAt && (
                 <MetaRow
                   label="처리일시"
@@ -335,17 +372,24 @@ export default function ChangeRequestDetail() {
                   </button>
                 </div>
                 <p className="mb-2 mt-2.5 text-[11px] leading-relaxed text-sz-n-500">
-                  승인 시 변경 값이 브랜드 계정에 즉시 반영되고, 파트너센터에 승인
-                  배너가 표시됩니다. 결과는 이메일로도 통지됩니다.
+                  {pendingHint(detail)}
                 </p>
               </>
             ) : (
               <p className="mb-2 mt-4 text-[11px] leading-relaxed text-sz-n-500">
-                처리가 완료된 건입니다. 브랜드는 대기기간 없이 다시 요청할 수
-                있으며, 재요청은 새 건으로 접수됩니다.
+                처리가 완료된 건입니다. {isCreator ? "인플루언서" : "브랜드"}는
+                대기기간 없이 다시 요청할 수 있으며, 재요청은 새 건으로
+                접수됩니다.
               </p>
             )}
           </DetailCard>
+
+          {showImpact && detail.approvalImpact && (
+            <ApprovalImpactCard
+              type={detail.type}
+              impact={detail.approvalImpact}
+            />
+          )}
 
           <DetailCard title="처리 이력" flushBody>
             <HistoryList items={historyItems} />
@@ -356,8 +400,10 @@ export default function ChangeRequestDetail() {
       <ChangeRequestApprovalModal
         open={isApprovalOpen}
         onOpenChange={setIsApprovalOpen}
-        brandName={detail.brandName}
+        requesterName={requester.name}
         type={detail.type}
+        approvalImpact={detail.approvalImpact}
+        holderCheck={detail.holderCheck}
         isSubmitting={isSubmitting}
         onApprove={handleApprove}
       />
@@ -365,7 +411,7 @@ export default function ChangeRequestDetail() {
       <ChangeRequestRejectionModal
         open={isRejectionOpen}
         onOpenChange={setIsRejectionOpen}
-        brandName={detail.brandName}
+        requesterName={requester.name}
         type={detail.type}
         reasons={rejectReasons ?? []}
         isReasonsLoading={isReasonsLoading}
@@ -381,8 +427,86 @@ export default function ChangeRequestDetail() {
         referenceItems={detail.referenceItems}
         type={detail.type}
         holderCheck={detail.holderCheck}
+        compareItems={detail.compareItems}
+        approvalImpact={detail.approvalImpact}
       />
     </>
+  );
+}
+
+/** 사유가 비었을 때 덧붙이는 안내 — 계좌 변경은 사유가 선택값이라 비는 게 정상이다(C4 · C4b) */
+const EMPTY_REASON_NOTES: Partial<
+  Record<ChangeRequestDetailInfo["type"], string>
+> = {
+  SETTLEMENT_ACCOUNT:
+    " (정산 계좌 변경은 사유 입력이 필수가 아닙니다 — 증빙 첨부는 필수)",
+  CREATOR_ACCOUNT:
+    " (계좌 변경은 사유 입력이 필수가 아닙니다 — 통장 사본은 필수)",
+};
+
+/**
+ * [브랜드 상세 ↗] · [인플루언서 상세 ↗] — 회원 관리 상세(15 · 18).
+ * 옛 응답에서 marketId도 없으면 브랜드 회원 목록을 브랜드명으로 연다.
+ */
+function requesterDetailPath(requester: ChangeRequestRequester) {
+  const base = CHANGE_REQUESTER_DETAIL_PATHS[requester.type];
+  if (requester.id !== null) {
+    return `${base}/${requester.id}`;
+  }
+  return `${base}?marketName=${encodeURIComponent(requester.name)}`;
+}
+
+/** 메타 「요청자」 — 브랜드는 담당자 이름 스냅샷, 인플루언서는 본인(시안 C3a · C4b 표기 그대로) */
+function requesterLabel(
+  detail: ChangeRequestDetailInfo,
+  requester: ChangeRequestRequester
+) {
+  if (detail.type === "CREATOR_ACCOUNT") {
+    return `${requester.name} (본인)`;
+  }
+  if (isCreatorType(detail.type)) {
+    return "인플루언서 본인";
+  }
+  return detail.requesterName ?? "—";
+}
+
+/** 승인 · 반려 버튼 아래 안내(시안 `.st-hint`) — 유형마다 반영 대상과 지급 시점이 다르다 */
+function pendingHint(detail: ChangeRequestDetailInfo): ReactNode {
+  switch (detail.type) {
+    case "SETTLEMENT_ACCOUNT":
+      return (
+        <>
+          승인 시 새 계좌가 반영됩니다.{" "}
+          <b>이미 확정된 정산 회차는 기존 계좌로 지급</b>
+          되며, 다음 회차부터 새 계좌가 적용됩니다.
+        </>
+      );
+    case "CREATOR_ACCOUNT":
+      return (
+        <>
+          승인 시 새 계좌가 반영됩니다.{" "}
+          <b>지급 요청이 이미 나간 정산은 기존 계좌로 지급</b>
+          되며, 다음 지급부터 새 계좌가 적용됩니다.
+        </>
+      );
+    case "TO_BUSINESS":
+      return "승인하면 사업자 구분이 개인사업자로 바뀌고 스튜디오에 승인 배너가 표시됩니다. 결과는 이메일로도 통지됩니다.";
+    case "TO_INDIVIDUAL":
+      return detail.approvalImpact?.accountChangeRequired
+        ? "승인하면 사업자 구분이 비사업자로 바뀌고 스튜디오에 「계좌 변경 필요」가 표시됩니다. 결과는 이메일로도 통지됩니다."
+        : "승인하면 사업자 구분이 비사업자로 바뀌고 스튜디오에 승인 배너가 표시됩니다. 결과는 이메일로도 통지됩니다.";
+    default:
+      return "승인 시 변경 값이 브랜드 계정에 즉시 반영되고, 파트너센터에 승인 배너가 표시됩니다. 결과는 이메일로도 통지됩니다.";
+  }
+}
+
+/** 처리 응답의 요청자 이름 — 옛 응답은 brandName만 주므로 상세에서 보던 이름으로 메운다 */
+function processedName(
+  result: ChangeRequestProcessResponse,
+  detail: ChangeRequestDetailInfo
+) {
+  return (
+    result.requester?.name ?? result.brandName ?? resolveRequester(detail).name
   );
 }
 

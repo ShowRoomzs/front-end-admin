@@ -78,6 +78,8 @@ export function normalizeOrderParams(params: OrderListParams) {
       ? params.sort
       : ORDER_DEFAULT_SORT[tab],
     orderId: toId(params.orderId),
+    userId: toId(params.userId),
+    cancelRequested: params.cancelRequested === "true" ? "true" : "",
     page: Number.isInteger(page) && page > 0 ? page : initial.page,
     size: ORDER_PAGE_SIZES.includes(size) ? size : initial.size,
   };
@@ -96,6 +98,7 @@ export function toSummaryQuery(
     marketId: optionalId(params.marketId),
     groupBuyId: optionalId(params.groupBuyId),
     creatorId: optionalId(params.creatorId),
+    userId: optionalId(params.userId),
     paymentMethod: (params.paymentMethod || undefined) as
       PaymentMethod | undefined,
     searchType: keyword ? params.searchType : undefined,
@@ -116,6 +119,7 @@ export function toListQuery(
     sort: params.sort,
     page: params.page,
     size: params.size,
+    cancelRequested: params.cancelRequested === "true" || undefined,
   };
   if (params.tab === "DELIVERY_ISSUE") {
     // 이상 유형 셀렉트 — 반송 중만 상태 축으로 보낸다

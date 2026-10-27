@@ -3,7 +3,10 @@ import type { Columns } from "@/common/components/Table/types";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import type { AdminContractListItem } from "@/features/contract/types";
 import { periodText } from "@/features/contract/utils/format";
-import { toneToVariant } from "@/features/contract/utils/statusBadge";
+import {
+  statusLabelOf,
+  toneToVariant,
+} from "@/features/contract/utils/statusBadge";
 
 /**
  * 시안 A1 열 — 공구명 · 브랜드 126 · 인플루언서 122 · 상품 수 66 · 공구 기간 246 ·
@@ -89,7 +92,7 @@ export const CONTRACT_COLUMNS: Columns<AdminContractListItem> = [
     align: "center",
     render: (_value, record) => (
       <StatusBadge variant={toneToVariant(record.statusTone)}>
-        {record.statusLabel}
+        {statusLabelOf(record.status, record.statusLabel)}
       </StatusBadge>
     ),
   },

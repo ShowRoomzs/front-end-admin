@@ -18,6 +18,16 @@ export const THREAD_PATH = "/monitoring/threads";
 /** 정산 관리 · 공구 정산 — 보류 해제·이체는 그 화면 소관이다 */
 export const SETTLEMENT_PATH = "/settlement/group-buy";
 
+/*
+  07 정산 흐름 표기(시안 rev.7 B5 · 1021 기-10) — 숫자를 화면 곳곳에 박지 않고 여기 한 곳에 둔다.
+  서버 설정 `settlement.review-business-days`(3) · `settlement.payout-business-days`(3 · [정책값 미정])는
+  공구 상세 응답으로 내려오지 않는다(AdminGroupBuyDetailResponse.Settlement에 없음) — 내려오면 이 상수를 걷어 낸다.
+  - 정산 확인 기간: 시안 · 07 정산 화면이 같은 「3영업일」로 확정 표기한다.
+  - 지급: 기-10 「확정일 + N영업일」 [정책값 미정] — 값이 없으므로 「N영업일」 그대로.
+*/
+export const SETTLEMENT_REVIEW_PERIOD_TEXT = "3영업일";
+export const SETTLEMENT_PAYOUT_PERIOD_TEXT = "N영업일";
+
 export const GROUP_BUY_QUERY_KEYS = {
   LIST: "adminGroupBuyList",
   SUMMARY: "adminGroupBuySummary",
@@ -98,7 +108,7 @@ export const REJECT_REASON_OPTIONS: Array<{
   { value: "ETC", label: "기타(직접 입력)" },
 ];
 
-/** 시안 M5 숨김 사유 7종 — 서버 GroupBuyPostHideReason */
+/** 시안 M5 노출 중지 사유 7종 — 서버 GroupBuyPostHideReason(이름은 서버 그대로) */
 export const HIDE_REASON_OPTIONS: Array<{
   value: PostHideReason;
   label: string;

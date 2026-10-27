@@ -9,12 +9,17 @@ import {
 } from "@/features/settlement/constants/params";
 import type {
   ClawbackListItem,
-  ClawbackStatus,
+  ClawbackRowStatus,
   EvidenceListItem,
   SettlementFooter,
   SettlementListItem,
 } from "@/features/settlement/types";
-import { md, periodShort, won } from "@/features/settlement/utils/format";
+import {
+  md,
+  mdDue,
+  periodShort,
+  won,
+} from "@/features/settlement/utils/format";
 import { cn } from "@/lib/utils";
 import type { KeyboardEvent, ReactNode } from "react";
 
@@ -236,22 +241,20 @@ export function SettlementTable(props: {
   );
 }
 
-/** 인플루언서 쪽 문서(세금계산서 · 원천징수영수증 · 주민번호)면 사업자 구분을 붙인다 */
+/** 인플루언서 쪽 문서(세금계산서 · 원천징수영수증)면 사업자 구분을 붙인다 */
 function isCreatorSide(row: EvidenceListItem): boolean {
   return (
-    row.type === "CREATOR_TAX_INVOICE" ||
-    row.type === "WITHHOLDING_RECEIPT" ||
-    row.type === "RESIDENT_NUMBER_MISSING"
+    row.type === "CREATOR_TAX_INVOICE" || row.type === "WITHHOLDING_RECEIPT"
   );
 }
 
 function evidenceDate(row: EvidenceListItem): string {
   if (row.inputAt) return `${md(row.inputAt)} 입력`;
-  if (row.dueAt) return `${md(row.dueAt)} 기한`;
+  if (row.dueAt) return `${mdDue(row.dueAt)} 기한`;
   return "—";
 }
 
-/** L5 — 증빙 표(한 행 = 문서 1건 · 주민번호 미등록은 가상 행) */
+/** L5 — 증빙 표(한 행 = 문서 1건) */
 export function EvidenceTable(props: {
   rows: Array<EvidenceListItem>;
   onRowClick: (row: EvidenceListItem) => void;
@@ -276,7 +279,7 @@ export function EvidenceTable(props: {
         <tbody>
           {rows.map((row) => (
             <tr
-              key={`${row.settlementId}-${row.documentId ?? row.type}`}
+              key={`${row.settlementId}-${row.documentId}`}
               className={ROW}
               {...rowNav(() => onRowClick(row))}
             >
@@ -324,11 +327,15 @@ export function EvidenceTable(props: {
   );
 }
 
-/** 측별 상태를 한 줄 상태로 — 미회수가 하나라도 있으면 미회수, 전부 반영이면 반영, 아니면 예정 */
-function clawbackRowStatus(row: ClawbackListItem): ClawbackStatus {
+/**
+ * 측별 상태를 한 줄 상태로 — 재계산 가상 행이면 재계산, 미회수가 하나라도 있으면 미회수,
+ * 전부 반영이면 반영, 아니면 예정
+ */
+function clawbackRowStatus(row: ClawbackListItem): ClawbackRowStatus {
   const sides = [row.brandStatus, row.creatorStatus].filter(
-    (status): status is ClawbackStatus => status !== null
+    (status): status is ClawbackRowStatus => status !== null
   );
+  if (sides.includes("RECALCULATED")) return "RECALCULATED";
   if (sides.includes("UNRECOVERABLE")) return "UNRECOVERABLE";
   if (sides.length > 0 && sides.every((status) => status === "APPLIED")) {
     return "APPLIED";
@@ -336,40 +343,32 @@ function clawbackRowStatus(row: ClawbackListItem): ClawbackStatus {
   return "PENDING";
 }
 
-function clawbackStatusLabel(
-  row: ClawbackListItem,
-  status: ClawbackStatus
-): string {
-  if (row.brandStatus === status && row.brandStatusLabel) {
-    return row.brandStatusLabel;
-  }
-  if (row.creatorStatus === status && row.creatorStatusLabel) {
-    return row.creatorStatusLabel;
-  }
-  return CLAWBACK_STATUS[status].label;
-}
-
-/** 측이 없으면 「—」 · 측 상태가 한 줄 상태와 다르면(이미 빠진 몫 등) 그 상태를 흐리게 붙인다 */
+/**
+ * 측이 없으면 「—」 · 재계산 행은 금액 대신 「재계산」(차감이 아니다) ·
+ * 측 상태가 한 줄 상태와 다르면(이미 빠진 몫 등) 그 상태를 흐리게 붙인다
+ */
 function shareCell(
   amount: number,
-  side: ClawbackStatus | null,
-  sideLabel: string | null,
-  rowStatus: ClawbackStatus
+  side: ClawbackRowStatus | null,
+  rowStatus: ClawbackRowStatus
 ): ReactNode {
+  if (rowStatus === "RECALCULATED") {
+    return <TDim>{CLAWBACK_STATUS.RECALCULATED.label}</TDim>;
+  }
   if (side === null) return <TDim>—</TDim>;
   return (
     <>
       {`− ${won(amount)}`}
       {side !== rowStatus && (
-        <TDim className="block text-[11px]">
-          {sideLabel ?? CLAWBACK_STATUS[side].label}
-        </TDim>
+        <TDim className="block text-[11px]">{CLAWBACK_STATUS[side].label}</TDim>
       )}
     </>
   );
 }
 
-function appliedCell(row: ClawbackListItem, status: ClawbackStatus) {
+function appliedCell(row: ClawbackListItem, status: ClawbackRowStatus) {
+  // 재계산은 원 정산 그 자체가 다시 계산된다(시안 「차감 정산」 칸 = 원 정산번호)
+  if (status === "RECALCULATED") return row.originSettlementNumber ?? "—";
   if (status === "APPLIED") return row.appliedSettlementNumber ?? "—";
   if (status === "UNRECOVERABLE") {
     return <TDim>{row.unrecoverableReasonLabel ?? "—"}</TDim>;
@@ -403,12 +402,18 @@ export function ClawbackTable(props: {
         <tbody>
           {rows.map((row, index) => {
             const status = clawbackRowStatus(row);
-            const target =
-              [row.productName, row.orderNumber].filter(Boolean).join(" · ") ||
-              row.reasonLabel;
+            const badge = CLAWBACK_STATUS[status];
+            const productTarget = [row.productName, row.orderNumber]
+              .filter(Boolean)
+              .join(" · ");
+            // 재계산 가상 행은 상품 · 주문 대신 이력 문장(환불 번호 · 금액 변동)이 사유다
+            const target = productTarget || row.reasonLabel;
             const parties = [row.brandName, row.showroomName]
               .filter(Boolean)
               .join(" × ");
+            const sub = productTarget
+              ? [parties, row.reasonLabel].filter(Boolean).join(" · ")
+              : parties;
             return (
               <tr
                 key={`${row.clawbackNumber}-${index}`}
@@ -422,34 +427,25 @@ export function ClawbackTable(props: {
                   {row.originSettlementNumber ?? "—"}
                 </td>
                 <td className={CELL}>
-                  <TitleCell
-                    title={target}
-                    sub={[parties, row.reasonLabel].filter(Boolean).join(" · ")}
-                  />
+                  <TitleCell title={target} sub={sub} />
                 </td>
                 <td className={cn(CELL, "text-right tabular-nums")}>
-                  {shareCell(
-                    row.brandAmount,
-                    row.brandStatus,
-                    row.brandStatusLabel,
-                    status
-                  )}
+                  {shareCell(row.brandAmount, row.brandStatus, status)}
                 </td>
                 <td className={cn(CELL, "text-right tabular-nums")}>
-                  {shareCell(
-                    row.creatorAmount,
-                    row.creatorStatus,
-                    row.creatorStatusLabel,
-                    status
-                  )}
+                  {shareCell(row.creatorAmount, row.creatorStatus, status)}
                 </td>
                 <td className={cn(CELL, "text-center tabular-nums")}>
                   {appliedCell(row, status)}
                 </td>
                 <td className={cn(CELL, "text-center")}>
-                  <StlBadge tone={CLAWBACK_STATUS[status].tone}>
-                    {clawbackStatusLabel(row, status)}
-                  </StlBadge>
+                  {/* 서버 라벨(「미회수 · 베타: 플랫폼 손실 처리」)을 배지 + 보조줄로 나눠 그린다(시안 `.t-note`) */}
+                  <StlBadge tone={badge.tone}>{badge.label}</StlBadge>
+                  {badge.note && (
+                    <span className="mt-[3px] block text-[11px] font-medium">
+                      {badge.note}
+                    </span>
+                  )}
                 </td>
               </tr>
             );

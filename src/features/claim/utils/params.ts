@@ -38,6 +38,8 @@ export function normalizeClaimParams(params: ClaimListParams) {
     sort: CLAIM_SORT_OPTIONS.some((item) => item.value === params.sort)
       ? params.sort
       : initial.sort,
+    userId: /^\d+$/.test(params.userId ?? "") ? params.userId : "",
+    openOnly: params.openOnly === "true" ? "true" : "",
     page: Number.isInteger(page) && page > 0 ? page : initial.page,
     size: CLAIM_PAGE_SIZES.includes(size) ? size : initial.size,
   };
@@ -59,6 +61,8 @@ export function toClaimListQuery(params: ClaimListParams): ClaimListQuery {
       .format("YYYY-MM-DD"),
     [params.searchField]: keyword || undefined,
     sort: params.sort || undefined,
+    userId: params.userId ? Number(params.userId) : undefined,
+    openOnly: params.openOnly === "true" || undefined,
     page: params.page,
     size: params.size,
   };

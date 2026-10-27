@@ -60,6 +60,16 @@ export function useGetAdminClawbackList(
   });
 }
 
+/** M4 공급받는자(기-35) — 거의 바뀌지 않는 설정값이라 길게 둔다 · 실패해도 모달은 대체값으로 그린다 */
+export function useGetCompanyInfo() {
+  return useQuery({
+    queryKey: [SETTLEMENT_QUERY_KEYS.COMPANY_INFO],
+    queryFn: adminSettlementService.getCompanyInfo,
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+}
+
 export function useGetAdminSettlementDetail(settlementId: number) {
   return useQuery({
     queryKey: [SETTLEMENT_QUERY_KEYS.DETAIL, settlementId],

@@ -8,9 +8,14 @@ import type {
   ContractStatus,
 } from "@/features/contract/types";
 import {
+  SIGNATURE_DEADLINE_DAYS_BEFORE_START,
+  SIGNATURE_DEADLINE_SUGGEST_TIME,
+} from "@/features/contract/constants/params";
+import {
   formatMonthDay,
   formatTime,
   formatMonthDayTime,
+  type DateTimeParts,
 } from "@/features/contract/utils/datetime";
 
 /** 시안 `.stp` 톤 — 파트너센터와 같은 축(거절만 위험, 만료·취소는 중립) */
@@ -32,6 +37,7 @@ export const CLOSED_STATUSES: Array<ContractStatus> = [
   "DECLINED",
   "EXPIRED",
   "CANCELED",
+  "TERMINATED",
 ];
 
 /** 이력에서 특정 이벤트의 처리자 이름을 찾는다(최신 우선) */
@@ -51,15 +57,29 @@ function signProgress(detail: AdminContractDetail, empty = "대기") {
 }
 
 /**
+ * 당사자 계정 정지 중에 서명 기한이 지났다(B3-s · 기-07) — 정지된 쪽은 서명을 마칠 수 없으므로
+ * 만료 확인 화면(C5 뒤)으로 넘기지 않고 「모두싸인 기한 연장 · 재발송」을 먼저 안내한다.
+ * 서버 플래그(origin/main)만 근거로 쓴다 — 배포 전 서버는 내리지 않아 false다.
+ */
+export function isHeldDeadlineOverdue(detail: AdminContractDetail) {
+  return (
+    detail.contract.status === "SIGNING" &&
+    detail.signature.deadlineOverdueWhileHeld === true
+  );
+}
+
+/**
  * 서명 기한 경과 — 서명 진행중인데 기한이 지났다(시안 C5 뒤 화면). 시스템이 닫지 않으므로
  * 운영자가 만료시킬 때까지 이 상태로 남는다. 서버 `deadlinePassedDays`는 일 단위라 당일 경과를 못 잡는다.
+ * 당사자 정지 중의 경과(B3-s)는 여기서 빼고 `isHeldDeadlineOverdue`가 따로 다룬다.
  */
 export function isSignatureOverdue(detail: AdminContractDetail) {
   const { deadlineAt } = detail.signature;
   return (
     detail.contract.status === "SIGNING" &&
     deadlineAt !== null &&
-    parseServerDateTime(deadlineAt).isBefore(dayjs())
+    parseServerDateTime(deadlineAt).isBefore(dayjs()) &&
+    !isHeldDeadlineOverdue(detail)
   );
 }
 
@@ -89,7 +109,7 @@ export function buildStepper(detail: AdminContractDetail): Array<StepChip> {
     tone: "done",
   };
   const conclude: StepChip = {
-    label: "운영자 체결 완료 처리",
+    label: "운영자 공구 생성",
     who: "—",
     tone: "todo",
   };
@@ -187,7 +207,7 @@ export function buildStepper(detail: AdminContractDetail): Array<StepChip> {
           who: `${contract.creator?.name ?? "인플루언서"} · ${formatMonthDayTime(closure.closedAt)}`,
           tone: "stop",
         },
-        { ...conclude, label: "체결완료", who: "진행되지 않음" },
+        { ...conclude, who: "진행되지 않음" },
       ];
     case "EXPIRED":
       return [
@@ -221,9 +241,61 @@ export function buildStepper(detail: AdminContractDetail): Array<StepChip> {
         },
         conclude,
       ];
+    case "TERMINATED":
+      // 시안 B7 — 성립(양측 서명 완료)까지는 끝난 계약이다. 공구를 만들었으면 그 칩도 완료로 남기고,
+      // 해지 일시·사유는 레일에 둔다(시안 B7 스텝퍼는 B6 복사본이라 서명 칩이 어긋나 있어 데이터대로 그린다)
+      return [
+        approved,
+        sent,
+        {
+          label: "양측 서명 완료",
+          who: `${formatMonthDayTime(signature.brandSignedAt)} · ${formatMonthDayTime(signature.creatorSignedAt)}`,
+          tone: "done",
+        },
+        stepper.concludedAt
+          ? {
+              ...conclude,
+              who: [
+                formatMonthDayTime(stepper.concludedAt),
+                stepper.concludedActorName,
+              ]
+                .filter(Boolean)
+                .join(" · "),
+              tone: "done",
+            }
+          : conclude,
+      ];
     default:
       return [];
   }
+}
+
+/**
+ * C1 서명 기한 기본값(기-07) — 공구 시작일(KST) N일 전 23:55. 운영자가 확인한 뒤 모두싸인에 같은 값을 넣는다.
+ * 서버 `signature.deadlineSuggestedAt`은 UTC 벽시계로 저장된 공구 시작의 **UTC 날짜**로 23:55를 붙여
+ * 다른 시각 필드와 시간대가 어긋난다(KST 10:00 시작이면 다음 날 08:55로 보인다) — 그래서 FE가 같은 규칙으로
+ * 계산한다(백엔드 요청). 제안값이 이미 지났으면 서버와 같이 비워 둔다.
+ */
+export function suggestedDeadlineParts(
+  detail: AdminContractDetail
+): DateTimeParts | null {
+  const { startAt } = detail.contract;
+  if (!startAt) {
+    return null;
+  }
+  const suggested = parseServerDateTime(startAt)
+    .subtract(SIGNATURE_DEADLINE_DAYS_BEFORE_START, "day")
+    .hour(Number(SIGNATURE_DEADLINE_SUGGEST_TIME.hour))
+    .minute(Number(SIGNATURE_DEADLINE_SUGGEST_TIME.minute))
+    .second(0);
+  if (!suggested.isAfter(dayjs())) {
+    return null;
+  }
+  return {
+    date: suggested.format("YYYY-MM-DD"),
+    hour: SIGNATURE_DEADLINE_SUGGEST_TIME.hour,
+    minute: SIGNATURE_DEADLINE_SUGGEST_TIME.minute,
+  };
 }
 
 /** 상세 헤더 설명 줄 — "CTR · 브랜드 × 인플루언서 · 시각 이벤트" */
@@ -248,6 +320,11 @@ export function headerEvent(detail: AdminContractDetail) {
       return f(closure.closedAt, "만료 처리");
     case "CANCELED":
       return f(closure.closedAt, "운영자 직권 취소");
+    case "TERMINATED":
+      return f(
+        detail.termination?.terminatedAt ?? closure.closedAt,
+        "운영자 해지 처리"
+      );
     default:
       return null;
   }

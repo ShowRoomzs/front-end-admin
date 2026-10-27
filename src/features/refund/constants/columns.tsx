@@ -7,11 +7,14 @@ import type { RefundItem, RefundTaskStatus } from "@/features/refund/types";
 import {
   formatAmount,
   formatMonthDayTime,
+  reshipText,
 } from "@/features/refund/utils/format";
 
 interface ColumnHandlers {
   onExecute: (record: RefundItem) => void;
   onRetry: (record: RefundItem) => void;
+  /** M3 계좌 송금 처리 — 송금 대기 행(`transferable`)만 */
+  onTransfer: (record: RefundItem) => void;
 }
 
 /** 상태 배지 색 — 문구는 서버 `statusLabel` */
@@ -28,8 +31,9 @@ const STATUS_VARIANT: Record<RefundTaskStatus, StatusBadgeVariant> = {
  * 시안 A1~A3 열 — 환불번호 · 주문번호 · 경로 · 출처 · 브랜드 · 결제 · 환불액 · 상태 · 일시 · 관리.
  * 문구는 전부 서버 라벨(`sourceLabel` · `originLabel` · `paymentLabel` · `statusLabel` · `statusNote`)이다.
  * 시안은 상태 열이 남는 폭을 먹지만 `fitWidth`는 비율로 나누므로 열마다 폭을 준다.
- * 시안 경로 열(130)은 「반품 · 일부 반려 · CLM-3002」가 출처 배지와 겹쳐 넓혔고(180),
- * 공용 Table 셀 여백(좌우 16)이 시안(10)보다 넓어 결제·브랜드도 그만큼 늘렸다.
+ * 경로 열은 시안 10.21(CHANGELOG §4)대로 보조줄(`.t-sub`)이 칸 안에서 줄바꿈된다 — 넘쳐 출처 배지와
+ * 겹치지 않게 truncate 대신 줄을 바꾼다. 공용 Table 셀 여백(좌우 16)이 시안(10)보다 넓어 폭은 시안(130)보다
+ * 조금 넓게 둔다. 결제·브랜드도 같은 이유로 늘렸다.
  */
 export function createRefundColumns(
   handlers: ColumnHandlers
@@ -62,16 +66,12 @@ export function createRefundColumns(
     {
       key: "sourceLabel",
       label: "경로",
-      width: 180,
+      width: 150,
       render: (_value, record) => (
-        <span
-          className="block truncate text-[12px]"
-          title={[record.sourceLabel, record.sourceRef]
-            .filter(Boolean)
-            .join(" · ")}
-        >
-          {record.sourceLabel}
-          {/* 시안 `.t-sub` — 값 옆에 붙는 보조 문구 */}
+        // 표 본문이 nowrap이라 이 칸만 줄바꿈을 연다 — 「운임 환급 · 계좌 송금 · CLM-3008」도 칸 안에 머문다
+        <span className="block whitespace-normal break-keep py-1 text-[12px] leading-[1.5]">
+          {reshipText(record.sourceLabel)}
+          {/* 시안 `.t-sub` — 값 옆에 붙는 보조 문구(넘치면 다음 줄로) */}
           {record.sourceRef && (
             <span className="text-[11px] text-sz-n-500">{` · ${record.sourceRef}`}</span>
           )}
@@ -165,6 +165,16 @@ export function createRefundColumns(
       // 버튼을 눌렀을 때 행 클릭으로 번지지 않게 한다(행 자체는 눌러도 아무 일 없지만 규약을 지킨다)
       preventRowClick: true,
       render: (_value, record) => {
+        // 계좌 송금 행(06c rev.8 A1 RFD-0918-T) — 집행이 아니라 운영자 송금 뒤 기록(M3)
+        if (record.method === "BANK_TRANSFER") {
+          return record.transferable ? (
+            <Btn small onClick={() => handlers.onTransfer(record)}>
+              송금 처리
+            </Btn>
+          ) : (
+            <span className="text-sz-n-400">—</span>
+          );
+        }
         // 처리 중(EXECUTING) · 결제 없는 주문은 서버가 `executable=false`로 내린다 — 버튼은 보이되 막는다
         if (record.status === "PENDING" || record.status === "EXECUTING") {
           return (

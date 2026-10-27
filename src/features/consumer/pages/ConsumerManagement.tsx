@@ -12,13 +12,16 @@ import {
   CONSUMER_SORT_OPTIONS,
 } from "@/features/consumer/constants/params";
 import { useGetConsumerList } from "@/features/consumer/hooks/useGetConsumerList";
+import { consumerDetailPath } from "@/features/consumer/constants/detail";
 import type {
+  ConsumerListItem,
   ConsumerListParams,
   ConsumerProvider,
   ConsumerSort,
   ConsumerTab,
 } from "@/features/consumer/types/consumer";
 import { useCallback, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 /**
  * C1~C3 — 소비자 회원 목록 (§25-3).
@@ -31,6 +34,8 @@ import { useCallback, useMemo } from "react";
  * 페이로드에 전체 값이 남아 통제가 무너진다.
  */
 export default function ConsumerManagement() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const {
     params,
     localParams,
@@ -49,6 +54,20 @@ export default function ConsumerManagement() {
       updateParam("page", page);
     },
   });
+
+  const handleRowClick = useCallback(
+    (record: ConsumerListItem) => {
+      /*
+        목록의 쿼리스트링을 그대로 들고 간다(1:1 문의 목록 → 상세와 같은 방식). 상세의 [목록]이
+        같은 탭·페이지·검색어로 되돌아온다. 상세의 이전/다음은 회원번호 순이라 이 값과 무관하다.
+      */
+      navigate({
+        pathname: consumerDetailPath(record.userId),
+        search: location.search,
+      });
+    },
+    [navigate, location.search]
+  );
 
   // 탭·수단·정렬·표시 건수를 바꾸면 페이지도 1로 — 3페이지에서 건수 적은 조건으로 옮기면 빈 목록이 뜬다
   const handleTabChange = useCallback(
@@ -214,14 +233,10 @@ export default function ConsumerManagement() {
           </div>
         </div>
 
-        {/*
-          행 클릭으로 상세에 가는 것이 시안이지만 소비자 상세(§25-4)는 아직 개발 범위가
-          아니다 — 서버 상세 응답이 구버전이라 마스킹 해제·본인확인 정보·배송지 목록이
-          모두 비어 있다. 상세가 준비되면 여기에 `onRowClick`을 붙인다.
-        */}
         <Table
           columns={CONSUMER_COLUMNS}
           data={consumerList?.content ?? []}
+          onRowClick={handleRowClick}
           pageInfo={pageInfo}
           isLoading={isLoading}
           emptyState={emptyState}

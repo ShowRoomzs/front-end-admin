@@ -25,6 +25,7 @@ import type {
   AdminContractSort,
   AdminContractTab,
 } from "@/features/contract/types";
+import { contractActionRequiredCount } from "@/features/contract/utils/summary";
 import { cn } from "@/lib/utils";
 import { useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -35,7 +36,7 @@ const SELECT_SM_CLASS =
 /**
  * A1·A2 — 어드민 계약 목록.
  *
- * 조치 큐(검토 대기 · 체결 처리 대기 · 만료 확인 · 재발송 요청)를 탭보다 위에 둔다 —
+ * 조치 큐(검토 대기 · 공구 생성 대기 · 만료 확인 · 해지 요청)를 탭보다 위에 둔다 —
  * 운영자는 처리할 것을 찾으러 온다. 큐를 고르면 서버가 탭·정렬보다 큐를 우선한다.
  * 목록에는 액션이 없다: 승인·반려·체결은 근거를 읽고 누르는 판단이라 행 클릭으로만 들어간다.
  * 운영자는 계약을 만들지 않으므로 주 CTA도 없다.
@@ -103,7 +104,8 @@ export default function ContractManagement() {
     [params.keyword, reset]
   );
 
-  const actionRequired = summary?.actionRequiredCount ?? 0;
+  // 서버 합계는 rev.8 ②로 뺀 「재발송 요청」까지 더해 화면 큐 합으로 다시 센다(GNB 배지와 같은 값)
+  const actionRequired = contractActionRequiredCount(summary);
 
   return (
     <ListViewWrapper>

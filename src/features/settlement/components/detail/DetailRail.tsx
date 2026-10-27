@@ -11,24 +11,27 @@ import {
 import {
   CONFIRM_REASON_TEXT,
   HISTORY_TONE,
-  RESIDENT_NUMBER_MISSING,
   TAX_INVOICE_UNVERIFIED,
 } from "@/features/settlement/constants/params";
+import { THREAD_PAGE_PATH } from "@/features/thread/constants/params";
 import type { SettlementDetail } from "@/features/settlement/types";
 import {
   elapsedDays,
   md,
+  mdDue,
   won,
   ymd,
   ymdhm,
+  ymdhmDue,
 } from "@/features/settlement/utils/format";
 import {
+  activeBlockReasons,
   brandInvoicesOf,
   creatorInvoiceOf,
   hasPendingEvidence,
-  isResidentNumberMissing,
 } from "@/features/settlement/utils/view";
 import type { ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
 type Detail = SettlementDetail;
 
@@ -77,12 +80,12 @@ function dateRows(detail: Detail): Array<{ label: string; value: ReactNode }> {
   switch (detail.status) {
     case "REVIEWING":
       return [
-        { label: "확인 마감", value: ymdhm(rail.reviewDueAt) },
+        { label: "확인 마감", value: ymdhmDue(rail.reviewDueAt) },
         { label: "지급(예정)일", value: "확정 후 계산" },
       ];
     case "ADJUSTING":
       return [
-        { label: "합의 기한", value: ymdhm(rail.deadlineAt) },
+        { label: "합의 기한", value: ymdhmDue(rail.deadlineAt) },
         { label: "지급(예정)일", value: "—" },
       ];
     default:
@@ -120,7 +123,7 @@ function HoldConditions(props: { detail: Detail }) {
   if (detail.overview.creatorBusinessType === "BUSINESS") {
     switch (invoice?.status) {
       case "SUBMITTED":
-        lines.push("✕ 세금계산서 확인 대기 — 인플루언서 지급 보류");
+        lines.push("✕ 세금계산서 대조 대기 — 인플루언서 지급 보류");
         break;
       case "REJECTED":
         lines.push("✕ 세금계산서 반려 · 재입력 대기 — 인플루언서 지급 보류");
@@ -131,24 +134,13 @@ function HoldConditions(props: { detail: Detail }) {
       default:
         lines.push(<TDim>✓ 세금계산서 확인</TDim>);
     }
-    lines.push(<TDim>✓ 주민번호 — 해당 없음(사업자)</TDim>);
   } else {
+    // 기-12 — 주민번호 미등록은 지급 보류 조건이 아니다(줄 자체를 두지 않는다)
     lines.push(<TDim>✓ 세금계산서 — 해당 없음(비사업자)</TDim>);
-    lines.push(
-      isResidentNumberMissing(detail) ? (
-        "✕ 주민번호 미등록 — 인플루언서 지급 보류"
-      ) : (
-        <TDim>✓ 주민번호 등록</TDim>
-      )
-    );
   }
-  // PG 파트너 등록 대기 · 예금주 불일치 등(포트원 설계서 4-3) — 서버 라벨을 그대로
-  detail.rail.blockReasons
-    .filter(
-      (reason) =>
-        reason.code !== RESIDENT_NUMBER_MISSING &&
-        reason.code !== TAX_INVOICE_UNVERIFIED
-    )
+  // PG 셀러 등록 대기 · 예금주 불일치 · 계정 정지 등 — 서버 라벨을 그대로
+  activeBlockReasons(detail)
+    .filter((reason) => reason.code !== TAX_INVOICE_UNVERIFIED)
     .forEach((reason) => lines.push(`✕ ${reason.label} — 지급 보류`));
   brandInvoicesOf(detail).forEach((doc) =>
     lines.push(
@@ -184,6 +176,8 @@ export function CurrentStateCard(props: {
 }) {
   const { detail, actions } = props;
   const { rail } = detail;
+  const navigate = useNavigate();
+  const blockReasons = activeBlockReasons(detail);
   const rows = [
     { label: "확정 거래액", value: `${won(rail.confirmedSalesAmount)}원` },
     { label: "브랜드 수취액", value: `${won(rail.brandPayoutAmount)}원` },
@@ -237,7 +231,7 @@ export function CurrentStateCard(props: {
       notice = (
         <WaitBox>
           <b>정산 확인 기간</b>입니다 —{" "}
-          <b className="tabular-nums">{md(rail.reviewDueAt)}</b>
+          <b className="tabular-nums">{mdDue(rail.reviewDueAt)}</b>
           까지 양측이 금액을 보고 <b>정산 조정</b>을 요청할 수 있습니다. 요청이
           없으면 다음 날 <b>자동 확정</b>됩니다.
         </WaitBox>
@@ -267,34 +261,37 @@ export function CurrentStateCard(props: {
             )}
             <br />
             보류 <b>전액</b> · 합의 기한{" "}
-            <b className="tabular-nums">{md(adjustment.deadlineAt)}</b> · 협의는{" "}
-            <b>이슈 스레드</b>에서 양측이 합니다.
+            <b className="tabular-nums">{mdDue(adjustment.deadlineAt)}</b> ·
+            협의는 <b>이슈 스레드</b>에서 양측이 합니다.
           </WaitBox>
           <Hint className="mt-0">
             양측이 이슈 스레드에서 <b>금액에 합의</b>하면 합의 금액으로 바뀌고{" "}
             <b>보류가 자동 해제</b>됩니다. 합의 기한(
-            <b className="tabular-nums">{md(adjustment.deadlineAt)}</b>)까지
+            <b className="tabular-nums">{mdDue(adjustment.deadlineAt)}</b>)까지
             합의가 없으면 <b>원래 금액</b>으로 확정됩니다 — 이 화면에서 해제하지
             않습니다.
           </Hint>
         </>
       );
-      // 어드민 이슈 스레드 화면이 아직 없다 — 자리만 두고 막는다
-      primary = (
+      // 20b 이슈 스레드로 같은 탭에서 연다(다른 상세의 스레드 링크와 같은 관례 · 「↗」는 다른 화면으로 간다는 표시)
+      primary = adjustment?.threadId ? (
         <Btn
           variant="secondary"
           className="w-full flex-1"
-          disabled
-          title="어드민 소통 스레드(이슈 스레드) 화면 준비 중"
+          onClick={() =>
+            navigate(`${THREAD_PAGE_PATH}?threadId=${adjustment.threadId}`)
+          }
         >
-          이슈 스레드 열기 ↗ · 준비 중
+          이슈 스레드 열기 ↗
         </Btn>
+      ) : (
+        download
       );
       break;
     }
     case "PAYOUT_SCHEDULED":
       notice =
-        hasPendingEvidence(detail) || rail.blockReasons.length > 0 ? (
+        hasPendingEvidence(detail) || blockReasons.length > 0 ? (
           <HoldConditions detail={detail} />
         ) : (
           <Hint className="mt-0">

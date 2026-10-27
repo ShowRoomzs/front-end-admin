@@ -49,6 +49,8 @@ export interface InquiryListParams extends BaseParams {
   /** null = 전체 유형 */
   type: CsCategoryCode | null;
   keyword: string;
+  /** 소비자 상세(13)의 칩에서 넘어온 진입 — 그 소비자의 문의만. 화면 필터에는 없다("" = 전체) */
+  userId: string;
 }
 
 /**

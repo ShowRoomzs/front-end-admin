@@ -59,6 +59,7 @@ export default function InquiryDetail() {
       status: (searchParams.get("status") ?? "ALL") as InquiryStatusFilter,
       type: (searchParams.get("type") || null) as CsCategoryCode | null,
       keyword: searchParams.get("keyword") ?? "",
+      userId: searchParams.get("userId") ?? "",
     }),
     [searchParams]
   );

@@ -2,7 +2,7 @@
   공구 관리(어드민) — 서버 `/v1/admin/group-buys` 응답을 그대로 옮긴 타입.
   근거: back-end `api/admin/groupbuy/dto/*` · `domain/groupbuy/type/*`.
 
-  판정 버튼(승인·반려·숨김·통지·집행·철회·긴급)은 서버 permissions로만 노출한다 —
+  판정 버튼(승인·반려·노출 중지·통지·집행·철회·긴급)은 서버 permissions로만 노출한다 —
   실행 API가 같은 판정으로 409를 내므로 FE가 조건을 복제하지 않는다.
 */
 
@@ -16,7 +16,9 @@ export type GroupBuyStatus =
   | "SUSPENSION_SCHEDULED"
   | "ENDED"
   | "SETTLED"
-  | "SUSPENDED";
+  | "SUSPENDED"
+  /** 계약 해지로 오픈 전 종결(1021 기-05) — 서버 main에 새로 생겼다. 탭은 「중단」에 묶인다 */
+  | "TERMINATED";
 
 export type GroupBuyPostStatus =
   | "NOT_WRITTEN"
@@ -25,6 +27,9 @@ export type GroupBuyPostStatus =
   | "REJECTED"
   | "SCHEDULED"
   | "EXPOSED"
+  /** 노출 중지 — 1021 기-08에서 서버 값이 HIDDEN → EXPOSURE_SUSPENDED로 바뀌었다 */
+  | "EXPOSURE_SUSPENDED"
+  /** 옛 서버 값(배포 서버가 main으로 올라가기 전까지 내려온다) — 「노출 중지」와 같이 그린다 */
   | "HIDDEN"
   | "CLOSED";
 
@@ -46,7 +51,12 @@ export type AdminGroupBuyQueue =
 
 export type GroupBuyActorType = "SELLER" | "CREATOR" | "ADMIN" | "SYSTEM";
 
-export type GroupBuyCloseType = "COMPLETED" | "EARLY_CLOSED" | "SUSPENDED";
+export type GroupBuyCloseType =
+  | "COMPLETED"
+  | "EARLY_CLOSED"
+  | "SUSPENDED"
+  /** 계약 해지로 오픈 전 종결(1021 기-05) */
+  | "CONTRACT_TERMINATED";
 
 export type PostRejectReason =
   | "AD_EFFECT_ASSERTION"
@@ -343,6 +353,16 @@ export interface AdminGroupBuyDetail {
       }>;
     } | null;
     appealDeadlinePassed: boolean;
+    /**
+     * 인플루언서 의견 — 운영팀 채널 사전 통지 카드 뒤 인플루언서 답글(1021 기-21 · B2c).
+     * main 신설 필드라 옛 배포 서버는 내리지 않는다(undefined). 카드가 없는 옛 통지 · 인플루언서 없는 공구는 null.
+     */
+    creatorOpinion?: {
+      threadId: number;
+      cardMessageId: number;
+      /** 카드 뒤 인플루언서가 남긴 메시지 수 — 0이면 「미제출」 */
+      replyCount: number;
+    } | null;
   } | null;
   afterEnd: {
     fulfillment: {
@@ -477,9 +497,9 @@ export interface PostRevision {
   createdAt: string;
   /** 운영자가 승인한 판 */
   approved: boolean;
-  /** 현재·마지막 숨김의 기준 판 */
+  /** 현재·마지막 노출 중지의 기준 판 */
   hiddenBasis: boolean;
-  /** 숨김 해제 판단에 쓴 판 */
+  /** 노출 중지 해제 판단에 쓴 판 */
   unhiddenBasis: boolean;
   /** 최근 직권 중단 통지의 기준 판 */
   noticeBasis: boolean;

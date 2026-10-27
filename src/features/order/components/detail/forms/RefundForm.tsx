@@ -29,7 +29,8 @@ import toast from "react-hot-toast";
  * 시안 B5 — 운영자 사유 환불(발송분 · 배송중 · 배송완료 · 구매확정). 이 화면은 **환불 대기 편입까지**이고
  * 집행은 환불 관리의 재확인 다이얼로그에서 한다. 서버는 항목 체크 + 수량 대신 **금액 하나**를 받고,
  * 사유는 위해성 리콜 · 구매확정 후 하자 2종이다(반려 이의 인용 · 검수 무응답은 반품·교환 화면 전용).
- * 금액 상한은 「결제 취소 가능 잔액 − 아직 나가지 않은 환불」이라 서버가 넘으면 409로 잔액을 알려 준다.
+ * 금액 상한은 서버 `payment.operatorRefundableAmount`(취소 가능 잔액 − 아직 나가지 않은 환불)다 — 버튼
+ * (`canEnqueueRefund`)과 편입 API의 409가 같은 식을 쓰므로 입력도 그 값에서 멈춘다. 결제가 없는 주문은 상한이 없다.
  */
 export default function RefundForm(props: {
   detail: AdminOrderDetail;
@@ -45,15 +46,24 @@ export default function RefundForm(props: {
 
   const group = groups.find((g) => g.deliveryGroupId === groupId);
   const amount = Number(amountText);
-  const cancellable = detail.payment
-    ? detail.payment.amount - detail.payment.cancelledAmount
-    : null;
+  const limit = detail.payment?.operatorRefundableAmount ?? null;
   const settled = Boolean(group?.settlement?.confirmedAt);
   const canSubmit =
     groupId > 0 &&
     Number.isInteger(amount) &&
     amount >= 1 &&
+    (limit === null || amount <= limit) &&
     detailText.trim().length > 0;
+
+  // 상한을 넘는 입력은 상한에서 멈춘다 — 넘겨 보내면 409라 받지 않는다
+  const handleAmountChange = (value: string) => {
+    const digits = value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+    if (limit !== null && digits && Number(digits) > limit) {
+      setAmountText(String(limit));
+      return;
+    }
+    setAmountText(digits);
+  };
 
   const handleSubmit = async () => {
     try {
@@ -121,14 +131,12 @@ export default function RefundForm(props: {
           placeholder="원 단위 숫자"
           className={cn(FORM_INPUT_CLASS, "tabular-nums")}
           value={amountText}
-          onChange={(event) =>
-            setAmountText(event.target.value.replace(/\D/g, ""))
-          }
+          onChange={(event) => handleAmountChange(event.target.value)}
         />
-        {cancellable !== null && (
+        {limit !== null && (
           <FormHint>
-            결제 취소 가능 잔액 {formatWon(cancellable)} — 아직 나가지 않은
-            환불만큼 줄어듭니다
+            최대 {formatWon(limit)} — 결제 취소 가능 잔액에서 아직 나가지 않은
+            환불을 뺀 금액
           </FormHint>
         )}
 

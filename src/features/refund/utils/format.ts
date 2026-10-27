@@ -20,3 +20,14 @@ export function formatMonthDayTime(value: string | null | undefined) {
 export function formatPeriod(days: number) {
   return days === 30 ? "최근 1개월" : `최근 ${days}일`;
 }
+
+/**
+ * 기-18 — 「교환비」 명칭 폐기 · 06c rev.6 「재발송 배송비」. 서버는 아직 「교환 재발송비(환불)」 ·
+ * 「반려 재발송비(환불)」를 내린다(경로 `sourceLabel` · M1 추가 결제 `typeLabel`) — 화면 표기만 시안대로
+ * 바꾼다. 교환 철회로 취소되는 추가 결제는 시안처럼 「재발송 배송비」, 반려 건은 「반려 재발송 배송비」.
+ */
+export function reshipText(label: string) {
+  return label
+    .replace(/^교환 재발송비( 환불)?/, "재발송 배송비")
+    .replace(/^반려 재발송비( 환불)?/, "반려 재발송 배송비");
+}

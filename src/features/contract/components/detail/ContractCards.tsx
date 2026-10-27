@@ -24,7 +24,10 @@ function termsNote(status: ContractStatus) {
       return "운영자는 조건을 고칠 수 없습니다 — 양측이 서명할 대상이 바뀌면 안 됩니다";
     case "REVIEW_REJECTED":
       return "반려로 브랜드 편집이 다시 열렸습니다 — 운영자는 이후에도 조건을 고칠 수 없습니다";
+    // 시안 B6 · B7 — 취소 · 해지로 닫힌 뒤에도 서명 진행중과 같은 캡션이다
     case "SIGNING":
+    case "CANCELED":
+    case "TERMINATED":
       return "서명이 시작돼 수정할 수 없습니다 — 서명 대상이 바뀌면 안 됩니다";
     case "CONCLUSION_PENDING":
       return "서명이 완료돼 수정할 수 없습니다";

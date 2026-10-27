@@ -5,6 +5,7 @@ import type {
   AdminContractCancelRequest,
   AdminContractRejectRequest,
   AdminContractSignatureRequest,
+  AdminContractTerminateRequest,
 } from "@/features/contract/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -58,11 +59,12 @@ export function useUpdateSignatures() {
   });
 }
 
-export function useConcludeContract() {
+/** 공구 생성(C4 · 기-05) — 계약은 양측 서명 때 이미 성립했고 이 조치는 공구를 만든다 */
+export function useCreateGroupBuy() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (contractId: number) =>
-      adminContractService.conclude(contractId),
+      adminContractService.createGroupBuy(contractId),
     onSuccess: invalidate,
   });
 }
@@ -84,11 +86,14 @@ export function useCancelContract() {
   });
 }
 
-export function useHandleResend() {
+/** 해지 처리(C7 · 기-05) — 생성된 공구도 함께 종결되므로 공구 화면 캐시는 다음 진입 때 새로 받는다 */
+export function useTerminateContract() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (contractId: number) =>
-      adminContractService.handleResend(contractId),
+    mutationFn: (v: {
+      contractId: number;
+      body: AdminContractTerminateRequest;
+    }) => adminContractService.terminate(v.contractId, v.body),
     onSuccess: invalidate,
   });
 }

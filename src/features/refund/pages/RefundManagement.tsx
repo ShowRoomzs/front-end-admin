@@ -6,10 +6,12 @@ import RefundFilterCard from "@/features/refund/components/list/RefundFilterCard
 import RefundTableBar from "@/features/refund/components/list/RefundTableBar";
 import ExecuteModal from "@/features/refund/components/modals/ExecuteModal";
 import RetryModal from "@/features/refund/components/modals/RetryModal";
+import TransferModal from "@/features/refund/components/modals/TransferModal";
 import Btn from "@/features/refund/components/shared/Btn";
 import { createRefundColumns } from "@/features/refund/constants/columns";
 import { REFUND_INITIAL_PARAMS } from "@/features/refund/constants/params";
 import {
+  useCompleteTransfer,
   useExecuteRefund,
   useGetRefundList,
   useGetRefundSummary,
@@ -25,8 +27,14 @@ import type {
 import { normalizeRefundParams } from "@/features/refund/utils/params";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-/** 다이얼로그 — 집행 재확인(M1) · 재시도(M2). 둘 다 행 버튼에서만 연다 */
-type Dialog = { kind: "execute" | "retry"; refundId: number } | null;
+/**
+ * 다이얼로그 — 집행 재확인(M1) · 재시도(M2) · 계좌 송금 처리(M3). 모두 행 버튼에서만 연다.
+ * M3는 송금액이 상세에 없어 목록 행을 함께 들고 간다.
+ */
+type Dialog =
+  | { kind: "execute" | "retry"; refundId: number }
+  | { kind: "transfer"; refundId: number; record: RefundItem }
+  | null;
 
 const EMPTY_COPY: Record<RefundTab, { title: string; description: string }> = {
   PENDING: {
@@ -71,6 +79,7 @@ export default function RefundManagement() {
   } = useGetRefundList(listParams);
   const { data: summary } = useGetRefundSummary();
   const executeMutation = useExecuteRefund();
+  const transferMutation = useCompleteTransfer();
 
   const pageInfo = usePaginationInfo({
     data: list?.pageInfo,
@@ -87,10 +96,19 @@ export default function RefundManagement() {
       setDialog({ kind: "retry", refundId: record.refundTaskId }),
     []
   );
+  const handleTransfer = useCallback(
+    (record: RefundItem) =>
+      setDialog({ kind: "transfer", refundId: record.refundTaskId, record }),
+    []
+  );
   const columns = useMemo(
     () =>
-      createRefundColumns({ onExecute: handleExecute, onRetry: handleRetry }),
-    [handleExecute, handleRetry]
+      createRefundColumns({
+        onExecute: handleExecute,
+        onRetry: handleRetry,
+        onTransfer: handleTransfer,
+      }),
+    [handleExecute, handleRetry, handleTransfer]
   );
 
   const closeDialog = useCallback(() => setDialog(null), []);
@@ -212,6 +230,26 @@ export default function RefundManagement() {
           isPending={pendingFor(dialog.refundId)}
           onClose={closeDialog}
           onConfirm={(detail) => confirm(detail, false)}
+        />
+      )}
+      {dialog?.kind === "transfer" && (
+        <TransferModal
+          record={dialog.record}
+          isPending={
+            transferMutation.isPending &&
+            transferMutation.variables?.refundTaskId === dialog.refundId
+          }
+          onClose={closeDialog}
+          onConfirm={(body) =>
+            transferMutation.mutate(
+              {
+                refundTaskId: dialog.refundId,
+                refundNo: dialog.record.refundNo,
+                body,
+              },
+              { onSuccess: () => closeDialogFor(dialog.refundId) }
+            )
+          }
         />
       )}
       {dialog?.kind === "retry" && (

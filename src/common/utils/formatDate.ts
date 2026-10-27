@@ -16,6 +16,19 @@ export function parseServerDateTime(date: string) {
   return hasTimeZone ? dayjs(date) : dayjs.utc(date).local();
 }
 
+/**
+ * KST 벽시계 값(입력 날짜 · 영업일 기한 — 23:59:59 · 00:00)을 읽는다. 이벤트 시각(`parseServerDateTime`)과 섞지 말 것.
+ *
+ * 서버는 이 값들을 Asia/Seoul 벽시계로 만들지만(`BusinessDayCalculator` · 정지 기간 · 이의 신청 기한 ·
+ * 정산 확인 마감 · 조정 합의 기한 · 오픈 승인 기한 등) `JacksonConfig`가 LocalDateTime 전부에 'Z'를
+ * 붙여 내린다(2026-10-27 실서버 확인). 'Z'를 믿으면 「10.30 23:59」가 「10.31 08:59」로 밀린다.
+ * 그래서 시간대 꼬리표를 떼고 벽시계 그대로 읽는다 — 백엔드가 +09:00을 붙이도록 고쳐도 그대로 맞는다.
+ * 백엔드가 이 값들을 「진짜 UTC」로 바꾸면 이 함수 본문만 `parseServerDateTime(value)`로 바꾼다.
+ */
+export function parseWallClock(value: string) {
+  return dayjs(value.replace(/(?:Z|[+-]\d{2}:?\d{2})$/, ""));
+}
+
 export function formatDate(date: string): string {
   return dayjs(date).format("YYYY/MM/DD HH:mm:ss");
 }

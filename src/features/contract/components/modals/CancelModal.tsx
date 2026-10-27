@@ -17,6 +17,10 @@ import {
   CANCEL_REQUEST_CHANNELS,
 } from "@/features/contract/constants/labels";
 import { SELECT_CHEVRON_STYLE } from "@/features/contract/constants/params";
+import {
+  CANCEL_CONSENT_CHECK,
+  CANCEL_WARN,
+} from "@/features/contract/constants/provisional";
 import type {
   AdminContractCancelRequest,
   AdminContractDetail,
@@ -50,7 +54,7 @@ interface CancelModalProps {
 function currentStateText(detail: AdminContractDetail) {
   const { contract, signature } = detail;
   if (contract.status === "CONCLUSION_PENDING") {
-    return "체결 처리 대기 · 양측 서명 완료";
+    return "공구 생성 대기 · 양측 서명 완료";
   }
   const brand = signature.brandSignedAt ? "브랜드 서명 완료" : "브랜드 대기";
   const creator = signature.creatorSignedAt
@@ -61,8 +65,10 @@ function currentStateText(detail: AdminContractDetail) {
 
 /**
  * 시안 C6 — 직권 취소. 검토 통과 이후 양측에게 취소 버튼이 없어 **소통 스레드 요청 → 운영자 직권**으로만
- * 들어온다. 사유·설명은 양측에 그대로 통지되므로 둘 다 필수이고, API 미도입이라 모두싸인 요청이
- * 살아 있으므로 **모두싸인 취소 확인 체크**를 받는다. 필수 미입력 → 버튼만 비활성.
+ * 들어온다. 사유·설명은 양측에 그대로 통지되므로 둘 다 필수이고, 체크가 둘이다(rev.9 기-06 【잠정】):
+ * **상대방 동의 확인**(운영팀 채널) + **모두싸인 취소 확인**(API 미도입이라 모두싸인 요청이 살아 있다).
+ * 둘 다 체크해야 버튼이 열린다 — 필수 미입력 → 버튼만 비활성. 서버는 직권(ADMIN)이면 동의 체크를 생략할 수
+ * 있게 두었지만 시안은 직권도 체크 2개를 요구하므로 FE가 항상 막고 `true`를 보낸다.
  */
 export default function CancelModal(props: CancelModalProps) {
   const { detail, isPending, onClose, onOpenThread, onConfirm } = props;
@@ -72,6 +78,7 @@ export default function CancelModal(props: CancelModalProps) {
   );
   const [memo, setMemo] = useState("");
   const [withdrawn, setWithdrawn] = useState(false);
+  const [consent, setConsent] = useState(false);
   // 요청자 — 서버가 스레드에서 판정할 수 없어 운영자가 기록한다(28-1). 직권이면 경로·시각이 없다
   const [requester, setRequester] = useState<Requester | "">("");
   const [channel, setChannel] = useState<ContractCancelRequestChannel | "">("");
@@ -91,7 +98,11 @@ export default function CancelModal(props: CancelModalProps) {
       requestedAt !== null &&
       requestedAt <= nowServer);
   const canSubmit =
-    reasonCode !== "" && memo.trim().length > 0 && withdrawn && requesterValid;
+    reasonCode !== "" &&
+    memo.trim().length > 0 &&
+    consent &&
+    withdrawn &&
+    requesterValid;
 
   const requesterName =
     requester === "SELLER"
@@ -151,6 +162,7 @@ export default function CancelModal(props: CancelModalProps) {
                 requesterType: requester,
                 requestChannel: byParty && channel !== "" ? channel : null,
                 requestedAt: byParty ? requestedAt : null,
+                counterpartyConsentConfirmed: consent,
               })
             }
           >
@@ -244,17 +256,15 @@ export default function CancelModal(props: CancelModalProps) {
       />
       <MLabel required>확인</MLabel>
       <CheckBox>
+        <CheckListRow checked={consent} onChange={setConsent}>
+          {CANCEL_CONSENT_CHECK}
+        </CheckListRow>
         <CheckListRow checked={withdrawn} onChange={setWithdrawn}>
           모두싸인에서 <b className="font-semibold">서명 요청을 취소</b>했습니다
           — 여기서 종결해도 모두싸인의 요청은 자동으로 닫히지 않습니다
         </CheckListRow>
       </CheckBox>
-      <ModalWarn>
-        취소는 <b>종결 상태</b>입니다 — 되돌릴 수 없고 같은 조건으로 진행하려면
-        브랜드가 <b>새 계약을 작성</b>해야 합니다. 사유와 설명은{" "}
-        <b>양측에 통지</b>되고 요청 스레드에 답글로 남습니다. 이미 서명한 쪽의
-        서명도 효력을 잃습니다.
-      </ModalWarn>
+      <ModalWarn>{CANCEL_WARN}</ModalWarn>
     </ModalShell>
   );
 }

@@ -14,7 +14,9 @@ const BASE_PATH = "/admin/product-inquiries";
 export const productInquiryService = {
   getProductInquiryList: async (params: ProductInquiryListParams) => {
     const { data: response } =
-      await apiInstance.get<ProductInquiryListResponse>(BASE_PATH, { params });
+      await apiInstance.get<ProductInquiryListResponse>(BASE_PATH, {
+        params: { ...params, userId: params.userId || undefined },
+      });
     return response;
   },
   getProductInquiryTypes: async () => {
@@ -29,7 +31,7 @@ export const productInquiryService = {
   ) => {
     const { data: response } = await apiInstance.get<ProductInquiryDetail>(
       `${BASE_PATH}/${inquiryId}`,
-      { params }
+      { params: { ...params, userId: params.userId || undefined } }
     );
     return response;
   },

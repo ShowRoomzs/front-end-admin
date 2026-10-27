@@ -29,7 +29,7 @@ interface ChangeRequestTabFilterProps {
   onSearch: () => void;
 }
 
-/** 좌측 상태 탭 + 우측 브랜드명 검색. 입점 심사 목록의 필터 카드와 같은 규격이다 */
+/** 좌측 상태 탭 + 우측 브랜드명 · 쇼룸명 검색(rev.7). 입점 심사 목록의 필터 카드와 같은 규격이다 */
 export default function ChangeRequestTabFilter(
   props: ChangeRequestTabFilterProps
 ) {
@@ -77,7 +77,7 @@ export default function ChangeRequestTabFilter(
               onSearch();
             }
           }}
-          placeholder="브랜드명 검색"
+          placeholder="브랜드명 · 쇼룸명 검색"
           className="h-8 w-[180px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
         />
         <button

@@ -10,10 +10,22 @@ import type { ClaimDetail } from "@/features/claim/types";
 
 const NONE = "조치할 것이 없습니다 — ";
 
+/**
+ * 【잠정】 기-17 자동 입고 — 택배 도착 후 N영업일이 지나면 시스템이 입고 처리한다(06b rev.5 B1 레일).
+ * N은 서버 설정(`order.claim.auto-receive-business-days`)인데 응답에 값이 없어(백엔드 요청) 시안 그대로
+ * 「N영업일 [정책값 미정]」으로 둔다 — 숫자를 하드코딩하지 않는다.
+ */
+export const AUTO_RECEIVE_TEXT = {
+  rule: "택배 도착 후 N영업일",
+  unset: "[정책값 미정]",
+  done: "자동 입고됨 · 택배 도착 후 N영업일 경과",
+} as const;
+
 export function operatorGuide(detail: ClaimDetail): string {
   const row = detail.claim.summary;
   if (row.openedByOperator && row.stage === "COLLECT_WAIT") {
-    return "개설 뒤로는 **일반 반품과 같은 흐름**입니다 — 소비자 회수 송장 입력 → 브랜드 검수 → 통과 시 PG 자동 환불. 브랜드가 검수에서 반려하면 소비자 이의는 반려 보류 건과 같은 경로로 받습니다.";
+    // 시안 06b rev.7 B4(기-93) — 「소비자 이의는 B2와 같은 경로」의 B2만 화면 말로 바꿨다
+    return "개설 뒤로는 **일반 반품과 같은 흐름**입니다 — 소비자 회수 송장 입력 → 브랜드 검수 → 통과 시 PG 자동 환불. 브랜드가 검수에서 귀책을 소비자로 바꿀 수 있고, 그 경우 **운임 정산**으로 착불 운임을 소비자에게 청구합니다(환불액에서 차감 · 브랜드 정산에 「+ 운임 정산」). 소비자 이의는 반려 보류 건과 같은 경로로 받습니다.";
   }
   if (row.outcome) {
     switch (row.outcome.code) {

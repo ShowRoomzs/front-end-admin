@@ -19,7 +19,7 @@ import type { IssuePanel as IssuePanelData } from "@/features/thread/types";
 import {
   formatAmount,
   formatDateTime,
-  formatMonthDay,
+  formatKstMonthDay,
   won,
 } from "@/features/thread/utils/format";
 import { toBadgeVariant } from "@/features/thread/utils/tone";
@@ -149,7 +149,7 @@ export default function IssuePanel(props: IssuePanelProps) {
                 )}
               </Row>
             )}
-          {issue.status === "EXPIRED" && (
+          {(issue.status === "EXPIRED" || issue.status === "WITHDRAWN") && (
             <Row label="확정 금액">
               <b className="tabular-nums">
                 {won(
@@ -179,6 +179,13 @@ export default function IssuePanel(props: IssuePanelProps) {
             {issue.status === "EXPIRED" && (
               <>
                 합의가 없어 <b className="text-sz-n-900">원래 금액</b>으로
+                확정됐습니다.
+              </>
+            )}
+            {/* 기-14 요청 철회 — 시안 20b에 없는 상태라 만료 문장의 틀을 따른다 */}
+            {issue.status === "WITHDRAWN" && (
+              <>
+                요청이 철회돼 <b className="text-sz-n-900">원래 금액</b>으로
                 확정됐습니다.
               </>
             )}
@@ -219,7 +226,7 @@ export default function IssuePanel(props: IssuePanelProps) {
           </Row>
           <Row label="합의 기한">
             <span className="tabular-nums">
-              {formatMonthDay(issue.deadlineAt)}
+              {formatKstMonthDay(issue.deadlineAt)}
               {issue.status === "OPEN" &&
                 issue.remainingBusinessDays !== null &&
                 ` · D-${issue.remainingBusinessDays}`}

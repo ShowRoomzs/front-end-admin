@@ -99,6 +99,20 @@ export interface ExceptionItem {
   /** 처리 주체 — 배송 예외만 · CS 답변 문장 */
   handlerLabel: string | null;
   link: ExceptionLink;
+  /**
+   * 【서버 없음】 추적 정지 · 소비자 선택(06d rev.5 기-15) — `AdminOrderExceptionDto.ExceptionItem`에
+   * 아직 없다(main 주문 상세 `AdminOrderDto.StallChoice`와 같은 모양으로 요청). DEV 목업(`?mock=stall`)만 채운다.
+   */
+  stallChoice?: ExceptionStallChoice | null;
+}
+
+/** 【서버 없음】 `AdminOrderStallChoice`와 같은 모양으로 요청한다 */
+export interface ExceptionStallChoice {
+  state: "WAITING" | "OPEN" | "CHOSEN";
+  /** 선택 개방까지 N일 — 값이 없으면 「N일 [정책값 미정]」 */
+  daysUntilOpen: number | null;
+  /** 「재발송」 · 「환불」 */
+  choiceLabel: string | null;
 }
 
 /** `ExceptionPage` — 목록 응답. `asOf`는 경과 · 다음 회차 계산의 서버 기준 시각 */

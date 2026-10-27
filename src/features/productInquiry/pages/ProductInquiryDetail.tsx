@@ -76,6 +76,7 @@ export default function ProductInquiryDetail() {
         "ALL") as ProductInquiryStatusFilter,
       type: (searchParams.get("type") || null) as ProductInquiryTypeCode | null,
       keyword: searchParams.get("keyword") ?? "",
+      userId: searchParams.get("userId") ?? "",
     }),
     [searchParams]
   );

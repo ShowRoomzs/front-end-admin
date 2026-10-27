@@ -9,6 +9,11 @@ import {
   ModalWarn,
   MODAL_SUMMARY_CLASS,
 } from "@/features/contract/components/modals/ModalParts";
+import {
+  SIGNATURE_DEADLINE_DAYS_BEFORE_START,
+  SIGNATURE_DEADLINE_SUGGEST_TIME,
+} from "@/features/contract/constants/params";
+import { suggestedDeadlineParts } from "@/features/contract/utils/contractView";
 import type {
   AdminContractApproveRequest,
   AdminContractDetail,
@@ -35,7 +40,8 @@ interface ApproveModalProps {
 /**
  * 시안 C1 — 검토 승인 · 서명 요청. 승인은 버튼 하나로 끝나지 않는다: API가 없어 운영자가
  * 모두싸인에 **먼저 올려 보낸 뒤** 승인한다. 체크 3항목(수신자 · 업로드 · 발송)은 기록이 아니라
- * 확인용이고, 발송 일시·서명 기한은 모두싸인에서 정해진 값을 옮겨 적는다(우리가 계산하지 않는다).
+ * 확인용이고, 발송 일시·서명 기한은 모두싸인에서 정해진 값을 옮겨 적는다. 서명 기한은 rev.9 기-07로
+ * 「공구 시작 3일 전 23:55」를 기본값으로 채워 두고 운영자가 확인한다(값의 주인은 여전히 모두싸인 입력).
  * 필수 미입력 → 에러 문구 없이 버튼만 비활성.
  */
 export default function ApproveModal(props: ApproveModalProps) {
@@ -43,11 +49,14 @@ export default function ApproveModal(props: ApproveModalProps) {
   const { contract } = detail;
   const [checks, setChecks] = useState([false, false, false]);
   const [sentAt, setSentAt] = useState<DateTimeParts>(() => toParts(null));
-  const [deadline, setDeadline] = useState<DateTimeParts>(() => ({
-    date: "",
-    hour: "23",
-    minute: "55",
-  }));
+  // 기-07 — 기본값은 공구 시작 N일 전 23:55. 운영자가 확인한 뒤 모두싸인에 같은 값을 넣는다(이미 지났으면 비운다)
+  const [deadline, setDeadline] = useState<DateTimeParts>(
+    () =>
+      suggestedDeadlineParts(detail) ?? {
+        date: "",
+        ...SIGNATURE_DEADLINE_SUGGEST_TIME,
+      }
+  );
 
   const sentValue = toServerDateTime(sentAt);
   const deadlineValue = toServerDateTime(deadline);
@@ -145,6 +154,12 @@ export default function ApproveModal(props: ApproveModalProps) {
         onChange={setSentAt}
       />
       <MLabel required>모두싸인에 설정한 서명 기한</MLabel>
+      <p className="mb-1.5 text-[11px] text-sz-n-500">
+        기본값 = 공구 시작 {SIGNATURE_DEADLINE_DAYS_BEFORE_START}일 전{" "}
+        {SIGNATURE_DEADLINE_SUGGEST_TIME.hour}:
+        {SIGNATURE_DEADLINE_SUGGEST_TIME.minute} — 확인 후 모두싸인 기한에 같은
+        값을 입력하세요.
+      </p>
       <DateTimeField
         ariaLabel="서명 기한"
         value={deadline}
