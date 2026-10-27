@@ -12,9 +12,14 @@ import { useGetRefundDetail } from "@/features/refund/hooks/useAdminRefund";
 import type {
   RefundAdditionalPayment,
   RefundDetail,
+  RefundFreightAdjustment,
   RefundSettlement,
 } from "@/features/refund/types";
-import { formatMonthDayTime, formatWon } from "@/features/refund/utils/format";
+import {
+  formatMonthDayTime,
+  formatWon,
+  reshipText,
+} from "@/features/refund/utils/format";
 
 interface ExecuteModalProps {
   refundId: number;
@@ -30,7 +35,7 @@ function AdditionalLine(props: { charge: RefundAdditionalPayment }) {
   const { charge } = props;
   return (
     <div>
-      {charge.typeLabel}{" "}
+      {reshipText(charge.typeLabel)}{" "}
       <b className="tabular-nums">{formatWon(charge.amount)}</b> ·{" "}
       {charge.statusLabel}
       {charge.note && <Sub>{` · ${charge.note}`}</Sub>}
@@ -66,19 +71,76 @@ function AdditionalPayments(props: {
   );
 }
 
+/** 측별 차감액 — 「브랜드 24,208원 · 인플루언서 2,720원」. 행이 없는 측(null)은 뺀다 */
+function clawbackSides(
+  brandAmount: number | null,
+  creatorAmount: number | null
+) {
+  return [
+    brandAmount !== null && `브랜드 ${formatWon(brandAmount)}`,
+    creatorAmount !== null && `인플루언서 ${formatWon(creatorAmount)}`,
+  ];
+}
+
+/**
+ * 운임 정산 행(06c rev.7~8 M1 · 기-93) — 소비자 → 브랜드 귀책: 최초 배송비 차감 취소(PG 환불액에 포함) +
+ * 선불 반품 운임 별도 환급(원래 결제액 초과분이면 운영자 계좌 송금 · 이 버튼 금액에 넣지 않는다).
+ * 서버 상세에 이 값이 없어(백엔드 요청) DEV 목업만 그린다.
+ */
+function FreightLine(props: { freight: RefundFreightAdjustment }) {
+  const { freight } = props;
+  if (freight.direction === "CHARGE_CONSUMER") {
+    return (
+      <>
+        브랜드 → 소비자 귀책 ·{" "}
+        <b className="tabular-nums">착불 운임 {formatWon(freight.amount)}</b>{" "}
+        환불액에서 차감<Sub> · 브랜드 정산 「+ 운임 정산」</Sub>
+      </>
+    );
+  }
+  return (
+    <>
+      소비자 → 브랜드 귀책 · 최초 배송비 차감 취소
+      <Sub> (전액 환불에 포함)</Sub> · 선불 반품 운임{" "}
+      <b className="tabular-nums">{formatWon(freight.amount)}</b> = 기본 배송비
+      편도 정액
+      {freight.transferRefundNo && (
+        <Sub>
+          {` — 원래 결제액 초과분이라 운영자 계좌 송금(${freight.transferRefundNo}) · 이 버튼에 포함되지 않음`}
+        </Sub>
+      )}
+    </>
+  );
+}
+
+/**
+ * 정산 행 — 정산 확정 건이면 시안대로 「클로백(다음 정산 차감)」을 적는다.
+ * 집행 전(M1)은 서버 예정액 `expectedClawback`, 집행 후는 실제 차감 행 `clawback`.
+ * 둘 다 없으면(정산 전 · 차감 대상 아님) 서버 문구만 흐리게 둔다.
+ */
 function SettlementLine(props: { settlement: RefundSettlement }) {
   const { settlement } = props;
-  if (!settlement.clawback) return <Dim>{settlement.stateLabel}</Dim>;
-  // 이미 정산된 돈 — 다음 정산에서 차감한다
+  const { clawback, expectedClawback } = settlement;
+  if (!clawback && !expectedClawback) {
+    return <Dim>{settlement.stateLabel}</Dim>;
+  }
+  const brandAmount = (clawback ?? expectedClawback)?.brandAmount ?? null;
+  const creatorAmount = (clawback ?? expectedClawback)?.creatorAmount ?? null;
+  const hasAmount = brandAmount !== null || creatorAmount !== null;
+  const total = (brandAmount ?? 0) + (creatorAmount ?? 0);
+  // 이미 정산된 돈 — 다음 정산에서 브랜드 · 인플루언서 몫을 차감한다
   return (
     <>
       <span className="font-medium text-sz-warning-text">
-        {settlement.stateLabel}
+        클로백 {hasAmount && <b className="tabular-nums">{formatWon(total)}</b>}
       </span>
       <Sub>
         {[
+          "다음 정산 차감",
+          ...clawbackSides(brandAmount, creatorAmount),
           settlement.settlementNumber,
-          `${settlement.clawback.clawbackNumber} ${settlement.clawback.statusLabel}`,
+          // 집행 전 예정액이면 차감 번호가 아직 없다 — 시안에 자리가 없는 문구는 쓰지 않는다
+          clawback && `${clawback.clawbackNumber} ${clawback.statusLabel}`,
         ]
           .filter(Boolean)
           .map((part) => ` · ${part}`)
@@ -184,6 +246,11 @@ export default function ExecuteModal(props: ExecuteModalProps) {
           <DialogRow label="추가 결제">
             <AdditionalPayments charges={detail.additionalPayments} />
           </DialogRow>
+          {detail.freightAdjustment && (
+            <DialogRow label="운임 정산">
+              <FreightLine freight={detail.freightAdjustment} />
+            </DialogRow>
+          )}
           <DialogRow label="정산">
             <SettlementLine settlement={detail.settlement} />
           </DialogRow>

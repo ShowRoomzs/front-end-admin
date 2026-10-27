@@ -3,22 +3,32 @@ import type {
   AdminContractQueue,
   AdminContractSort,
   AdminContractTab,
+  ContractStatus,
 } from "@/features/contract/types";
 
 export const CONTRACT_LIST_PATH = "/contract";
 
-/** 탭 6종 — 작성중·검토 반려는 운영자 조치 대상이 아니라 탭이 없다 */
+/**
+ * 탭 6종 — 작성중·검토 반려는 운영자 조치 대상이 아니라 탭이 없다.
+ * rev.9 기-05: 「체결 처리 대기」→「공구 생성 대기」, 「체결완료」→「계약 성립」(서버 라벨과 다르다 — `STATUS_LABEL_OVERRIDE`).
+ * 해지(TERMINATED)는 서버가 종료 탭에 센다.
+ */
 export const CONTRACT_TABS: Array<{ value: AdminContractTab; label: string }> =
   [
     { value: "ALL", label: "전체" },
     { value: "REVIEW_PENDING", label: "검토 대기" },
     { value: "SIGNING", label: "서명 진행중" },
-    { value: "CONCLUSION_PENDING", label: "체결 처리 대기" },
-    { value: "CONCLUDED", label: "체결완료" },
+    { value: "CONCLUSION_PENDING", label: "공구 생성 대기" },
+    { value: "CONCLUDED", label: "계약 성립" },
     { value: "CLOSED", label: "종료" },
   ];
 
-/** 조치 큐 4종 — 운영자는 처리할 것을 찾으러 온다(탭보다 위) */
+/**
+ * 조치 큐 — 운영자는 처리할 것을 찾으러 온다(탭보다 위).
+ * 시안 rev.9는 3개(검토 대기 · 공구 생성 대기 · 만료 확인)다. 「재발송 요청」은 rev.8 ②로 뺐다(20a 운영팀 채널 카드).
+ * 「해지 요청」은 시안에 없지만 서버가 큐(`TERMINATION`)로 세고, 파트너가 넣은 해지 요청이 이 화면에 들어올
+ * 다른 입구가 없어 4번째로 둔다(기획 확인 필요 · 문구 신규).
+ */
 export const CONTRACT_QUEUES: Array<{
   value: AdminContractQueue;
   label: string;
@@ -31,7 +41,7 @@ export const CONTRACT_QUEUES: Array<{
   },
   {
     value: "CONCLUSION",
-    label: "체결 처리 대기",
+    label: "공구 생성 대기",
     description: "양측 서명 완료 · PDF 업로드",
   },
   {
@@ -40,11 +50,15 @@ export const CONTRACT_QUEUES: Array<{
     description: "서명 기한 경과 · 수동 종결",
   },
   {
-    value: "RESEND",
-    label: "재발송 요청",
-    description: "소통 스레드 자동 등록",
+    value: "TERMINATION",
+    label: "해지 요청",
+    description: "계약 성립 후 공구 오픈 전 · 상대방 동의 확인",
   },
 ];
+
+/** 화면 · GNB 배지가 합산하는 큐 — `RESEND`는 서버가 세도 빼고 센다 */
+export const CONTRACT_BADGE_QUEUES: Array<AdminContractQueue> =
+  CONTRACT_QUEUES.map((queue) => queue.value);
 
 export const CONTRACT_SORT_OPTIONS: Array<{
   value: AdminContractSort;
@@ -83,7 +97,7 @@ export const MODUSIGN_DASHBOARD_URL = "https://app.modusign.co.kr";
 /** 어드민 소통 스레드 화면(모니터링) — 서버 `link`가 가리키는 경로가 FE에 없어 여기로 보낸다 */
 export const THREAD_PATH = "/monitoring/threads";
 
-/** 공구 상태 라벨 — 서버 `GroupBuyStatus` */
+/** 공구 상태 라벨 — 서버 `GroupBuyStatus`(해지는 1021 기-05 신설) */
 export const GROUP_BUY_STATUS_LABEL: Record<string, string> = {
   PREPARING: "준비중",
   READY: "준비완료",
@@ -92,4 +106,26 @@ export const GROUP_BUY_STATUS_LABEL: Record<string, string> = {
   ENDED: "종료",
   SETTLED: "정산완료",
   SUSPENDED: "중단",
+  TERMINATED: "해지",
 };
+
+/**
+ * 계약 상태 표시 라벨 덮어쓰기(rev.9 기-05) — 서버 라벨 대신 시안 문구를 쓴다.
+ * 개발 서버(10-21)는 `CONCLUSION_PENDING`을 아직 「체결 처리 대기」로, main도 `CONCLUDED`를 「체결완료」로 내린다.
+ */
+export const STATUS_LABEL_OVERRIDE: Partial<Record<ContractStatus, string>> = {
+  CONCLUSION_PENDING: "공구 생성 대기",
+  CONCLUDED: "계약 성립",
+  TERMINATED: "해지",
+};
+
+/**
+ * 서명 기한 기본값(기-07) — 공구 시작 N일 전 그날 23:55. 시안 C1 「기본값 = 공구 시작 3일 전 23:55」.
+ * 【잠정】 · [정책값 미정] 표기가 없는 확정값이고 서버 설정키(`contract.signature-deadline-days-before-start`
+ * · `-suggest-time`)와 같은 값이다.
+ */
+export const SIGNATURE_DEADLINE_DAYS_BEFORE_START = 3;
+export const SIGNATURE_DEADLINE_SUGGEST_TIME = { hour: "23", minute: "55" };
+
+/** 해지 설명 최대 길이 — 서버 `TerminateRequest.explanation` @Size(max = 1000) */
+export const TERMINATE_EXPLANATION_MAX = 1000;

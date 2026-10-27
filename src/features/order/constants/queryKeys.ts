@@ -5,4 +5,5 @@ export const ORDER_QUERY_KEYS = {
   DELAY_COUNT: "admin-order-delay-count",
   BRAND_OPTIONS: "admin-order-brand-options",
   GROUP_BUY_OPTIONS: "admin-order-group-buy-options",
+  CREATOR_OPTIONS: "admin-order-creator-options",
 } as const;

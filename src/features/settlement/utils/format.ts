@@ -1,4 +1,5 @@
 import type { StatusBadgeVariant } from "@/common/components/StatusBadge/StatusBadge";
+import { parseWallClock } from "@/common/utils/formatDate";
 import type { Tone } from "@/features/settlement/types";
 import dayjs from "dayjs";
 
@@ -29,6 +30,26 @@ export function md(value: string | null | undefined): string {
 /** 2026.08.31 09:02 */
 export function ymdhm(value: string | null | undefined): string {
   return value ? dayjs(value).format("YYYY.MM.DD HH:mm") : "—";
+}
+
+/*
+  기한(정산 확인 마감 · 조정 합의 기한 · 증빙 기한)은 서버가 영업일에 23:59:59를 붙인 KST 벽시계다.
+  위 함수들은 서버가 붙인 'Z'를 믿어 9시간 밀리므로(10.30 23:59 → 10.31 08:59) 기한은 아래 함수로 읽는다.
+*/
+
+/** 기한 · 08.31 */
+export function mdDue(value: string | null | undefined): string {
+  return value ? parseWallClock(value).format("MM.DD") : "—";
+}
+
+/** 기한 · 08.31 23:59 */
+export function mdhmDue(value: string | null | undefined): string {
+  return value ? parseWallClock(value).format("MM.DD HH:mm") : "—";
+}
+
+/** 기한 · 2026.08.31 23:59 */
+export function ymdhmDue(value: string | null | undefined): string {
+  return value ? parseWallClock(value).format("YYYY.MM.DD HH:mm") : "—";
 }
 
 /** 요율 0.033 → 「3.3%」(서버 BigDecimal 요율) */

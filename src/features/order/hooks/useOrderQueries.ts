@@ -1,4 +1,3 @@
-import { adminGroupBuyService } from "@/features/groupBuy/services/adminGroupBuyService";
 import { ORDER_QUERY_KEYS } from "@/features/order/constants/queryKeys";
 import { orderService } from "@/features/order/services/orderService";
 import type {
@@ -21,7 +20,7 @@ export function useGetOrderList(query: AdminOrderListQuery) {
   });
 }
 
-/** 탭 건수 — 목록과 같은 조건으로 함께 부른다 */
+/** 탭 · 상태 · 이상 유형 건수 — 목록과 같은 조건으로 함께 부른다 */
 export function useGetOrderSummary(query: AdminOrderSummaryQuery) {
   return useQuery({
     queryKey: [ORDER_QUERY_KEYS.SUMMARY, query],
@@ -72,29 +71,38 @@ export function useGetOrderBrandOptions(enabled: boolean) {
   });
 }
 
-/**
- * 상세 조건 「공구」 — 브랜드에 종속. 공구 목록 응답에 마켓 id가 없어 브랜드명으로 검색한 뒤
- * 브랜드명이 정확히 같은 공구만 남긴다.
- */
-export function useGetOrderGroupBuyOptions(brandName: string | undefined) {
+/** 상세 조건 「공구」 — 브랜드에 종속(`GET /v1/admin/group-buys?marketId=`) */
+export function useGetOrderGroupBuyOptions(marketId: string) {
   return useQuery({
-    queryKey: [ORDER_QUERY_KEYS.GROUP_BUY_OPTIONS, brandName],
+    queryKey: [ORDER_QUERY_KEYS.GROUP_BUY_OPTIONS, marketId],
     queryFn: async () => {
-      const data = await adminGroupBuyService.getList({
-        tab: "ALL",
-        keyword: brandName ?? "",
-        sort: "CREATED_DESC",
-        page: 1,
-        size: OPTION_PAGE_SIZE,
-      });
-      return data.content
-        .filter((groupBuy) => groupBuy.brandName === brandName)
-        .map((groupBuy) => ({
-          id: String(groupBuy.groupBuyId),
-          title: groupBuy.title,
-        }));
+      const content = await orderService.getGroupBuyOptions(Number(marketId));
+      return content.map((groupBuy) => ({
+        id: String(groupBuy.groupBuyId),
+        title: groupBuy.title,
+      }));
     },
-    enabled: Boolean(brandName),
+    enabled: Boolean(marketId),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+}
+
+/**
+ * 상세 조건 「인플루언서」 — 시안은 브랜드에 종속시키지 않았다(종속은 공구만)라 `marketId` 없이 받는다.
+ * 이름은 칩에도 쓰이므로 펼치지 않아도 인플루언서가 걸려 있으면 받는다.
+ */
+export function useGetOrderCreatorOptions(enabled: boolean) {
+  return useQuery({
+    queryKey: [ORDER_QUERY_KEYS.CREATOR_OPTIONS],
+    queryFn: async () => {
+      const data = await orderService.getCreatorOptions();
+      return data.map((creator) => ({
+        id: String(creator.creatorId),
+        name: creator.showroomName ?? `#${creator.creatorId}`,
+      }));
+    },
+    enabled,
     staleTime: 5 * 60_000,
     retry: false,
   });

@@ -32,7 +32,9 @@ interface OrderFilterProps {
   summary: AdminOrderSummary | undefined;
   /** 상세 조건 「브랜드」 — 어드민 마켓 목록 */
   brands: Array<{ id: string; name: string }> | undefined;
-  /** 상세 조건 줄이 펼쳐져 있다 — 브랜드 목록은 펼칠 때 받는다 */
+  /** 상세 조건 「인플루언서」 — 공구를 연 인플루언서 */
+  creators: Array<{ id: string; name: string }> | undefined;
+  /** 상세 조건 줄이 펼쳐져 있다 — 브랜드 · 인플루언서 목록은 펼칠 때 받는다 */
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   range: { from: string; to: string };
@@ -49,8 +51,7 @@ const QMORE =
  * 접힘을 열면 3줄이 같은 카드 안에서 늘어난다(별도 패널·드로어 없음).
  * 접힘은 조건을 숨기는 장치가 아니라 자리를 아끼는 장치라, 걸린 조건은 접어도 칩으로 남는다.
  *
- * API와 다른 점 — 셀렉트 옵션 옆 건수는 서버가 탭 건수만 주므로 붙이지 않는다. 인플루언서는 고를
- * 목록(크리에이터 id) API가 없어 셀렉트를 뺐고, 다른 화면에서 `creatorId`로 넘어온 경우만 칩으로 보인다.
+ * 상태 · 이상 유형 셀렉트의 옵션 옆 숫자는 요약 `statusCounts` · `deliveryIssueCounts`다.
  * 취소 탭은 서버에 취소 유형 축이 없어 셀렉트를 두지 않는다.
  */
 export default function OrderFilter(props: OrderFilterProps) {
@@ -61,6 +62,7 @@ export default function OrderFilter(props: OrderFilterProps) {
     onSearch,
     summary,
     brands,
+    creators,
     expanded,
     onExpandedChange,
     range,
@@ -69,10 +71,11 @@ export default function OrderFilter(props: OrderFilterProps) {
   } = props;
 
   const brandName = brands?.find((b) => b.id === params.marketId)?.name;
-  const { data: groupBuys } = useGetOrderGroupBuyOptions(brandName);
+  const { data: groupBuys } = useGetOrderGroupBuyOptions(params.marketId);
   const groupBuyTitle = groupBuys?.find(
     (g) => g.id === params.groupBuyId
   )?.title;
+  const creatorName = creators?.find((c) => c.id === params.creatorId)?.name;
   const payMethodLabel = ORDER_PAYMENT_METHODS.find(
     (p) => p.value === params.paymentMethod
   )?.label;
@@ -96,7 +99,7 @@ export default function OrderFilter(props: OrderFilterProps) {
   if (params.creatorId) {
     chips.push({
       key: "creator",
-      label: `인플루언서 #${params.creatorId}`,
+      label: `인플루언서 ${creatorName ?? `#${params.creatorId}`}`,
       clear: () => onChange({ creatorId: "" }),
     });
   }
@@ -110,6 +113,16 @@ export default function OrderFilter(props: OrderFilterProps) {
 
   // 건수는 서버가 내려준 값만 보인다 — 불러오기 전에는 가짜 0을 그리지 않는다
   const tabCount = (tab: AdminOrderTab) => summary?.tabCounts[tab];
+  const axisOptions =
+    params.tab === "DELIVERY_ISSUE"
+      ? ORDER_ISSUE_OPTIONS.map((item) => ({
+          ...item,
+          count: summary?.deliveryIssueCounts[item.value],
+        }))
+      : ORDER_STATUS_OPTIONS.map((item) => ({
+          ...item,
+          count: summary?.statusCounts[item.value],
+        }));
 
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 rounded-[8px] border border-sz-n-200 bg-white px-4 py-3">
@@ -162,12 +175,11 @@ export default function OrderFilter(props: OrderFilterProps) {
             <option value="">
               {params.tab === "DELIVERY_ISSUE" ? "이상 유형 전체" : "상태 전체"}
             </option>
-            {(params.tab === "DELIVERY_ISSUE"
-              ? ORDER_ISSUE_OPTIONS
-              : ORDER_STATUS_OPTIONS
-            ).map((item) => (
+            {axisOptions.map((item) => (
               <option key={item.value} value={item.value}>
-                {item.label}
+                {item.count !== undefined
+                  ? `${item.label} ${item.count}`
+                  : item.label}
               </option>
             ))}
           </select>
@@ -339,6 +351,25 @@ export default function OrderFilter(props: OrderFilterProps) {
             {(groupBuys ?? []).map((groupBuy) => (
               <option key={groupBuy.id} value={groupBuy.id}>
                 {groupBuy.title}
+              </option>
+            ))}
+          </select>
+          <span className={cn(FLAB, "ml-2.5")}>인플루언서</span>
+          <select
+            aria-label="인플루언서"
+            className={cn(SELECT_SM_CLASS, "w-[160px]")}
+            style={SELECT_CHEVRON_STYLE}
+            value={params.creatorId}
+            onChange={(event) => onChange({ creatorId: event.target.value })}
+          >
+            <option value="">인플루언서 전체</option>
+            {/* 받은 목록 밖의 인플루언서로 들어와도 고른 값이 빈칸으로 보이지 않게 남긴다 */}
+            {params.creatorId && !creatorName && (
+              <option value={params.creatorId}>#{params.creatorId}</option>
+            )}
+            {(creators ?? []).map((creator) => (
+              <option key={creator.id} value={creator.id}>
+                {creator.name}
               </option>
             ))}
           </select>

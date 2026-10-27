@@ -16,6 +16,8 @@ import {
   HIDE_REASON_OPTIONS,
   ISSUE_TYPE_OPTIONS,
   REJECT_REASON_OPTIONS,
+  SETTLEMENT_PAYOUT_PERIOD_TEXT,
+  SETTLEMENT_REVIEW_PERIOD_TEXT,
   WITHDRAW_OPTIONS,
 } from "@/features/groupBuy/constants/params";
 import {
@@ -119,8 +121,8 @@ export function ApproveOpenModal(props: ModalBase & { onConfirm: () => void }) {
       )}
       <MWarn info>
         승인 후에는 <B>인플루언서가 재승인 없이 본문을 수정</B>합니다. 문제가
-        생기면 <B>게시물 숨김</B>으로 노출을 끊습니다. 고정 지급비는 브랜드 직접
-        지급이라 승인과 무관합니다.
+        생기면 <B>게시물 노출 중지</B>로 노출을 끊습니다. 고정 지급비는 브랜드
+        직접 지급이라 승인과 무관합니다.
       </MWarn>
     </GbModal>
   );
@@ -202,7 +204,7 @@ export function RejectOpenModal(
   );
 }
 
-// ── M5 게시물 숨김 · 숨김 해제 ───────────────────────
+// ── M5 게시물 노출 중지 · 노출 중지 해제(1021 기-08 · 서버 경로 /post/hide · /post/unhide는 그대로) ──
 
 export function HidePostModal(
   props: ModalBase & { onConfirm: (body: PostHideBody) => void }
@@ -214,7 +216,8 @@ export function HidePostModal(
   const isValid = reasonCode !== "" && detailText.trim() !== "";
   return (
     <GbModal
-      title="공구 게시물을 숨길까요?"
+      // 시안 rev.7 M5 제목은 「숨길까요?」가 남은 채다 — 버튼 · 상태명(노출 중지)과 맞춘다
+      title="공구 게시물 노출을 중지할까요?"
       width={560}
       onClose={onClose}
       footer={
@@ -234,17 +237,17 @@ export function HidePostModal(
                 })
               }
             >
-              게시물 숨김
+              게시물 노출 중지
             </Btn>
           }
         />
       }
     >
       {beforeStart ? (
-        // 준비완료에서도 숨길 수 있다 — 시작 전에 문제를 발견하면 숨긴 채로 열리게 한다
+        // 준비완료에서도 노출을 중지할 수 있다 — 시작 전에 문제를 발견하면 노출 중지 상태로 열리게 한다
         <>
-          <B>{detail.groupBuy.title}</B>의 게시물을 <B>숨긴 채로 시작</B>되게
-          합니다 — 공구는 <B>준비완료 그대로</B>이고 시작 시각에 열리지만
+          <B>{detail.groupBuy.title}</B>의 게시물을 <B>노출 중지 상태로 시작</B>
+          되게 합니다 — 공구는 <B>준비완료 그대로</B>이고 시작 시각에 열리지만
           소비자에게 게시물이 보이지 않습니다.
         </>
       ) : (
@@ -254,7 +257,7 @@ export function HidePostModal(
           주문·배송은 계속됩니다.
         </>
       )}
-      <MLabel required>숨김 사유</MLabel>
+      <MLabel required>노출 중지 사유</MLabel>
       <MSelect
         value={reasonCode}
         onChange={(event) =>
@@ -281,19 +284,19 @@ export function HidePostModal(
       </MHint>
       {beforeStart ? (
         <MWarn>
-          숨기면 게시물 상태가 <B>숨김</B>이 되고, 시작 시각이 지나도{" "}
-          <B>소비자가 이 공구를 볼 경로가 없습니다</B> — 시작 전에 해제하지
-          않으면 판매가 사실상 열리지 않습니다. 인플루언서가 본문을 고치면{" "}
-          <B>운영자가 숨김을 해제</B>해야 노출됩니다.
+          노출을 중지하면 게시물 상태가 <B>노출 중지</B>가 되고, 시작 시각이
+          지나도 <B>소비자가 이 공구를 볼 경로가 없습니다</B> — 시작 전에
+          해제하지 않으면 판매가 사실상 열리지 않습니다. 인플루언서가 본문을
+          고치면 <B>운영자가 노출 중지를 해제</B>해야 노출됩니다.
         </MWarn>
       ) : (
         <MWarn>
-          숨기면 소비자 화면에서 <B>즉시 내려가고</B> 게시물 상태가 <B>숨김</B>
-          이 됩니다. <B>공구는 진행중 그대로</B>라 소비자가 이미 담은 주문과
-          배송은 영향받지 않지만,{" "}
+          노출을 중지하면 소비자 화면에서 <B>즉시 내려가고</B> 게시물 상태가{" "}
+          <B>노출 중지</B>가 됩니다. <B>공구는 진행중 그대로</B>라 소비자가 이미
+          담은 주문과 배송은 영향받지 않지만,{" "}
           <B>새 소비자가 이 공구를 볼 경로가 사라집니다</B> — 판매가 사실상
           멈추므로 오래 두지 마세요. 인플루언서가 본문을 고치면{" "}
-          <B>운영자가 숨김을 해제</B>해야 다시 노출됩니다.
+          <B>운영자가 노출 중지를 해제</B>해야 다시 노출됩니다.
         </MWarn>
       )}
     </GbModal>
@@ -305,14 +308,14 @@ export function UnhidePostModal(props: ModalBase & { onConfirm: () => void }) {
   const hidden = detail.post.hidden;
   return (
     <GbModal
-      title="게시물 숨김을 해제할까요?"
+      title="게시물 노출 중지를 해제할까요?"
       onClose={onClose}
       footer={
         <Footer
           onClose={onClose}
           confirm={
             <Btn variant="primary" isLoading={isPending} onClick={onConfirm}>
-              숨김 해제
+              노출 중지 해제
             </Btn>
           }
         />
@@ -321,10 +324,10 @@ export function UnhidePostModal(props: ModalBase & { onConfirm: () => void }) {
       <B>{detail.groupBuy.title}</B>의 게시물을 <B>다시 노출</B>합니다.
       {hidden && (
         <div className="mt-2.5 rounded-[6px] bg-sz-n-50 px-3 py-2.5 text-[11px] leading-[1.8] text-sz-n-700">
-          숨김 사유 · <B>{hidden.label ?? hidden.code}</B>
+          노출 중지 사유 · <B>{hidden.label ?? hidden.code}</B>
           <br />
-          {md(hidden.hiddenAt)} 숨김 · {hidden.hiddenDays}일 경과 · 숨김 당시{" "}
-          {hidden.revisionNo ?? "—"}판 → 현재{" "}
+          {md(hidden.hiddenAt)} 노출 중지 · {hidden.hiddenDays}일 경과 · 노출
+          중지 당시 {hidden.revisionNo ?? "—"}판 → 현재{" "}
           {detail.post.latestRevisionNo ?? "—"}판
         </div>
       )}
@@ -468,8 +471,11 @@ export function NoticeModal(
       }
     >
       <B>{detail.groupBuy.title}</B>의 직권 중단을{" "}
-      <B>브랜드({detail.brand.name})에 예고</B>합니다 — 이 단계에서 판매는
-      멈추지 않습니다.
+      {/* 1021 기-21 — 통지 · 소명 기한은 양측에 간다(서버 main: 양측 운영팀 채널 카드 + 알림) */}
+      <B>
+        브랜드({detail.brand.name})와 인플루언서({detail.creator.name})에 예고
+      </B>
+      합니다 — 이 단계에서 판매는 멈추지 않습니다.
       {options && !options.available && (
         <MWarn>
           지금은 통지할 수 없습니다 —{" "}
@@ -596,8 +602,9 @@ export function NoticeModal(
         />
       )}
       <MHint>
-        기본값은 <B>통지 수신일 +3영업일</B>입니다(제17조④). 기한 내 미제출 시
-        기존 자료를 기준으로 최종 판정합니다.
+        기본값은 <B>통지 수신일 +3영업일</B>입니다(제17조④) ·{" "}
+        <B>양측 같은 기한</B>. 소명·의견은 <B>운영팀 채널</B>로 받고, 기한 내
+        미제출 시 기존 자료를 기준으로 최종 판정합니다.
       </MHint>
       <MLabel required>통지 본문</MLabel>
       <MTextarea
@@ -607,8 +614,9 @@ export function NoticeModal(
         onChange={(event) => setBody(event.target.value)}
       />
       <MHint>
-        브랜드에게 <B>그대로 노출</B>됩니다 — 무엇을 고쳐야 철회되는지 지목하지
-        않으면 소명이 겉돕니다.
+        양측 운영팀 채널에{" "}
+        <B>「직권 중단 사전 통지 · 소명 요청」 카드로 그대로 노출</B>됩니다 —
+        무엇을 고쳐야 철회되는지 지목하지 않으면 소명이 겉돕니다.
       </MHint>
       <MWarn info>
         이 모달은 <B>통지만 발송하며 공구는 멈추지 않습니다</B> — 집행 예정
@@ -1069,11 +1077,16 @@ export function ConfirmSettlementModal(
         />
       }
     >
+      {/*
+        서버 permissions.canConfirmSettlement가 열릴 때만 닿는다(지금은 항상 false · 정산 확인은 정산 관리 소관).
+        기한 표기는 07 정산 흐름(1021 기-10)에 맞춘다 — 「영업일 5일 내 이체」는 폐기된 옛 규칙이다.
+      */}
       <B>{detail.groupBuy.title}</B>의 정산을 <B>운영자 확인</B> 단계로
-      넘깁니다. 주문이 모두 종결되고 양측 이행 확인이 끝난 건입니다.
+      넘깁니다. 주문이 모두 종결된 건입니다.
       <MWarn info>
-        확인 후 <B>영업일 5일 내 이체</B>되고, 이체가 끝나면 공구가{" "}
-        <B>정산완료</B>가 됩니다.
+        정산 확인 기간 <B>{SETTLEMENT_REVIEW_PERIOD_TEXT}</B>이 지나 확정되면{" "}
+        <B>확정일 + {SETTLEMENT_PAYOUT_PERIOD_TEXT}</B>에 지급되고, 지급이
+        끝나면 공구가 <B>정산완료</B>가 됩니다.
       </MWarn>
     </GbModal>
   );
@@ -1081,12 +1094,12 @@ export function ConfirmSettlementModal(
 
 // ── 수정 전후 본문 대조(B2c 브랜드 소명 · 시안 ⑩ 변경 대조 표) ──
 
-/** 판본 표지 — 왜 이 판을 골라 봐야 하는지(통지 기준 · 승인 · 숨김 기준 · 최신) */
+/** 판본 표지 — 왜 이 판을 골라 봐야 하는지(통지 기준 · 승인 · 노출 중지 기준 · 최신) */
 function revisionTags(revision: PostRevision): Array<string> {
   const tags: Array<string> = [];
   if (revision.noticeBasis) tags.push("통지 기준");
   if (revision.approved) tags.push("승인");
-  if (revision.hiddenBasis) tags.push("숨김 기준");
+  if (revision.hiddenBasis) tags.push("노출 중지 기준");
   if (revision.unhiddenBasis) tags.push("해제 기준");
   if (revision.latest) tags.push("최신");
   return tags;
@@ -1102,7 +1115,7 @@ function revisionLabel(revision: PostRevision): string {
 }
 
 /**
- * 기본 대조 = 통지 기준 판 → 최신 판(서버 표지 그대로). 통지가 없으면 숨김 기준 · 승인 판 순.
+ * 기본 대조 = 통지 기준 판 → 최신 판(서버 표지 그대로). 통지가 없으면 노출 중지 기준 · 승인 판 순.
  * 그 판이 곧 최신 판이면 같은 판끼리 비교가 되므로 건너뛴다 — 다 건너뛰면 직전 판과 비교한다.
  */
 function defaultBaseNo(revisions: Array<PostRevision>): number | null {

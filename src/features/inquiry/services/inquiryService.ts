@@ -16,7 +16,7 @@ export const inquiryService = {
   getInquiryList: async (params: InquiryListParams) => {
     const { data: response } = await apiInstance.get<InquiryListResponse>(
       BASE_PATH,
-      { params }
+      { params: { ...params, userId: params.userId || undefined } }
     );
     return response;
   },
@@ -40,7 +40,7 @@ export const inquiryService = {
   getInquiryDetail: async (inquiryId: number, params: InquiryDetailParams) => {
     const { data: response } = await apiInstance.get<InquiryDetail>(
       `${BASE_PATH}/${inquiryId}`,
-      { params }
+      { params: { ...params, userId: params.userId || undefined } }
     );
     return response;
   },

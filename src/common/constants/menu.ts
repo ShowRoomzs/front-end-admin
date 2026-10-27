@@ -48,13 +48,13 @@ export const ADMIN_MENU: MenuConfig = {
         {
           id: "member-brand",
           label: "브랜드",
-          pageTitle: "브랜드 회원 관리",
+          // pageTitle을 두지 않아 label이 h1이 된다 — 시안 14 page-t가 「브랜드」다
           path: "/market/list",
         },
         {
           id: "member-influencer",
           label: "인플루언서",
-          pageTitle: "인플루언서 회원 관리",
+          // 시안 16 page-t가 「인플루언서」다
           path: "/showroom/list",
         },
         {
@@ -172,6 +172,13 @@ export const ADMIN_MENU: MenuConfig = {
           path: "/monitoring/threads",
         },
       ],
+    },
+    // 운영 지표(ui-admin-21 rev.5) — 시안 사이드바에서 게시물·소통 모니터링 다음, 설정 앞
+    {
+      id: "metrics",
+      label: "운영 지표",
+      // 기간 세그먼트가 제목 줄 우측에 붙어 화면이 h1을 직접 그린다(MainLayout SELF_TITLED_PATHS)
+      path: "/metrics",
     },
     {
       id: "settings",

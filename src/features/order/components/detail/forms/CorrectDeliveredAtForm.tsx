@@ -20,6 +20,7 @@ import type {
 import {
   parseDotDate,
   toDotDate,
+  toEventTime,
   toLocalDateTime,
 } from "@/features/order/utils/format";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,8 @@ export default function CorrectDeliveredAtForm(props: {
   const [reason, setReason] = useState("");
   const { mutateAsync, isPending } = useCorrectDeliveredAt();
 
-  const current = currentAt ? dayjs(currentAt) : null;
+  // 배송완료 · 확정 예정은 이벤트 시각(UTC) — 운영자 시각으로 바꿔 날짜를 비교하고, 보낼 때 다시 UTC로
+  const current = currentAt ? toEventTime(currentAt) : null;
   const parsed = parseDotDate(dateText);
   const unchanged = (current && parsed?.isSame(current, "day")) ?? false;
   const formatInvalid = dateText.length > 0 && !parsed;
@@ -70,7 +72,7 @@ export default function CorrectDeliveredAtForm(props: {
   const dueAt = group?.purchaseConfirm?.dueAt ?? null;
   const shiftedDue =
     dueAt && target && current
-      ? dayjs(dueAt).add(target.diff(current, "day"), "day")
+      ? toEventTime(dueAt).add(target.diff(current, "day"), "day")
       : null;
   const periodChange =
     target && current && target.isAfter(current, "day")
@@ -164,7 +166,7 @@ export default function CorrectDeliveredAtForm(props: {
           정정하면{" "}
           {shiftedDue && dueAt ? (
             <b>
-              구매확정 예정일이 {dayjs(dueAt).format("MM.DD")} →{" "}
+              구매확정 예정일이 {toEventTime(dueAt).format("MM.DD")} →{" "}
               {shiftedDue.format("MM.DD")}
             </b>
           ) : (

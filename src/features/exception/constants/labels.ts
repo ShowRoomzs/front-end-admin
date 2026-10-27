@@ -20,6 +20,18 @@ export const EXCEPTION_KINDS: Array<{
 ];
 
 /**
+ * 【잠정】 기-15 추적 정지 → 소비자 선택(재발송 / 환불) 개방 — 06d A2 경과 열 보조줄.
+ * 변호사 확인 뒤 문구가 바뀔 수 있어 한 곳에 둔다. N은 서버 값만 쓴다(없으면 「N일 [정책값 미정]」).
+ */
+export const STALL_CHOICE_NOTE = {
+  waitingPrefix: "선택 개방까지",
+  unsetDays: "N일",
+  unsetTag: "[정책값 미정]",
+  open: "소비자 선택 가능",
+  chosen: (choiceLabel: string | null) => `소비자 선택 · ${choiceLabel ?? "—"}`,
+} as const;
+
+/**
  * 배송 예외 유형 배지색 — 서버는 색을 내리지 않는다(40 설계서 1-2 「색(FE)」).
  * 시안 [상태색]: 집화 확인 필요 = 경고(24시간 판정), 추적 정지 · 반송 중 = 위험(소비자 물건이 멈춘 상태).
  * 회수 송장 미조회는 시안 예시가 없어 집화 확인과 같은 경고다(설계서 1-2).

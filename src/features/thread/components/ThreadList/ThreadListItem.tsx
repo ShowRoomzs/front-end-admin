@@ -85,6 +85,19 @@ export default function ThreadListItem(props: ThreadListItemProps) {
         </div>
         <div className="mt-0.5 truncate text-[11px] tabular-nums text-sz-n-500">
           {subLine(item)}
+          {/*
+            시안 A7 「소명 미확인」 — 정지 회원의 미확인 말풍선(서버가 목록 맨 위에 고정한다).
+            보조 줄 안에 들어가는 작은 배지라 공용 StatusBadge(11px · 9px 패딩) 대신 시안 인라인 값(10px · 0 6px)을 쓴다.
+            개발 서버(main 미배포)는 필드가 없어 그리지 않는다.
+          */}
+          {item.appealUnconfirmed && (
+            <>
+              {" · "}
+              <span className="inline-flex items-center whitespace-nowrap rounded-full bg-sz-warning-bg px-1.5 text-[10px] font-medium text-sz-warning-text">
+                소명 미확인
+              </span>
+            </>
+          )}
         </div>
         <div className="mt-1 flex items-center justify-between gap-2">
           {item.issue ? (

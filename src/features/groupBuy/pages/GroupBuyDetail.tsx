@@ -223,13 +223,17 @@ export default function GroupBuyDetail() {
               detail={detail}
               onOpenAttachment={openAttachment}
               onOpenRevisions={() => setModal("revisions")}
+              onOpenThread={openThread}
             />
           )}
           {view === "extension" && <ExtensionCard detail={detail} />}
           {view === "request" && <RequestCard detail={detail} />}
           {view === "ended" && (
             <>
-              <SettlementCard detail={detail} />
+              <SettlementCard
+                detail={detail}
+                onGoSettlement={() => navigate(SETTLEMENT_PATH)}
+              />
               <FulfillmentCard
                 detail={detail}
                 onOpenIssue={() => setModal("issue")}
@@ -327,8 +331,8 @@ export default function GroupBuyDetail() {
                   setModal(null);
                   toast.success(
                     result.revisionAdvanced
-                      ? "게시물을 숨겼습니다. 보고 있던 판본 이후 수정이 있었으니 최신 본문을 확인하세요."
-                      : "게시물을 숨겼습니다."
+                      ? "게시물 노출을 중지했습니다. 보고 있던 판본 이후 수정이 있었으니 최신 본문을 확인하세요."
+                      : "게시물 노출을 중지했습니다."
                   );
                 },
               }
@@ -349,7 +353,7 @@ export default function GroupBuyDetail() {
               },
               {
                 onSuccess: done(
-                  "숨김을 해제했습니다. 게시물이 다시 노출됩니다."
+                  "노출 중지를 해제했습니다. 게시물이 다시 노출됩니다."
                 ),
                 onError: (error) => {
                   if (
@@ -361,7 +365,7 @@ export default function GroupBuyDetail() {
                       "확인한 뒤 게시물이 다시 수정됐습니다. 최신 본문을 읽고 다시 해제하세요."
                     );
                   } else {
-                    toast.error("숨김을 해제하지 못했습니다.");
+                    toast.error("노출 중지를 해제하지 못했습니다.");
                   }
                 },
               }

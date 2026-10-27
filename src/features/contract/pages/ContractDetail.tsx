@@ -13,10 +13,11 @@ import ProgressCard, {
 import StatusRail from "@/features/contract/components/detail/StatusRail";
 import ApproveModal from "@/features/contract/components/modals/ApproveModal";
 import CancelModal from "@/features/contract/components/modals/CancelModal";
-import ConcludeModal from "@/features/contract/components/modals/ConcludeModal";
+import CreateGroupBuyModal from "@/features/contract/components/modals/CreateGroupBuyModal";
 import ExpireModal from "@/features/contract/components/modals/ExpireModal";
 import RejectModal from "@/features/contract/components/modals/RejectModal";
 import SignatureSaveModal from "@/features/contract/components/modals/SignatureSaveModal";
+import TerminateModal from "@/features/contract/components/modals/TerminateModal";
 import Btn from "@/features/contract/components/shared/Btn";
 import {
   CONTRACT_LIST_PATH,
@@ -25,10 +26,10 @@ import {
 import {
   useApproveContract,
   useCancelContract,
-  useConcludeContract,
+  useCreateGroupBuy,
   useExpireContract,
-  useHandleResend,
   useRejectContract,
+  useTerminateContract,
   useUpdateSignatures,
   useUploadDocument,
 } from "@/features/contract/hooks/useAdminContractMutations";
@@ -63,7 +64,14 @@ import {
 } from "react-router-dom";
 
 type ModalKind =
-  "approve" | "reject" | "signature" | "conclude" | "expire" | "cancel" | null;
+  | "approve"
+  | "reject"
+  | "signature"
+  | "createGroupBuy"
+  | "expire"
+  | "cancel"
+  | "terminate"
+  | null;
 
 type UploadType = "SIGNED_PDF" | "AUDIT_TRAIL";
 
@@ -129,7 +137,8 @@ async function openDownload(
  * B1~B6 — 어드민 계약 상세. 한 페이지 스크롤 + 우측 sticky 레일.
  *
  * 운영자는 조건을 고치지 않는다(문제가 있으면 반려). 이 화면이 쓰는 값은 모두싸인에서 확인한
- * 사실뿐이다 — 발송 일시·서명 기한(C1), 서명 완료 일시·기준 시각(B3/C3), 체결 문서(B4), 종결(C4~C6).
+ * 사실뿐이다 — 발송 일시·서명 기한(C1), 서명 완료 일시·기준 시각(B3/C3), 체결 문서(B4), 공구 생성(C4),
+ * 종결(C5 만료 · C6 직권 취소 · C7 해지 — 해지는 rev.9 기-05).
  */
 export default function ContractDetail() {
   const navigate = useNavigate();
@@ -184,10 +193,10 @@ export default function ContractDetail() {
   const approve = useApproveContract();
   const reject = useRejectContract();
   const updateSignatures = useUpdateSignatures();
-  const conclude = useConcludeContract();
+  const createGroupBuy = useCreateGroupBuy();
   const expire = useExpireContract();
   const cancel = useCancelContract();
-  const handleResend = useHandleResend();
+  const terminate = useTerminateContract();
   const upload = useUploadDocument();
 
   const goToList = useCallback(
@@ -226,6 +235,8 @@ export default function ContractDetail() {
       `/market/list?marketName=${encodeURIComponent(contract.brand.name)}`
     );
   const openCreator = () => navigate("/showroom/list");
+  const openMember = (party: "BRAND" | "CREATOR") =>
+    party === "BRAND" ? openBrand() : openCreator();
   const openGroupBuy = () => navigate("/group-buy");
 
   const openDraft = () =>
@@ -370,16 +381,6 @@ export default function ContractDetail() {
             onRevert={revertDrafts}
             canSave={draftsValid && draftsInRange}
             onSave={() => draftsValid && draftsInRange && setModal("signature")}
-            onHandleResend={() =>
-              handleResend.mutate(contractId, {
-                onSuccess: () =>
-                  toast.success(
-                    "재발송 처리를 기록했습니다 — 소통 스레드에 답글이 남았습니다."
-                  ),
-              })
-            }
-            isHandlingResend={handleResend.isPending}
-            onOpenThread={openThread}
             onOpenGroupBuy={openGroupBuy}
           />
           {showDocuments && (
@@ -414,9 +415,11 @@ export default function ContractDetail() {
           actions={{
             onApprove: () => setModal("approve"),
             onReject: () => setModal("reject"),
-            onConclude: () => setModal("conclude"),
+            onCreateGroupBuy: () => setModal("createGroupBuy"),
             onExpire: () => setModal("expire"),
             onCancel: () => setModal("cancel"),
+            onTerminate: () => setModal("terminate"),
+            onOpenMember: openMember,
             onOpenDraft: openDraft,
             onOpenSigned: () => openDocument("SIGNED_PDF"),
           }}
@@ -483,19 +486,19 @@ export default function ContractDetail() {
             onConfirm={handleSaveSignatures}
           />
         )}
-      {modal === "conclude" && (
-        <ConcludeModal
+      {modal === "createGroupBuy" && (
+        <CreateGroupBuyModal
           detail={detail}
-          isPending={conclude.isPending}
+          isPending={createGroupBuy.isPending}
           onClose={closeModal}
           onConfirm={() =>
-            conclude.mutate(contractId, {
+            createGroupBuy.mutate(contractId, {
               onSuccess: (result) => {
                 closeModal();
                 toast.success(
                   result.groupBuyNumber
-                    ? `체결 완료 — 공구 ${result.groupBuyNumber}가 생성됐습니다.`
-                    : "체결 완료 처리했습니다."
+                    ? `공구를 생성했습니다 — `
+                    : "공구를 생성했습니다."
                 );
               },
             })
@@ -530,6 +533,27 @@ export default function ContractDetail() {
                 onSuccess: () => {
                   closeModal();
                   toast.success("직권 취소했습니다 — 양측에 통지됩니다.");
+                },
+              }
+            )
+          }
+        />
+      )}
+      {modal === "terminate" && (
+        <TerminateModal
+          detail={detail}
+          isPending={terminate.isPending}
+          onClose={closeModal}
+          onOpenThread={openThread}
+          onConfirm={(body) =>
+            terminate.mutate(
+              { contractId, body },
+              {
+                onSuccess: () => {
+                  closeModal();
+                  toast.success(
+                    "해지했습니다 — 생성된 공구도 함께 종료되고 양측 운영팀 채널에 카드가 전달됩니다."
+                  );
                 },
               }
             )

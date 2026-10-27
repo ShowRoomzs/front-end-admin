@@ -1,6 +1,8 @@
 import { ADMIN_MENU } from "@/common/constants";
 import type { MenuItem } from "@/common/types";
 import { useGetAdminContractSummary } from "@/features/contract/hooks/useAdminContractQueries";
+import { contractActionRequiredCount } from "@/features/contract/utils/summary";
+import { useGetAdminPostSummary } from "@/features/post/hooks/useAdminPost";
 import { useGetAdminGroupBuySummary } from "@/features/groupBuy/hooks/useAdminGroupBuy";
 import { useGetChangeRequestPendingCount } from "@/features/changeRequest/hooks/useGetChangeRequestPendingCount";
 import { useGetCreatorPendingCount } from "@/features/creator/hooks/useGetCreatorPendingCount";
@@ -96,7 +98,8 @@ function withCsCounts(
 }
 
 /**
- * 계약 관리 GNB 뱃지 = 조치 큐 합계(검토 대기 · 체결 처리 대기 · 만료 확인 · 재발송 요청).
+ * 계약 관리 GNB 뱃지 = 조치 큐 합계(검토 대기 · 공구 생성 대기 · 만료 확인 · 해지 요청 —
+ * 재발송 요청은 rev.8 ②로 제외). 목록의 「조치 필요 N건」과 같은 함수로 센다.
  * 단일 메뉴라 하위 count 없이 그룹 뱃지만 채운다.
  */
 function withContractCount(
@@ -131,7 +134,8 @@ function withGroupBuyCount(
 
 /**
  * 정산 관리 GNB 뱃지 = 운영자 조치만(분배 실패 + 차감 미회수 + 세금계산서 대조 대기 + 브랜드 발행 대기).
- * 조정 협의 · 주민번호 미등록은 다음 차례가 당사자라 세지 않는다(§45-0).
+ * 조정 협의는 다음 차례가 당사자라 세지 않는다(§45-0). 「주민번호 미등록 — 지급 보류」는
+ * 결정 노트 기-12로 사라진 사유다.
  * 값은 서버가 센다(`GET /admin/settlements/summary`의 gnbBadge).
  */
 function withSettlementCount(
@@ -205,8 +209,41 @@ function withThreadCount(
   }));
 }
 
+/**
+ * 일반 게시물(ui-admin-11) — 「일반 게시물」 = 운영자 조치 필요(신고 접수 + 이의 심사).
+ * 묶음 「게시물·소통 모니터링」 뱃지는 스레드 안 읽은 수에 이 값을 더한다.
+ */
+function withPostCount(
+  menus: Array<typeof ADMIN_MENU>,
+  actionRequired: number
+) {
+  if (actionRequired <= 0) return menus;
+  return menus.map((menu) => ({
+    ...menu,
+    groups: menu.groups.map((group) =>
+      group.id === "monitoring"
+        ? {
+            ...group,
+            badge: (Number(group.badge) || 0) + actionRequired,
+            children: group.children?.map((child) =>
+              child.id === "monitoring-post"
+                ? { ...child, count: actionRequired }
+                : child
+            ),
+          }
+        : group
+    ),
+  }));
+}
+
 /** 제목 아래 설명 줄이 붙어 화면이 h1을 직접 그리는 목록 */
-const SELF_TITLED_PATHS = ["/contract"];
+const SELF_TITLED_PATHS = [
+  "/",
+  "/contract",
+  "/monitoring/posts",
+  "/metrics",
+  "/market/change-requests",
+];
 
 /** 상세 화면(`/market/registration/12`)도 해당 메뉴에 속한 것으로 본다 */
 function matches(item: MenuItem, pathname: string) {
@@ -259,6 +296,7 @@ export default function MainLayout() {
   const { data: refundSummary } = useGetRefundSummary();
   const { data: exceptionSummary } = useGetExceptionSummary();
   const { data: threadSummary } = useGetThreadSummary();
+  const { data: postSummary } = useGetAdminPostSummary();
 
   // 목록 화면은 메뉴에 지정된 제목을 페이지 타이틀로 쓴다.
   // 상세 화면(하위 경로)은 브랜드명 등 자체 타이틀을 렌더링하므로 비워둔다.
@@ -266,23 +304,26 @@ export default function MainLayout() {
   const pageTitle = SELF_TITLED_PATHS.includes(location.pathname)
     ? undefined
     : (currentItem?.pageTitle ?? currentItem?.label);
-  const menus = withThreadCount(
-    withGroupBuyCount(
-      withContractCount(
-        withCsCounts(
-          withOnboardingCounts(
-            MENUS,
-            brandPending,
-            influencerPending,
-            changeRequestPending
+  const menus = withPostCount(
+    withThreadCount(
+      withGroupBuyCount(
+        withContractCount(
+          withCsCounts(
+            withOnboardingCounts(
+              MENUS,
+              brandPending,
+              influencerPending,
+              changeRequestPending
+            ),
+            inquiryUnanswered
           ),
-          inquiryUnanswered
+          contractActionRequiredCount(contractSummary)
         ),
-        contractSummary?.actionRequiredCount ?? 0
+        groupBuySummary?.actionRequiredCount ?? 0
       ),
-      groupBuySummary?.actionRequiredCount ?? 0
+      getThreadMenuBadge(threadSummary)
     ),
-    getThreadMenuBadge(threadSummary)
+    postSummary?.actionRequired ?? 0
   );
 
   return (

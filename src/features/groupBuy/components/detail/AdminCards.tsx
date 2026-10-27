@@ -21,20 +21,25 @@ import {
   type Detail,
   actorText,
   d,
+  dueD,
   daysBetween,
-  daysUntilLocalDate,
   dLabel,
   dDayFromNow,
   dt,
   dutyText,
+  isPostExposureSuspended,
   localDate,
   md,
   mdDate,
   num,
   periodShort,
+  POST_SUSPENDED_LABEL,
+  postStatusBadge,
   quantityText,
+  settlementTransferred,
   won,
 } from "@/features/groupBuy/utils/view";
+import { SETTLEMENT_REVIEW_PERIOD_TEXT } from "@/features/groupBuy/constants/params";
 import { useState, type ReactNode } from "react";
 
 /*
@@ -116,7 +121,7 @@ export function OpenReviewCard(props: {
                         : "text-sz-n-700"
                     }
                   >
-                    기한 {d(openReview.dueAt)}
+                    기한 {dueD(openReview.dueAt)}
                   </B>
                   ({dLabel(openReview.daysLeft)}) ·{" "}
                   {timeline.startOverdue
@@ -203,8 +208,9 @@ export function NoticeCard(props: {
   detail: Detail;
   onOpenAttachment: (attachmentId: number) => void;
   onOpenRevisions: () => void;
+  onOpenThread: (threadId: number) => void;
 }) {
-  const { detail, onOpenAttachment, onOpenRevisions } = props;
+  const { detail, onOpenAttachment, onOpenRevisions, onOpenThread } = props;
   const [filesOpen, setFilesOpen] = useState(false);
   const suspension = detail.adminSuspension;
   if (!suspension) {
@@ -212,6 +218,15 @@ export function NoticeCard(props: {
   }
   const since = suspension.salesSinceNotice;
   const appeal = suspension.appeal;
+  /*
+    1021 기-21 — 서버 main은 통지 때 양측 운영팀 채널에 「직권 중단 사전 통지 · 소명 요청」 카드를 남기고
+    그 흔적을 creatorOpinion으로 내린다. 카드가 확인될 때만 「양측 운영팀 채널로 발송」이라 적는다 —
+    옛 배포 서버 · 카드 전 통지 · 인플루언서 없는 공구에서 양측 발송이라 쓰면 사실과 달라진다.
+  */
+  const creatorOpinion = suspension.creatorOpinion ?? null;
+  const target = creatorOpinion
+    ? `브랜드(${detail.brand.name}) · 인플루언서(${detail.creator.name}) 양측 운영팀 채널로 발송`
+    : `브랜드(${detail.brand.name}) 앞 발송`;
 
   return (
     <GbCard
@@ -219,7 +234,7 @@ export function NoticeCard(props: {
       note="파트너 이용약관 제17조② · 집행 3영업일 전 통지"
     >
       <ReqBox
-        head={`브랜드(${detail.brand.name}) 앞 발송 · ${dt(suspension.noticedAt)} · ${actorText("ADMIN", suspension.noticedByName)}`}
+        head={`${target} · ${dt(suspension.noticedAt)} · ${actorText("ADMIN", suspension.noticedByName)}`}
         body={
           <>
             <B>중단 사유 — {suspension.clauseLabel ?? "직권 중단"}</B>
@@ -262,6 +277,7 @@ export function NoticeCard(props: {
           </span>{" "}
           <TSub>
             · 수신일 +3영업일(제17조④) ·{" "}
+            {creatorOpinion && "브랜드 · 인플루언서 동일 · "}
             <B>
               {suspension.appealDeadlinePassed
                 ? "기한 경과"
@@ -316,11 +332,31 @@ export function NoticeCard(props: {
             <>
               미제출{" "}
               <TSub>
-                · 기한 내 미제출 시 기존 자료를 기준으로 최종 판정(제17조④)
+                {creatorOpinion
+                  ? "· 운영팀 채널로 접수 · 기한 내 미제출 시 기존 자료로 최종 판정"
+                  : "· 기한 내 미제출 시 기존 자료를 기준으로 최종 판정(제17조④)"}
               </TSub>
             </>
           )}
         </FRow>
+        {/* 시안 rev.7 B2c(기-21) — 인플루언서는 구조화 소명 없이 운영팀 채널 답글로 의견을 낸다 */}
+        {creatorOpinion && (
+          <FRow label="인플루언서 의견">
+            {creatorOpinion.replyCount > 0 ? (
+              <>
+                {num(creatorOpinion.replyCount)}건{" "}
+                <TSub>· 운영팀 채널로 접수</TSub>
+              </>
+            ) : (
+              <>
+                미제출 <TSub>· 같은 기한 · 운영팀 채널로 접수</TSub>
+              </>
+            )}{" "}
+            <MiniBtn onClick={() => onOpenThread(creatorOpinion.threadId)}>
+              채널 열기 ↗
+            </MiniBtn>
+          </FRow>
+        )}
       </div>
       <MWarn className="mb-0">
         이 통지는 <B>예고일 뿐 공구는 계속 팔립니다</B> — 집행 시점까지 들어온
@@ -481,10 +517,10 @@ export function SalesCard(props: { detail: Detail; view: AdminView }) {
   } else if (view === "hidden" && post.hidden) {
     note =
       post.hidden.ordersSinceHidden === 0
-        ? `숨김 이후 유입 없음 · ${md(post.hidden.hiddenAt)} 이후 증가 0`
+        ? `노출 중지 이후 유입 없음 · ${md(post.hidden.hiddenAt)} 이후 증가 0`
         : post.hidden.ordersSinceHidden !== null
-          ? `숨김 이후 +${num(post.hidden.ordersSinceHidden)}건 · ${md(post.hidden.hiddenAt)} 기준`
-          : `${md(post.hidden.hiddenAt)} 숨김`;
+          ? `노출 중지 이후 +${num(post.hidden.ordersSinceHidden)}건 · ${md(post.hidden.hiddenAt)} 기준`
+          : `${md(post.hidden.hiddenAt)} 노출 중지`;
   }
 
   return (
@@ -527,6 +563,8 @@ function closedByText(detail: Detail) {
       return `${date} 조기 마감으로 내림`;
     case "SUSPENDED":
       return `${date} 중단으로 내림`;
+    case "CONTRACT_TERMINATED":
+      return `${date} 계약 해지로 내림`;
     default:
       return `${date} 종료`;
   }
@@ -549,7 +587,12 @@ function postFootnote(detail: Detail): ReactNode {
         공구가 닫혀 쇼룸에서는 내려갔지만{" "}
         <B className="text-sz-n-700">원문은 보관</B>된다 — 분쟁 시 근거가 되는
         유일한 기록이라 종결 후에도 남긴다(
-        {detail.post.closedBy === "EARLY_CLOSED" ? "조기 마감" : "정상 종료"})
+        {detail.post.closedBy === "EARLY_CLOSED"
+          ? "조기 마감"
+          : detail.post.closedBy === "CONTRACT_TERMINATED"
+            ? "계약 해지"
+            : "정상 종료"}
+        )
       </>
     );
   }
@@ -561,7 +604,7 @@ function postFootnote(detail: Detail): ReactNode {
       편집 권한 — 승인 후에는{" "}
       <B className="text-sz-n-700">인플루언서가 재승인 없이 본문을 수정</B>
       한다(승인대기 중에는 불가) · 운영자는 본문을 고치지 않고{" "}
-      <B className="text-sz-n-700">게시물 숨김</B>으로만 개입한다 ·{" "}
+      <B className="text-sz-n-700">게시물 노출 중지</B>로만 개입한다 ·{" "}
       <B className="text-sz-n-700">
         §14 자동 삽입 문구와 계약 확정값(상품·가격·기간)은 누구도 바꿀 수 없다
       </B>
@@ -579,6 +622,8 @@ export function PostCard(props: {
   const { detail, view, onHide, onUnhide, onOpenProduct } = props;
   const { post, items, permissions } = detail;
   const hasPost = post.status !== "NOT_WRITTEN" && post.status !== "WRITING";
+  const suspended = isPostExposureSuspended(post.status);
+  const badge = postStatusBadge(post.status, post.statusLabel, post.statusTone);
 
   const meta: Array<ReactNode> = [];
   if (post.submittedAt) {
@@ -596,10 +641,10 @@ export function PostCard(props: {
         meta.push(`최근 ${md(post.lastEditedAt)}`);
       }
     }
-    if (post.status === "HIDDEN" && post.hidden) {
+    if (suspended && post.hidden) {
       meta.push(
         <B key="hid" className="text-sz-warning-text">
-          {md(post.hidden.hiddenAt)} 숨김
+          {md(post.hidden.hiddenAt)} {POST_SUSPENDED_LABEL}
         </B>
       );
     }
@@ -612,7 +657,7 @@ export function PostCard(props: {
     <GbCard
       title="인플루언서 게시물"
       inlineNote={`쇼룸 게시물 · 인플루언서 작성${post.postNumber ? ` · ${post.postNumber}` : ""}`}
-      badge={<GbBadge tone={post.statusTone}>{post.statusLabel}</GbBadge>}
+      badge={<GbBadge tone={badge.tone}>{badge.label}</GbBadge>}
     >
       {!hasPost ? (
         <div className="py-6 text-center text-[12px] text-sz-n-500">
@@ -658,7 +703,7 @@ export function PostCard(props: {
               상품·가격, 대가관계 표시 누락만 본다.{" "}
               <B>승인 후에는 인플루언서가 자유롭게 고친다</B> — 사소한 표현은
               반려하지 말고 승인한 뒤 스레드로 수정을 요청하는 편이 빠르다. 승인
-              후 문제가 생기면 <B>게시물 숨김</B>으로 노출을 끊는다.
+              후 문제가 생기면 <B>게시물 노출 중지</B>로 노출을 끊는다.
             </MWarn>
           )}
           {post.status === "REJECTED" && post.rejection && (
@@ -670,9 +715,9 @@ export function PostCard(props: {
               {post.rejection.detail}
             </MWarn>
           )}
-          {post.status === "HIDDEN" && post.hidden && (
+          {suspended && post.hidden && (
             <MWarn className="mb-0">
-              <B>숨김 사유 — {post.hidden.label ?? post.hidden.code}</B> ·{" "}
+              <B>노출 중지 사유 — {post.hidden.label ?? post.hidden.code}</B> ·{" "}
               {actorText("ADMIN", post.hidden.hiddenByName)} ·{" "}
               {dt(post.hidden.hiddenAt)}
               <br />
@@ -692,17 +737,17 @@ export function PostCard(props: {
             </span>
             {permissions.canUnhidePost ? (
               <MiniBtn className="ml-auto" onClick={onUnhide}>
-                숨김 해제
+                노출 중지 해제
               </MiniBtn>
             ) : permissions.canHidePost ? (
               <MiniBtn className="ml-auto" onClick={onHide}>
-                게시물 숨김
+                게시물 노출 중지
               </MiniBtn>
             ) : (
-              // 시안 B5 · B6 — 내려간 게시물은 숨김 버튼을 잠근 채 남긴다(.unmask.off)
+              // 시안 B5 · B6 — 내려간 게시물은 노출 중지 버튼을 잠근 채 남긴다(.unmask.off)
               post.status === "CLOSED" && (
                 <MiniBtn className="ml-auto" disabled>
-                  게시물 숨김
+                  게시물 노출 중지
                 </MiniBtn>
               )
             )}
@@ -871,45 +916,62 @@ export function ItemsCard(props: {
 
 // ── B5 정산 진행 · 계약 이행 확인 ─────────────────────
 
-/** 시안 B5 「(기한 4일 전)」 — 감시 기한까지 남은 날 */
-function watchDueText(watch: { dueAt: string; reached: boolean }) {
-  const left = daysUntilLocalDate(watch.dueAt);
-  if (watch.reached || left < 0) {
-    return "기한 경과";
-  }
-  return left === 0 ? "오늘 기한" : `기한 ${left}일 전`;
-}
-
-export function SettlementCard(props: { detail: Detail }) {
-  const { detail } = props;
+/**
+ * 시안 rev.7 B5 · B5a(2026.10.06 정산 이관) — 공구 관리는 주문 종결까지만 본다.
+ * 정산 확인 · 조정 요청 · 확정 · 지급은 정산 관리(07) 소관이라 여기서 단계를 다시 그리지 않는다.
+ */
+export function SettlementCard(props: {
+  detail: Detail;
+  onGoSettlement: () => void;
+}) {
+  const { detail, onGoSettlement } = props;
   const settlement = detail.afterEnd?.settlement;
   if (!settlement) {
     return null;
   }
   const watch = settlement.watch;
+  const transferred = settlementTransferred(detail);
   return (
     <GbCard
       title="정산 진행"
-      note="어드민 전용 · 정산대기 → 운영자 확인 → 이체완료"
+      note="공구 관리는 주문 종결까지 · 이후는 정산 관리"
     >
-      <SettlementMachine stage={settlement.stage} />
-      {watch && detail.groupBuy.status === "ENDED" && (
-        <MWarn info={!watch.reached} className="mt-3.5">
-          <B>정산 지연 감시</B> — 종료 {d(detail.groupBuy.endedAt)} 기준{" "}
-          <B className="tabular-nums">{watch.elapsedDays}일차</B>이며{" "}
-          <B>종료 +30일</B> 알림 기한은{" "}
-          <B className="tabular-nums">{localDate(watch.dueAt)}</B>입니다(
-          {watchDueText(watch)}). 강제 처리 규칙은 없으나 미종결 건이 남으면
-          정산이 그만큼 늦어지므로, 기한을 넘기면 어드민 알림이 발송됩니다.
-        </MWarn>
-      )}
-      {detail.groupBuy.status === "ENDED" && (
-        <MWarn info className="mb-0 mt-3.5">
-          정산 트리거는 구매확정이 아니라 <B>모든 주문 항목의 종결</B>입니다 —
-          구매확정·환불·거절 확정 셋 다 종결로 셉니다.{" "}
-          <B>반품·교환 거절 확정은 즉시 구매확정</B>이라 거절 보류 1건이 공구
-          전체 정산을 붙잡지 않습니다. 종결 후 <B>영업일 5일 내 이체</B>.
-        </MWarn>
+      <SettlementMachine transferred={transferred} />
+      {transferred ? (
+        <>
+          {/*
+            시안 B5a 「정산 STL-… · 조정 협의 [정산 상세 보기 ↗]」 — 공구 상세 응답에 정산번호 · 정산 ID ·
+            정산 단계가 없어(AdminGroupBuyDetailResponse.Settlement) 정산 관리 목록으로 보낸다. 백엔드 요청.
+          */}
+          <div className="mt-3.5 flex items-center gap-2 text-[12px] text-sz-n-700">
+            <span className="text-sz-n-500">정산</span>
+            <MiniBtn className="ml-auto" onClick={onGoSettlement}>
+              정산 관리 열기 ↗
+            </MiniBtn>
+          </div>
+          <MWarn info className="mb-0 mt-3.5">
+            모든 주문이 종결돼 <B>정산 관리로 이관</B>됐습니다. 이 공구의 정산
+            단계 · 조정 요청 · 지급은 <B>정산 상세</B>에서 봅니다.
+          </MWarn>
+        </>
+      ) : (
+        <>
+          {watch && (
+            <MWarn info={!watch.reached} className="mt-3.5">
+              <B>종결 지연 감시</B> — 종료 {d(detail.groupBuy.endedAt)} 기준{" "}
+              <B className="tabular-nums">{watch.elapsedDays}일차</B>이며{" "}
+              <B>종료 +30일</B> 알림 기한은{" "}
+              <B className="tabular-nums">{localDate(watch.dueAt)}</B>
+              입니다. 기한을 넘기면 어드민 알림이 발송됩니다.
+            </MWarn>
+          )}
+          <MWarn info className="mb-0 mt-3.5">
+            정산은 <B>모든 주문 항목이 종결</B>(구매확정 · 환불 · 반려 확정)된
+            뒤 시작됩니다. 종결되면 <B>정산 관리</B>로 넘어가 금액이 산출되고{" "}
+            <B>정산 확인 기간 {SETTLEMENT_REVIEW_PERIOD_TEXT}</B>이 열립니다 —
+            정산 조정 요청 · 확정 · 지급은 모두 정산 관리 소관입니다.
+          </MWarn>
+        </>
       )}
     </GbCard>
   );

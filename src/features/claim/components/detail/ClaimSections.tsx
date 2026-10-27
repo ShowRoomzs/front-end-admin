@@ -1,4 +1,9 @@
-import type { ClaimDetail, ClaimTone } from "@/features/claim/types";
+import { AUTO_RECEIVE_TEXT } from "@/features/claim/constants/guides";
+import type {
+  ClaimDetail,
+  ClaimFreightRow,
+  ClaimTone,
+} from "@/features/claim/types";
 import {
   Block,
   ClaimBadge,
@@ -12,13 +17,22 @@ import {
   Sc,
   Sub,
 } from "@/features/claim/components/shared/ClaimParts";
-import { dDay, md, mdHm, minusWon, won } from "@/features/claim/utils/format";
+import {
+  dDay,
+  md,
+  mdDate,
+  mdDue,
+  mdHm,
+  minusWon,
+  won,
+} from "@/features/claim/utils/format";
 import type { ReactNode } from "react";
 
 /*
   상세 좌측 블록 — 서버가 단계마다 채워 내리는 값(null 아닌 블록)만 그린다.
   번호(① ②…)는 그려진 순서대로 붙는다 — 시안도 상태마다 블록 구성이 다르다.
-  블록 순서: 클레임 → 항목 → 검수 반려 → 반려 보류 → 소비자 이의 → 회수 → 재발송 → 금액 → 처리 결과 → 이력.
+  블록 순서: 클레임 → 항목 → 법정 청약철회 기한 → 검수 반려 → 반려 보류 → 소비자 이의 → 회수 → 재발송 → 금액
+  → 검수 판정 · 운임 정산 → 처리 결과 → 정산 반영 → 이력.
 */
 
 /** 이력 점 색 — 서버는 톤을 내리지 않는다. 반려·지연 계열만 경고, 종결 계열은 성공 */
@@ -48,6 +62,50 @@ function Photos(props: { urls: Array<string> }) {
       ))}
     </span>
   );
+}
+
+/**
+ * 최초 배송비 차감 보조줄(06b rev.6 기-18) — 시안 B1 「무료배송 주문 · 소비자 귀책 · 전량 반품이라 남은 금액
+ * 0원(기준 미달) · 브랜드 정산에 남음」 · B3 「브랜드 귀책 · 착불 · 차감 없음」.
+ * 차감이 있으면 무료배송 · 소비자 귀책은 규칙상 확정이라 그대로 적고, 무료배송 기준 판정(가운데 마디)은
+ * 서버 값(`deductionReason` — 서버 없음 · DEV 목업만)이 있을 때만 붙인다.
+ */
+function deductionNote(detail: ClaimDetail) {
+  if (detail.feeBearer === "SELLER") {
+    return "브랜드 귀책 · 착불 · 차감 없음";
+  }
+  const deducted = (detail.claim.refund?.requestDeduction ?? 0) > 0;
+  const parts = deducted
+    ? [
+        "무료배송 주문",
+        "소비자 귀책",
+        detail.deductionReason,
+        "브랜드 정산에 남음",
+      ]
+    : ["소비자 귀책", detail.deductionReason];
+  return parts.filter(Boolean).join(" · ");
+}
+
+/** 운임 정산 방향 — 브랜드 정산 「± 운임 정산」의 부호와 같다(07b) */
+function freightDirection(row: ClaimFreightRow) {
+  return row.direction === "CHARGE_CONSUMER"
+    ? "브랜드 → 소비자 귀책 · 소비자 부담"
+    : "소비자 → 브랜드 귀책 · 소비자 환급";
+}
+
+/** 운임 정산 금액 마디 — 착불 운임 · 선불 운임 환급 · 최초 배송비 환원(표시용) */
+function freightParts(row: ClaimFreightRow) {
+  return [
+    row.collectFreight > 0 && `착불 운임 ${won(row.collectFreight)}`,
+    row.prepaidFreight > 0 &&
+      `선불 운임 환급 ${won(row.prepaidFreight)}(기본 배송비 편도 정액)`,
+    row.initialFeeRestored > 0 &&
+      `최초 배송비 환원 ${won(row.initialFeeRestored)}`,
+    row.settledVia === "BANK_TRANSFER" &&
+      "원래 결제액 초과분 · 운영자 계좌 송금",
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export default function ClaimSections(props: { detail: ClaimDetail }) {
@@ -145,16 +203,56 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
               <span>
                 {row.optionName ?? "—"} → <b>{row.exchangeOptionName}</b>
               </span>
-              {claim.exchangeFeeCharged !== null && (
+              {/* 기-18 — 「교환비」 명칭 폐기 · 재발송 배송비. main은 `reshipFeeCharged`로 개명(옛 이름 병행) */}
+              {(claim.reshipFeeCharged ?? claim.exchangeFeeCharged) !==
+                null && (
                 <RowEnd className="text-[11px] text-sz-n-500">
-                  {claim.exchangeFeeCharged
-                    ? "교환 배송비 결제됨"
-                    : "교환 배송비 없음"}
+                  {(claim.reshipFeeCharged ?? claim.exchangeFeeCharged)
+                    ? "재발송 배송비 결제됨"
+                    : "재발송 배송비 없음"}
                 </RowEnd>
               )}
             </ItRow>
           )}
         </Sc>
+      ),
+    });
+  }
+
+  // 법정 청약철회 기한(B4) — 운영자가 대신 연 클레임만 서버가 채운다. 공급 + 3개월 · 하자 인지 + 30일 중 이른 날
+  const hasPickup = Boolean(row.collection || row.receivedAt);
+  if (detail.legalDeadline) {
+    const legal = detail.legalDeadline;
+    blocks.push({
+      key: "legal",
+      title: "법정 청약철회 기한",
+      body: (
+        <Grid2>
+          <Frow label="공급일">
+            <Num>{mdDate(legal.suppliedOn)}</Num>{" "}
+            <Sub>→ 3개월 {mdDate(legal.supplyDeadline)}</Sub>
+          </Frow>
+          <Frow label="하자 인지">
+            {legal.noticedOn ? (
+              <>
+                <Num>{mdDate(legal.noticedOn)}</Num>{" "}
+                <Sub>→ 30일 {mdDate(legal.noticeDeadline)}</Sub>
+              </>
+            ) : (
+              <Dim>입력 없음</Dim>
+            )}
+          </Frow>
+          <Frow label="적용 기한">
+            <b className="tabular-nums">{mdDate(legal.appliedDeadline)}</b>{" "}
+            <Sub>· {legal.noticeDeadline ? "이른 날" : "공급 기준"}</Sub>
+          </Frow>
+          {/* 회수 블록이 아직 없을 때(송장 입력 전) 시안처럼 이 자리에 회수 송장을 적는다 */}
+          {!hasPickup && row.stage === "COLLECT_WAIT" && (
+            <Frow label="회수 송장">
+              <Dim>소비자 입력 대기</Dim> <Sub>· 7일 미입력 시 자동 취소</Sub>
+            </Frow>
+          )}
+        </Grid2>
       ),
     });
   }
@@ -248,7 +346,7 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
           <Frow label="보관 기한">
             {storage?.storageDueAt ? (
               <>
-                <Num>{md(storage.storageDueAt)}</Num>{" "}
+                <Num>{mdDue(storage.storageDueAt)}</Num>{" "}
                 <Sub>
                   ·{" "}
                   {storage.phase === "EXPIRED"
@@ -300,7 +398,7 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
   }
 
   // 회수 — 송장 → 도착 → 입고 확인(검수 기한 = 입고 + 2영업일)
-  if (row.collection || row.receivedAt) {
+  if (hasPickup) {
     const collection = row.collection;
     blocks.push({
       key: "pickup",
@@ -348,7 +446,7 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
                         : "tabular-nums"
                     }
                   >
-                    {md(row.inspectDueAt)}
+                    {mdDue(row.inspectDueAt)}
                   </b>
                   {detail.inspectOverdueBusinessDays !== null &&
                     ` · ${detail.inspectOverdueBusinessDays}영업일 초과`}
@@ -412,14 +510,14 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
             </RowEnd>
           </ItRow>
           <ItRow>
-            <Sub>반품 배송비 차감</Sub>
+            <Sub>최초 배송비 차감</Sub>
             <Num>
               {refund.requestDeduction > 0
                 ? minusWon(refund.requestDeduction)
                 : "없음"}
             </Num>
             <RowEnd className="text-[11px] text-sz-n-500">
-              요청당 1회 · {detail.feeBearerLabel}
+              {deductionNote(detail)}
             </RowEnd>
           </ItRow>
           <ItRow>
@@ -433,6 +531,70 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
               {refund.basisLabel}
             </RowEnd>
           </ItRow>
+        </Sc>
+      ),
+    });
+  }
+
+  // 검수 판정 · 운임 정산(06b rev.5 기-17 · rev.7 기-93) — main 서버가 판정 · 운임 행 · 자동 입고가 있을 때만
+  // `claim.inspection`을 내린다(개발 서버 미배포 — 그 전에는 블록이 없다)
+  const inspection = claim.inspection;
+  if (inspection) {
+    blocks.push({
+      key: "inspection",
+      title: "검수 판정 · 운임 정산",
+      body: (
+        <Sc>
+          {inspection.result && (
+            <ItRow>
+              <Sub>판정</Sub>
+              <b>{inspection.resultLabel}</b>
+              {inspection.result === "REASON_OVERTURNED" && (
+                <RowEnd className="text-[11px] text-sz-n-500">
+                  귀책 브랜드 → 소비자
+                </RowEnd>
+              )}
+            </ItRow>
+          )}
+          {inspection.explanation && (
+            <ItRow>
+              <Sub>번복 설명</Sub>
+              <span>“{inspection.explanation}”</span>
+            </ItRow>
+          )}
+          {inspection.autoReceived && (
+            <ItRow>
+              <Sub>입고</Sub>
+              <span>{AUTO_RECEIVE_TEXT.done}</span>
+            </ItRow>
+          )}
+          {inspection.overturnFee !== null && (
+            <ItRow>
+              <Sub>번복 결제</Sub>
+              <Num>{won(inspection.overturnFee)}</Num>
+              <RowEnd className="text-[11px] text-sz-n-500">
+                재발송 배송비 + 착불 운임 · 소비자 결제
+              </RowEnd>
+            </ItRow>
+          )}
+          {inspection.freight.map((row, index) => (
+            <ItRow key={`${row.trigger}-${index}`}>
+              <Sub>운임 정산</Sub>
+              <span>
+                {row.triggerLabel} <Sub>· {freightDirection(row)}</Sub>
+                <span className="block text-[11px] text-sz-n-500">
+                  {freightParts(row)}
+                </span>
+              </span>
+              <RowEnd className="text-[11px] text-sz-n-500">
+                브랜드 정산{" "}
+                <b className="tabular-nums text-sz-n-900">
+                  {row.signedAmount >= 0 ? "+ " : "− "}
+                  {won(Math.abs(row.signedAmount))}
+                </b>
+              </RowEnd>
+            </ItRow>
+          ))}
         </Sc>
       ),
     });
@@ -469,6 +631,40 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
             <Frow label="반려 종결">
               {result.rejectionEnd === "RETURNED" ? "반송 완료" : "폐기"}
               {result.disposedAt && <Sub> · {md(result.disposedAt)}</Sub>}
+            </Frow>
+          )}
+        </Grid2>
+      ),
+    });
+  }
+
+  // 정산 반영(B4) — 그 하위주문이 이미 정산에 들어갔으면 통과 시 다음 정산에서 차감된다.
+  // 소비자가 연 클레임은 구매확정 전이라 대개 정산 전이다 — 정산이 있을 때만 그리고, 운영자 개설(구매확정 후 하자)은 정산 전이어도 그린다
+  if (detail.settlement || row.openedByOperator) {
+    const settlement = detail.settlement;
+    blocks.push({
+      key: "settlement",
+      title: "정산 반영",
+      body: (
+        <Grid2>
+          <Frow label="정산">
+            {settlement ? (
+              <>
+                <Num>{settlement.settlementNumber}</Num> ·{" "}
+                {settlement.statusLabel}
+                {settlement.confirmedAt && (
+                  <Sub> · {md(settlement.confirmedAt)} 확정</Sub>
+                )}
+              </>
+            ) : (
+              <>
+                <Dim>정산 전</Dim> <Sub>· 생성 시 반영</Sub>
+              </>
+            )}
+          </Frow>
+          {settlement?.deductOnPass && (
+            <Frow label="통과 시">
+              <b>다음 정산에서 차감</b> <Sub>· 브랜드 수취액 · 리워드</Sub>
             </Frow>
           )}
         </Grid2>

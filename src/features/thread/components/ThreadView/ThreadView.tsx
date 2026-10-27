@@ -20,7 +20,8 @@ import type {
   ChannelInfo,
   MessageItem,
 } from "@/features/thread/types";
-import { formatDateTime, formatDay } from "@/features/thread/utils/format";
+import { formatDay, formatKstDateTime } from "@/features/thread/utils/format";
+import { memberDetailPath } from "@/features/thread/utils/memberLink";
 import { toBadgeVariant } from "@/features/thread/utils/tone";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
@@ -82,14 +83,14 @@ function findLatestProposalSeq(messages: Array<MessageItem>): number | null {
 }
 
 /** 헤더 보조 줄 — 채널 · 이슈 · 쌍 스레드마다 다르다 */
-function headerSubline(info: ChannelInfo) {
+function headerSubline(info: ChannelInfo): ReactNode {
   if (info.issue) {
     const { issue } = info;
     const pair = `${issue.brand.name} × ${issue.influencer.name}`;
     if (issue.status === "OPEN") {
       return [
         pair,
-        `합의 기한 ${formatDateTime(issue.deadlineAt)}`,
+        `합의 기한 ${formatKstDateTime(issue.deadlineAt)}`,
         issue.remainingBusinessDays !== null &&
           `D-${issue.remainingBusinessDays}`,
       ]
@@ -112,7 +113,7 @@ function headerSubline(info: ChannelInfo) {
     ? info.profile?.managerName && `담당 ${info.profile.managerName}`
     : info.profile?.businessType &&
       BUSINESS_TYPE_LABEL[info.profile.businessType];
-  return [
+  const line = [
     isBrand ? TAB_ROLE_LABEL.BRAND : TAB_ROLE_LABEL.INFLUENCER,
     info.memberNo,
     subLabel,
@@ -120,6 +121,15 @@ function headerSubline(info: ChannelInfo) {
   ]
     .filter(Boolean)
     .join(" · ");
+  // 시안 A7 — 정지 회원의 채널은 헤더 끝에 위험색으로 「계정 정지 중」
+  if (info.memberStatus !== "SUSPENDED") {
+    return line;
+  }
+  return (
+    <>
+      {line} · <span className="text-sz-danger-text">계정 정지 중</span>
+    </>
+  );
 }
 
 /**
@@ -160,8 +170,11 @@ export default function ThreadView(props: ThreadViewProps) {
   const closeVideo = useCallback(() => setPlayingVideo(null), []);
 
   const { mutate: sendResendNotice } = resendNotice;
+  const memberPath = memberDetailPath(info);
   const cardContext = useMemo<SystemCardContext>(
     () => ({
+      channelTab: info.tab,
+      memberDetailPath: memberPath,
       issue: info.issue,
       latestProposalSeq: findLatestProposalSeq(messages),
       onResendNotice: (messageId) => sendResendNotice(messageId),
@@ -170,6 +183,8 @@ export default function ThreadView(props: ThreadViewProps) {
         : null,
     }),
     [
+      info.tab,
+      memberPath,
       info.issue,
       messages,
       sendResendNotice,
@@ -203,7 +218,11 @@ export default function ThreadView(props: ThreadViewProps) {
         </div>
 
         {isOperatorChannel && (
-          <ChannelInfoBar info={info} onOpenIssueThread={onOpenIssueThread} />
+          <ChannelInfoBar
+            info={info}
+            memberDetailPath={memberPath}
+            onOpenIssueThread={onOpenIssueThread}
+          />
         )}
 
         <NoticeStrip>

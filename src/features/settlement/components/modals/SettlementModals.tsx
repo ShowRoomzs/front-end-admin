@@ -33,7 +33,12 @@ import {
   ymd,
   ymdhm,
 } from "@/features/settlement/utils/format";
-import { accountText } from "@/features/settlement/utils/view";
+import {
+  accountText,
+  companyRecipientText,
+  payoutBusinessDaysText,
+} from "@/features/settlement/utils/view";
+import { useGetCompanyInfo } from "@/features/settlement/hooks/useAdminSettlement";
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
 import { useRef, useState, type ReactNode } from "react";
@@ -186,7 +191,10 @@ export function InvoiceVerifyModal(props: {
 }) {
   const { detail, document, isPending, onClose, onSubmit } = props;
   const [result, setResult] = useState<InvoiceVerifyResult>("MATCH");
-  const platformName =
+  const { data: company } = useGetCompanyInfo();
+  // 기-35 — 공급받는자는 서버 `company.*`(GET /common/company-info) 한 출처. 못 읽으면(배포 전 서버) 플랫폼 수취자 이름
+  const recipient =
+    companyRecipientText(company) ??
     detail.payouts?.rows.find((row) => row.payee === "PLATFORM")?.payeeName ??
     "플랫폼";
   return (
@@ -221,7 +229,7 @@ export function InvoiceVerifyModal(props: {
         <b className="tabular-nums">{won(document.vatAmount)}</b> · 합계{" "}
         <b className="tabular-nums">{won(document.totalAmount)}원</b>
         <br />
-        공급받는자 {platformName}
+        공급받는자 {recipient}
       </SummaryBox>
       <MLabel required>대조 결과</MLabel>
       <MSelect
@@ -244,8 +252,11 @@ export function InvoiceVerifyModal(props: {
       </MHint>
       <MWarn info>
         확인하면 <b className="font-semibold">지급 보류가 풀리고</b> 인플루언서
-        지급 예정일이 <b className="font-semibold">확인일 + 3영업일</b>로
-        정해집니다.
+        지급 예정일이{" "}
+        <b className="font-semibold">
+          확인일 + {payoutBusinessDaysText(detail)}
+        </b>
+        로 정해집니다. 첨부 PDF가 있으면 스튜디오 [다운로드]도 열립니다.
       </MWarn>
     </GbModal>
   );

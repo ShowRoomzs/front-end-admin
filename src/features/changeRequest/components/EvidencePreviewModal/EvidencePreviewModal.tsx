@@ -1,8 +1,11 @@
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import { formatFileSize } from "@/common/utils/formatFileSize";
+import ComparePanel from "@/features/changeRequest/components/EvidencePreviewModal/ComparePanel";
 import { PREVIEWABLE_IMAGE_EXTENSIONS } from "@/features/changeRequest/constants/params";
 import type {
   ChangeDiffRow,
+  ChangeRequestApprovalImpact,
+  ChangeRequestCompareItem,
   ChangeRequestEvidence,
   ChangeRequestHolderCheck,
   ChangeRequestReferenceItem,
@@ -21,10 +24,13 @@ interface EvidencePreviewModalProps {
   referenceItems: Array<ChangeRequestReferenceItem>;
   type: ChangeRequestType;
   holderCheck: ChangeRequestHolderCheck | null;
+  /** 인플루언서 사업자 구분 변경(C5b)만 — 서류와 대조할 본인확인 정보 */
+  compareItems?: Array<ChangeRequestCompareItem> | null;
+  approvalImpact?: ChangeRequestApprovalImpact | null;
 }
 
 /**
- * C5·C6 — 증빙 미리보기 + 요청 값 대조 패널.
+ * C5·C5b·C6 — 증빙 미리보기 + 대조 패널(`ComparePanel`).
  *
  * 이미지만 띄우는 라이트박스가 아니다. 운영자가 확인해야 하는 건 요청 값만이 아니라
  * **동일 사업자인지 · 예금주가 사업자 명의와 맞는지**라서, 변경 대상이 아닌 참고 항목까지
@@ -43,6 +49,8 @@ export default function EvidencePreviewModal(props: EvidencePreviewModalProps) {
     referenceItems,
     type,
     holderCheck,
+    compareItems,
+    approvalImpact,
   } = props;
 
   const [rotation, setRotation] = useState(0);
@@ -101,8 +109,6 @@ export default function EvidencePreviewModal(props: EvidencePreviewModalProps) {
   const extension = evidence.extension.toLowerCase();
   const isPreviewable =
     PREVIEWABLE_IMAGE_EXTENSIONS.includes(extension) && !hasImageError;
-  const changedRows = diffRows.filter((row) => row.changed);
-  const isSettlement = type === "SETTLEMENT_ACCOUNT";
 
   const metaParts = [
     formatFileSize(evidence.fileSizeBytes),
@@ -224,86 +230,14 @@ export default function EvidencePreviewModal(props: EvidencePreviewModalProps) {
             <div className="mb-4 text-[11px] text-sz-n-500">
               {metaParts.join(" · ")}
             </div>
-
-            <div className="mb-2 border-b border-sz-n-200 pb-1.5 text-[11px] font-semibold text-sz-n-500">
-              서류와 대조할 요청 값
-            </div>
-            {changedRows.length === 0 ? (
-              <p className="py-2.5 text-[12px] text-sz-n-500">
-                변경 요청된 항목이 없습니다.
-              </p>
-            ) : (
-              changedRows.map((row) => (
-                <div
-                  key={row.fieldKey}
-                  className="border-b border-sz-n-100 py-2.5 last:border-b-0"
-                >
-                  <div className="mb-0.5 text-[11px] text-sz-n-500">
-                    {row.label}
-                  </div>
-                  <div className="mb-px text-[11px] text-sz-n-500 line-through decoration-sz-n-400">
-                    {row.currentValue || "—"}
-                  </div>
-                  <div className="text-[13px] font-semibold leading-snug text-sz-accent-600">
-                    {row.requestedValue}
-                  </div>
-                </div>
-              ))
-            )}
-
-            {referenceItems.length > 0 && (
-              <>
-                <div className="mb-2 mt-4 border-b border-sz-n-200 pb-1.5 text-[11px] font-semibold text-sz-n-500">
-                  {isSettlement
-                    ? "대조 기준 (사업자 정보)"
-                    : "참고 항목 (변경 대상 아님)"}
-                </div>
-                {referenceItems.map((item) => (
-                  <div
-                    key={item.label}
-                    className="border-b border-sz-n-100 py-2.5 last:border-b-0"
-                  >
-                    <div className="mb-0.5 text-[11px] text-sz-n-500">
-                      {item.label}
-                    </div>
-                    <div className="text-[13px] font-medium text-sz-n-900">
-                      {item.value}
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
-
-            {holderCheck?.mismatch ? (
-              <div className="mt-4 flex gap-[7px] rounded-[6px] bg-sz-danger-bg px-3 py-2.5 text-[11px] leading-relaxed text-sz-danger-text">
-                <span>!</span>
-                <span>
-                  <b>예금주 불일치 주의</b> — 요청 예금주가{" "}
-                  <b>{holderCheck.requestedHolder}</b>인데 사업자등록증 상호는{" "}
-                  <b>{holderCheck.companyName}</b>입니다. 법인 사업자는 법인 명의
-                  계좌만 등록할 수 있으니, 통장 사본의 예금주 표기를 확인하고
-                  다르면 반려하세요.
-                </span>
-              </div>
-            ) : (
-              <div className="mt-4 flex gap-[7px] rounded-[6px] bg-sz-n-100 px-3 py-2.5 text-[11px] leading-relaxed text-sz-n-600">
-                <span>ⓘ</span>
-                <span>
-                  {isSettlement ? (
-                    <>
-                      위 <b>대조 기준</b>은 예금주가 사업자 명의와 맞는지
-                      확인하는 데 씁니다.
-                    </>
-                  ) : (
-                    <>
-                      위 <b>참고 항목</b>은 변경 대상이 아니지만{" "}
-                      <b>동일 사업자인지</b> 확인하는 데 씁니다 — 사업자등록번호가
-                      다르면 반려하고 신규 입점으로 안내하세요.
-                    </>
-                  )}
-                </span>
-              </div>
-            )}
+            <ComparePanel
+              type={type}
+              diffRows={diffRows}
+              referenceItems={referenceItems}
+              holderCheck={holderCheck}
+              compareItems={compareItems}
+              approvalImpact={approvalImpact}
+            />
           </div>
         </div>
 

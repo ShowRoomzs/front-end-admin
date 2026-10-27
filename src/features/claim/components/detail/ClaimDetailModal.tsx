@@ -3,7 +3,7 @@ import ClaimSections from "@/features/claim/components/detail/ClaimSections";
 import { ClaimBadge } from "@/features/claim/components/shared/ClaimParts";
 import {
   inquiryDetailPath,
-  ORDER_LIST_PATH,
+  orderDetailPath,
 } from "@/features/claim/constants/params";
 import {
   useClaimOperatorAction,
@@ -137,15 +137,7 @@ export default function ClaimDetailModal(props: ClaimDetailModalProps) {
                   action.isPending && action.variables?.claimId === claimId
                 }
                 onAction={handleAction}
-                onOpenOrder={() =>
-                  // 클레임 응답에는 주문 id가 없다(주문번호 · 하위주문 id뿐) — `?orderId=` 대신 주문번호로 검색해 연다
-                  navigate({
-                    pathname: ORDER_LIST_PATH,
-                    search: `?searchType=ORDER_NUMBER&keyword=${encodeURIComponent(
-                      detail.claim.orderNumber
-                    )}`,
-                  })
-                }
+                onOpenOrder={() => navigate(orderDetailPath(detail.orderId))}
                 onOpenInquiry={(inquiryId) =>
                   navigate(inquiryDetailPath(inquiryId))
                 }

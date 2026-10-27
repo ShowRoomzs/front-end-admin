@@ -16,12 +16,19 @@ import type {
   OpenIssueThread,
 } from "@/features/thread/types";
 import { memberStatusVariant } from "@/features/thread/utils/tone";
-import { formatDay } from "@/features/thread/utils/format";
+import {
+  formatDay,
+  formatMonthDay,
+  formatMonthDayTime,
+} from "@/features/thread/utils/format";
 import { cn } from "@/lib/utils";
 import { Fragment, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 interface ChannelInfoBarProps {
   info: ChannelInfo;
+  /** 「회원 상세 ↗」 — 회원 id가 없으면 null(글자로만 둔다) */
+  memberDetailPath: string | null;
   /** 정산 조정 협의 스레드로 이동(이슈 탭) */
   onOpenIssueThread: (threadId: number) => void;
 }
@@ -63,21 +70,34 @@ function contractText(progress: ChannelProgress | null) {
  * `progress`의 null 행은 그리지 않는다(0은 「없다」는 사실이라 그대로 0).
  */
 export default function ChannelInfoBar(props: ChannelInfoBarProps) {
-  const { info, onOpenIssueThread } = props;
+  const { info, memberDetailPath, onOpenIssueThread } = props;
   const [isOpen, setIsOpen] = useState(false);
   const isBrand = info.tab === "BRAND";
   const roleLabel = isBrand ? TAB_ROLE_LABEL.BRAND : TAB_ROLE_LABEL.INFLUENCER;
   const profile = info.profile;
   const progress = info.progress;
+  // 개발 서버(main 미배포)는 sanction이 없다 — 정지여도 사유 줄 없이 배지만 그린다
+  const sanction =
+    info.memberStatus === "SUSPENDED" ? (info.sanction ?? null) : null;
+  // 중단 예정 = 직권 중단 사전 통지 뒤 집행 · 철회 전(main). 0이면 요약에 붙이지 않는다
+  const suspensionScheduled = progress?.groupBuySuspensionScheduled ?? null;
 
   const contract = contractText(progress);
   const groupBuyOngoing = progress?.groupBuyOngoing ?? null;
   const summaryParts: Array<ReactNode> = [
+    // 시안 A7 — 정지 사유 · 정지 날짜가 상태 배지 바로 뒤에 붙는다
+    sanction &&
+      `${sanction.reasonLabel} · ${formatMonthDay(sanction.suspendedAt)}`,
     contract && `계약 ${contract}`,
     groupBuyOngoing === null
       ? null
       : groupBuyOngoing > 0
-        ? `공구 진행중 ${groupBuyOngoing}`
+        ? [
+            `공구 진행중 ${groupBuyOngoing}`,
+            suspensionScheduled ? `중단 예정 ${suspensionScheduled}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")
         : "진행 중 공구 없음",
     progress?.unsettledCount !== null && progress?.unsettledCount !== undefined
       ? `미정산 ${progress.unsettledCount}건`
@@ -88,6 +108,7 @@ export default function ChannelInfoBar(props: ChannelInfoBarProps) {
     ? joinCounts([
         ["진행중", progress.groupBuyOngoing],
         ["종료", progress.groupBuyEnded],
+        ["중단 예정", suspensionScheduled || null],
       ])
     : null;
 
@@ -129,10 +150,18 @@ export default function ChannelInfoBar(props: ChannelInfoBarProps) {
           <section className="border-r border-sz-n-100 px-4 py-3">
             <div className={IP_TITLE_CLASS}>
               {roleLabel} 정보
-              {/* 브랜드 · 인플루언서 회원 상세 라우트가 아직 없어 링크를 걸지 않는다 */}
-              <span className="text-[11px] font-normal text-sz-n-400">
-                회원 상세
-              </span>
+              {memberDetailPath ? (
+                <Link
+                  to={memberDetailPath}
+                  className={cn(FLINK_CLASS, "text-[11px] font-normal")}
+                >
+                  회원 상세 ↗
+                </Link>
+              ) : (
+                <span className="text-[11px] font-normal text-sz-n-400">
+                  회원 상세
+                </span>
+              )}
             </div>
             <Row label="회원번호">
               <span className="tabular-nums">{info.memberNo ?? "—"}</span>
@@ -145,6 +174,12 @@ export default function ChannelInfoBar(props: ChannelInfoBarProps) {
                 >
                   {MEMBER_STATUS_LABEL[info.memberStatus]}
                 </StatusBadge>
+                {sanction && (
+                  <span className={cn(TSUB_CLASS, "tabular-nums")}>
+                    {" "}
+                    · {formatMonthDayTime(sanction.suspendedAt)}
+                  </span>
+                )}
               </Row>
             )}
             {isBrand ? (

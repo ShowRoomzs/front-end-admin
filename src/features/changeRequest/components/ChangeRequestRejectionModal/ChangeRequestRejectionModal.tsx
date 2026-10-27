@@ -1,9 +1,12 @@
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
-import { CHANGE_REQUEST_TYPE_LABELS } from "@/features/changeRequest/constants/params";
 import type {
   ChangeRequestRejectReasonOption,
   ChangeRequestType,
 } from "@/features/changeRequest/services/changeRequestService";
+import {
+  getRequestPhrase,
+  isCreatorType,
+} from "@/features/changeRequest/utils/requester";
 import { useEffect, useState } from "react";
 
 const REASON_DETAIL_MAX = 500;
@@ -11,7 +14,8 @@ const REASON_DETAIL_MAX = 500;
 interface ChangeRequestRejectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  brandName: string;
+  /** 브랜드명 또는 쇼룸명 */
+  requesterName: string;
   type: ChangeRequestType;
   /** 유형별 목록이라 부모가 조회해 넘긴다 — 프론트 상수가 아니다 */
   reasons: Array<ChangeRequestRejectReasonOption>;
@@ -21,10 +25,11 @@ interface ChangeRequestRejectionModalProps {
 }
 
 /**
- * C8·C9 — 반려 모달(520px).
+ * C8·C9·C8b — 반려 모달(520px).
  *
  * 입점 심사 반려 모달과 **정책이 정반대**다: 저기는 사유가 내부 전용이지만
- * 여기서 고른 문구는 브랜드 파트너센터 배너와 통지 이메일에 **가공 없이 그대로** 실린다.
+ * 여기서 고른 문구는 파트너센터(브랜드) · 쇼룸 스튜디오(인플루언서) 배너와 통지 이메일에
+ * **가공 없이 그대로** 실린다. 사유 목록도 유형마다 서버가 따로 준다(C8b 사업자 구분 변경 축).
  * 그래서 운영자용 축약어를 쓰지 않고 문장형으로 유지한다(§16-5).
  *
  * 상세 사유의 필수 여부는 `"OTHER"`를 하드코딩하지 않고 서버가 준 `detailRequired`를 본다 —
@@ -36,7 +41,7 @@ export default function ChangeRequestRejectionModal(
   const {
     open,
     onOpenChange,
-    brandName,
+    requesterName,
     type,
     reasons,
     isReasonsLoading = false,
@@ -59,6 +64,8 @@ export default function ChangeRequestRejectionModal(
     return null;
   }
 
+  // 인플루언서 건(C8b)은 결과가 파트너센터가 아니라 쇼룸 스튜디오 배너 + 이메일로 간다
+  const isCreator = isCreatorType(type);
   const selectedReason = reasons.find((reason) => reason.code === reasonType);
   const isDetailRequired = selectedReason?.detailRequired ?? false;
   const isDetailMissing = isDetailRequired && reasonDetail.trim().length === 0;
@@ -96,10 +103,12 @@ export default function ChangeRequestRejectionModal(
         </div>
 
         <div className="px-5 py-5 text-[12px] leading-relaxed text-sz-n-700">
-          <b className="text-sz-n-900">{brandName}</b>의{" "}
-          {CHANGE_REQUEST_TYPE_LABELS[type]} 변경 요청을 반려하시겠습니까?
+          <b className="text-sz-n-900">{requesterName}</b>의{" "}
+          {getRequestPhrase(type)}을 반려하시겠습니까?
           <br />
-          반려 사유는 브랜드 파트너센터 배너와 이메일로 전달되며, 브랜드는{" "}
+          {isCreator
+            ? "반려 사유는 쇼룸 스튜디오 정산 정보 배너와 이메일로 전달되며, 인플루언서는 "
+            : "반려 사유는 브랜드 파트너센터 배너와 이메일로 전달되며, 브랜드는 "}
           <b className="text-sz-n-900">대기기간 없이 즉시 재요청</b>할 수
           있습니다.
           <label
@@ -141,7 +150,11 @@ export default function ChangeRequestRejectionModal(
             value={reasonDetail}
             maxLength={REASON_DETAIL_MAX}
             onChange={(event) => setReasonDetail(event.target.value)}
-            placeholder="브랜드에게 전달할 상세 사유를 입력하세요."
+            placeholder={
+              isCreator
+                ? "인플루언서에게 전달할 상세 사유를 입력하세요."
+                : "브랜드에게 전달할 상세 사유를 입력하세요."
+            }
             className={`min-h-[88px] w-full resize-y rounded-[6px] border bg-white px-2.5 py-1.5 text-[13px] leading-relaxed text-sz-n-900 outline-none placeholder:text-sz-n-400 ${
               isDetailMissing
                 ? "border-sz-danger-text focus:ring-[3px] focus:ring-sz-danger-bg"
@@ -156,7 +169,9 @@ export default function ChangeRequestRejectionModal(
             >
               {isDetailMissing
                 ? `"${selectedReason?.label}"를 선택한 경우 상세 사유는 필수입니다.`
-                : "입력한 내용은 브랜드 배너와 통지 이메일에 그대로 노출됩니다."}
+                : isCreator
+                  ? "최대 500자. 입력한 내용은 스튜디오 반려 배너와 통지 이메일에 그대로 노출됩니다."
+                  : "최대 500자. 입력한 내용은 파트너센터 반려 배너와 통지 이메일에 그대로 노출됩니다."}
             </p>
             <span className="shrink-0 text-[11px] tabular-nums text-sz-n-400">
               {reasonDetail.length}/{REASON_DETAIL_MAX}

@@ -16,7 +16,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 /**
- * 좌측 목록 — 정렬(최근 메시지순 · 메시지 없는 채널은 맨 아래)은 서버가 확정한다.
+ * 좌측 목록 — 정렬(「소명 미확인」 맨 위 고정 · 최근 메시지순 · 메시지 없는 채널은 맨 아래)은 서버가 확정한다.
  * 채널은 회원 수만큼 있어 페이지를 이어 붙인다(아래로 스크롤하면 다음 페이지).
  */
 export function useGetChannelList(params: {

@@ -10,12 +10,60 @@ export const THREAD_PAGE_PATH = "/monitoring/threads";
 
 /*
   바깥 화면 링크 — 라우트(common/router/routes.tsx)에 있는 것만 건다.
-  브랜드 · 인플루언서 **회원 상세** 라우트는 아직 없어(`/market/list` 목록 · `/showroom/list` 자리 표시만)
-  「회원 상세」는 링크 없이 글자로만 둔다.
+  회원 상세는 브랜드 회원 관리(15) `/market/list/:marketId` · 인플루언서 회원 관리(18) `/showroom/list/:creatorId`
+  — 채널의 `memberId`가 곧 마켓 id · 크리에이터 id다(서버 `AdminChannelMemberNumber`).
 */
 export const CONTRACT_DETAIL_PATH = "/contract";
 export const GROUP_BUY_DETAIL_PATH = "/group-buy";
 export const SETTLEMENT_DETAIL_PATH = "/settlement/group-buy";
+export const BRAND_MEMBER_DETAIL_PATH = "/market/list";
+export const INFLUENCER_MEMBER_DETAIL_PATH = "/showroom/list";
+
+/*
+  시스템 카드의 고정 문구 — 서버는 사실만 싣고 문장은 FE가 kind · memberType으로 고른다
+  (1021 설계서 1-6 · 2-3 · 1017 8-9). 【잠정】 기-01 · 02 · 06 · 21 — 변호사 확인 뒤 바뀔 수 있어 한 곳에 모은다.
+*/
+export const CARD_COPY = {
+  /** A8 ② — 동의 확인 카드 제목(서버 제목은 「계약 취소 · 해지 동의 확인」 하나라 종류별로 나눈다) */
+  consentTitle: {
+    CANCEL: "계약 취소 동의 확인",
+    TERMINATE: "계약 해지 동의 확인",
+  },
+  consentAction: { CANCEL: "계약 취소", TERMINATE: "계약 해지" },
+  consentGuide: {
+    CANCEL:
+      "동의하시면 이 채널에 답해 주세요. 동의가 확인되면 운영팀이 계약을 취소하고 결과를 카드로 알려 드립니다.",
+    TERMINATE:
+      "동의하시면 이 채널에 답해 주세요. 동의가 확인되면 운영팀이 계약을 해지하고 결과를 카드로 알려 드립니다.",
+  },
+  /** A8 ① — 직권 중단 사전 통지 */
+  suspensionGuide:
+    "통지만으로 판매는 멈추지 않습니다. 의견이 있으면 이 채널에 남겨 주세요.",
+  /** 해지 결과 — 생성된 공구가 함께 종결됐을 때 */
+  terminatedGroupBuyClosed: "생성된 공구도 함께 종료됐습니다.",
+  /** A7 — 계정 이용 정지 카드의 차단 · 계속 이용 범위(회원 유형별) */
+  suspendedScope: {
+    BRAND: {
+      blocked: "새 상품 · 계약 · 공구 등록이 차단됩니다.",
+      keep: "진행 중인 주문과 공구는 계속 처리",
+    },
+    CREATOR: {
+      blocked: "공구 신청 · 계약 서명 · 새 게시물 등록이 차단됩니다.",
+      keep: "진행 중인 공구는 계속 진행",
+    },
+  },
+  /** 정산 줄 — 지급 정지 사유면 서버 설명(MessageCardResponse.SanctionDetail) 문장, 아니면 시안 A7 문장 */
+  suspendedPayoutHeld:
+    "정산은 확정까지 진행되며, 정지가 풀리면 다음 영업일에 지급됩니다.",
+  suspendedPayoutKept: "정산은 예정대로 진행됩니다.",
+  suspendedAppeal: "소명할 내용이 있으면 이 채널에 남겨 주세요.",
+} as const;
+
+/** 카드 · 정보 바의 당사자 표기 */
+export const PARTY_LABEL = {
+  SELLER: "브랜드",
+  CREATOR: "인플루언서",
+} as const;
 
 /** 기본 진입은 이슈 스레드다(20a · 20b 「기본 진입」) */
 export const DEFAULT_TAB: AdminChannelTab = "ISSUE";

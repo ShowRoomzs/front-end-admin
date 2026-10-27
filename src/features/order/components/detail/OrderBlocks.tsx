@@ -12,23 +12,30 @@ import {
   ITEM_STATUS_BADGE,
   PAYMENT_STATUS_BADGE,
   REFUND_STATUS_BADGE,
+  STALL_CHOICE_TEXT,
   TRACKING_ALERT_TONE,
+  cancelTypeText,
 } from "@/features/order/constants/labels";
+import { inquiryDetailPath } from "@/features/order/constants/params";
 import type {
   AdminOrderDetail,
   AdminOrderGroupDetail,
+  AdminOrderStallChoice,
   OrderBadgeTone,
 } from "@/features/order/types";
 import {
+  formatDueFull,
   formatFullDateTime,
+  formatMonthDay,
   formatShortDateTime,
   formatWon,
   purchaseConfirmText,
   subOrderSuffix,
+  toDotDate,
 } from "@/features/order/utils/format";
 import { cn } from "@/lib/utils";
-import dayjs from "dayjs";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
 const TNUM = "tabular-nums tracking-[-0.1px]";
 const SUB = "text-[11px] text-sz-n-500";
@@ -97,7 +104,16 @@ export function OrderBanner(props: {
             <>
               <b>대행 가능</b> — 발송 기한 경과 후 시스템 자동 알림{" "}
               <b>{actOnBehalf.shipping.overdueNoticeCount}회 무응답</b>
-              {detail.groups.length > 1 && ` (${actOnBehalf.brandName})`}.{" "}
+              {(actOnBehalf.shipping.lastOverdueNoticeAt ||
+                detail.groups.length > 1) &&
+                `(${[
+                  detail.groups.length > 1 ? actOnBehalf.brandName : null,
+                  actOnBehalf.shipping.lastOverdueNoticeAt &&
+                    `최근 ${formatShortDateTime(actOnBehalf.shipping.lastOverdueNoticeAt)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")})`}
+              .{" "}
               <button
                 type="button"
                 onClick={onOpenException}
@@ -113,21 +129,72 @@ export function OrderBanner(props: {
   );
 }
 
-/** ① 결제 정보 — 결제가 없는 주문(밖에서 처리)도 있다 */
+/**
+ * ① 결제 정보 — 결제가 없는 주문(밖에서 처리)도 있다.
+ * 클레임 재발송비 결제가 있으면(B8) 원래 결제 · 추가 결제를 두 줄로 나눈다 — PG 거래가 따로라 취소도 따로다.
+ */
 export function PaymentBlock(props: BlockProps) {
   const { index, detail } = props;
-  const { payment, consumer, recipient } = detail;
+  const { payment, consumer, recipient, additionalPayments } = detail;
   const statusBadge = payment
     ? (PAYMENT_STATUS_BADGE[payment.status] ?? {
         label: payment.status,
         tone: "NEUTRAL" as OrderBadgeTone,
       })
     : null;
+  const cancellable = payment ? payment.amount - payment.cancelledAmount : 0;
+  const extraCancellable = additionalPayments.reduce(
+    (sum, extra) => sum + extra.cancellableAmount,
+    0
+  );
 
   return (
     <Block index={index} title="결제 정보">
       <Grid2>
-        {payment ? (
+        {payment && additionalPayments.length > 0 ? (
+          <>
+            <FRow label="원래 결제">
+              <span className={TNUM}>{formatWon(payment.amount)}</span>{" "}
+              <span className={SUB}>
+                · {payment.methodLabel} ·{" "}
+                <span className={TNUM}>{payment.paymentId}</span>
+              </span>
+            </FRow>
+            <FRow label="결제일시">
+              <span className={TNUM}>{formatFullDateTime(payment.paidAt)}</span>
+            </FRow>
+            {additionalPayments.map((extra) => (
+              <Fragment key={extra.chargeId}>
+                <FRow label="추가 결제">
+                  <span className={TNUM}>{formatWon(extra.amount)}</span>{" "}
+                  <span className={SUB}>
+                    · {extra.typeLabel} ·{" "}
+                    <span className={TNUM}>
+                      {extra.pgTxId ?? extra.paymentId}
+                    </span>
+                    {extra.status !== "PAID" && ` · ${extra.statusLabel}`}
+                  </span>
+                </FRow>
+                <FRow label="결제일시">
+                  {extra.paidAt ? (
+                    <span className={TNUM}>
+                      {formatFullDateTime(extra.paidAt)}
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </FRow>
+              </Fragment>
+            ))}
+            <FRow label="취소 가능 잔액">
+              원래 <b>{formatWon(cancellable)}</b> · 추가{" "}
+              <b>{formatWon(extraCancellable)}</b>
+            </FRow>
+            <FRow label="결제 상태">
+              {statusBadge && <OrderBadge data={statusBadge} hideDot />}
+            </FRow>
+          </>
+        ) : payment ? (
           <>
             <FRow label="PG 거래번호">
               <span className={TNUM}>{payment.paymentId}</span>
@@ -140,7 +207,7 @@ export function PaymentBlock(props: BlockProps) {
               <span className={TNUM}>{formatFullDateTime(payment.paidAt)}</span>
             </FRow>
             <FRow label="취소 가능 잔액">
-              <b>{formatWon(payment.amount - payment.cancelledAmount)}</b>{" "}
+              <b>{formatWon(cancellable)}</b>{" "}
               <span className={SUB}>
                 ·{" "}
                 {payment.cancelledAmount > 0
@@ -174,11 +241,36 @@ export function PaymentBlock(props: BlockProps) {
   );
 }
 
+/** ② 머리 오른쪽 — 「글로우 크림 공구 · 인플루언서 글로우_지민」. 하위주문마다 공구가 다르면 이어 적는다 */
+function groupBuyNote(detail: AdminOrderDetail) {
+  const lines = detail.groups
+    .filter((group) => group.groupBuyTitle)
+    .map((group) =>
+      [
+        group.groupBuyTitle,
+        group.creatorName && `인플루언서 ${group.creatorName}`,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    );
+  const unique = [...new Set(lines)];
+  return unique.length > 0 ? unique.join(" / ") : undefined;
+}
+
 /** ② 하위주문 · 항목 — 항목(SKU) 트리는 여기서만 보인다(목록은 하위주문 1단에서 끊는다) */
 export function SubOrdersBlock(props: BlockProps) {
   const { index, detail } = props;
+  const note = groupBuyNote(detail);
   return (
-    <Block index={index} title="하위주문 · 항목">
+    <Block
+      index={index}
+      title="하위주문 · 항목"
+      note={
+        note && (
+          <span className="text-[11px] font-normal text-sz-n-500">{note}</span>
+        )
+      }
+    >
       <div>
         {detail.groups.map((group) => (
           <SubCard
@@ -224,7 +316,9 @@ export function SubOrdersBlock(props: BlockProps) {
                     <span className={SUB}>반품 {item.returnedQuantity}</span>
                   )}
                   {item.cancelTypeLabel && (
-                    <span className={SUB}>{item.cancelTypeLabel}</span>
+                    <span className={SUB}>
+                      {cancelTypeText(item.cancelTypeLabel)}
+                    </span>
                   )}
                   <span className="ml-auto tabular-nums text-sz-n-700">
                     {formatWon(item.price * item.quantity)}
@@ -258,10 +352,80 @@ function ShipRow(props: {
   );
 }
 
-/** ③ 배송 — 하위주문마다 송장 · 발송 기한 · 추적 · 반송 · 배송완료(출처) · 취소 */
+/**
+ * 추적 정지 · 소비자 선택(기-15 【잠정】) — 시안은 목록 보조줄(A3)에만 그렸고 상세 자리는 없다.
+ * 서버가 상세에 `stallChoice`를 내리므로(목록에는 아직 없다) 배송 블록 「추적」 아래 한 줄로 둔다.
+ */
+function StallChoiceRow(props: { choice: AdminOrderStallChoice }) {
+  const { choice } = props;
+  if (choice.state === "CHOSEN") {
+    return (
+      <ShipRow
+        label="소비자 선택"
+        side={
+          choice.chosenAt && (
+            <span className={TNUM}>{formatShortDateTime(choice.chosenAt)}</span>
+          )
+        }
+      >
+        <b>{STALL_CHOICE_TEXT.chosen(choice.choiceLabel)}</b>
+        <span className={SUB}> · 처리는 브랜드</span>
+      </ShipRow>
+    );
+  }
+  return (
+    <ShipRow
+      label="소비자 선택"
+      warn={choice.state === "OPEN"}
+      side={
+        choice.opensAt && (
+          <span className={TNUM}>
+            개방 {formatShortDateTime(choice.opensAt)}
+          </span>
+        )
+      }
+    >
+      {choice.state === "OPEN"
+        ? STALL_CHOICE_TEXT.open
+        : STALL_CHOICE_TEXT.waiting(choice.daysUntilOpen)}
+    </ShipRow>
+  );
+}
+
+/** 1:1 문의 줄 — 「1:1 문의 #4518」을 눌러 CS 문의 상세로 간다(B3 수령일 이의의 근거) */
+function InquiryRows(props: { detail: AdminOrderDetail }) {
+  const navigate = useNavigate();
+  return props.detail.inquiries.map((inquiry) => (
+    <ShipRow
+      key={inquiry.inquiryId}
+      label="1:1 문의"
+      side={
+        <>
+          <span className={TNUM}>{formatMonthDay(inquiry.createdAt)}</span> 접수
+        </>
+      }
+    >
+      <button
+        type="button"
+        onClick={() => navigate(inquiryDetailPath(inquiry.inquiryId))}
+        className="cursor-pointer text-sz-accent-500 hover:underline"
+      >
+        <span className={TNUM}>#{inquiry.inquiryId}</span> ↗
+      </button>
+      <span className={SUB}>
+        {" "}
+        · {inquiry.typeLabel} · {inquiry.answered ? "답변 완료" : "답변 대기"}
+      </span>
+    </ShipRow>
+  ));
+}
+
+/** ③ 배송 — 하위주문마다 송장(출처) · 발송 기한 · 추적 · 반송 · 배송완료(출처) · 취소 */
 export function ShippingBlock(props: BlockProps) {
   const { index, detail } = props;
   const locked = detail.groups.some((group) => group.cancelRequest);
+  const multi = detail.groups.length > 1;
+  const hasInquiries = detail.inquiries.length > 0;
   return (
     <Block index={index} title="배송">
       {detail.groups.map((group) => {
@@ -276,9 +440,16 @@ export function ShippingBlock(props: BlockProps) {
                 group={group}
                 right={
                   s.trackingNumber ? (
-                    <span className={TNUM}>
-                      {s.carrierLabel} · {s.trackingNumber}
-                    </span>
+                    <>
+                      {s.carrierLabel}{" "}
+                      <span className={TNUM}>{s.trackingNumber}</span>
+                      {s.invoiceSourceLabel && (
+                        <span className="text-sz-n-400">
+                          {" "}
+                          · {s.invoiceSourceLabel}
+                        </span>
+                      )}
+                    </>
                   ) : (
                     "송장 미등록"
                   )
@@ -294,9 +465,7 @@ export function ShippingBlock(props: BlockProps) {
               >
                 {s.shipDueAt ? (
                   <>
-                    <span className={TNUM}>
-                      {formatFullDateTime(s.shipDueAt)}
-                    </span>
+                    <span className={TNUM}>{formatDueFull(s.shipDueAt)}</span>
                     {s.shipOverdue && <b> · 기한 경과</b>}
                   </>
                 ) : (
@@ -305,8 +474,18 @@ export function ShippingBlock(props: BlockProps) {
               </ShipRow>
             )}
             {s.overdueNoticeCount > 0 && (
-              <ShipRow label="자동 알림" warn>
-                {s.overdueNoticeCount}회 · 브랜드 무응답
+              <ShipRow label="자동 알림" side="브랜드 무응답">
+                {s.overdueNoticeCount}회
+                {s.lastOverdueNoticeAt && (
+                  <span className="text-sz-n-400">
+                    {" "}
+                    ·{" "}
+                    <span className={TNUM}>
+                      {formatShortDateTime(s.lastOverdueNoticeAt)}
+                    </span>{" "}
+                    마지막
+                  </span>
+                )}
               </ShipRow>
             )}
             {s.prepareStartedAt && (
@@ -321,7 +500,7 @@ export function ShippingBlock(props: BlockProps) {
                 <span className={TNUM}>{formatFullDateTime(s.shippedAt)}</span>
               </ShipRow>
             )}
-            {(s.trackingAlert || s.lastTrackingAt) && (
+            {(s.trackingAlert || s.lastTrackingAt || s.lastTrackingLabel) && (
               <ShipRow
                 label="추적"
                 side={
@@ -332,19 +511,21 @@ export function ShippingBlock(props: BlockProps) {
                   )
                 }
               >
-                {s.trackingAlert && s.trackingAlertLabel ? (
+                {s.trackingAlert && s.trackingAlertLabel && (
                   <OrderBadge
                     data={{
                       label: s.trackingAlertLabel,
                       tone: TRACKING_ALERT_TONE[s.trackingAlert],
                     }}
                     hideDot
+                    className={s.lastTrackingLabel ? "mr-1.5" : undefined}
                   />
-                ) : (
-                  "정상"
                 )}
+                {/* 마지막 스캔 문구(「간선 상차」) — 연동 업체 원문 */}
+                {s.lastTrackingLabel ?? (s.trackingAlert ? null : "정상")}
               </ShipRow>
             )}
+            {group.stallChoice && <StallChoiceRow choice={group.stallChoice} />}
             {s.returnDetectedAt && (
               <ShipRow label="반송 감지">
                 <span className={TNUM}>
@@ -376,16 +557,23 @@ export function ShippingBlock(props: BlockProps) {
                   </span>
                 }
               >
-                {group.cancel.cancelTypeLabel}
+                {cancelTypeText(group.cancel.cancelTypeLabel)}
                 {group.cancel.reasonLabel && ` · ${group.cancel.reasonLabel}`}
                 {group.cancel.reasonDetail && (
                   <span className={SUB}> · {group.cancel.reasonDetail}</span>
                 )}
               </ShipRow>
             )}
+            {!multi && hasInquiries && <InquiryRows detail={detail} />}
           </SubCard>
         );
       })}
+      {/* 문의는 주문 단위라 하위주문이 여럿이면 카드 하나로 따로 모은다 */}
+      {multi && hasInquiries && (
+        <SubCard>
+          <InquiryRows detail={detail} />
+        </SubCard>
+      )}
       {locked && (
         <Hint>
           취소 요청 처리 전까지 <b>하위주문 전체의 송장 등록이 잠깁니다</b>.
@@ -421,9 +609,7 @@ export function SettlementBlock(props: BlockProps) {
         </FRow>
         <FRow label="정산 확정일">
           {st?.confirmedAt ? (
-            <span className={TNUM}>
-              {dayjs(st.confirmedAt).format("YYYY.MM.DD")}
-            </span>
+            <span className={TNUM}>{toDotDate(st.confirmedAt)}</span>
           ) : (
             "—"
           )}
@@ -501,7 +687,7 @@ export function CancelRequestBlock(props: BlockProps) {
               )}
             </FRow>
             <FRow label="응답 마감">
-              <b className={TNUM}>{formatFullDateTime(request.respondDueAt)}</b>
+              <b className={TNUM}>{formatDueFull(request.respondDueAt)}</b>
             </FRow>
             <FRow label="미응답 시">
               <b>자동 승인</b> · PG 즉시 환불
@@ -510,9 +696,11 @@ export function CancelRequestBlock(props: BlockProps) {
           </Grid2>
         );
       })}
+      {/* 기-33 — 「주문 제작·맞춤 상품」은 거부 사유에서 빠졌다(06a rev.5 B7). 서버는 옛 저장 행 표시용으로
+          `MADE_TO_ORDER`를 선택 불가로 남겨 두었고, 이 블록은 응답 대기 중 요청만 그려 거부 사유가 오지 않는다 */}
       <Hint>
-        브랜드 거부 사유는 4종(이미 포장·출고 완료 / 택배사 집화 완료 / 주문
-        제작·맞춤 상품 / 기타 — 상세 필수)이고 <b>소비자에게 그대로 전달</b>
+        브랜드 거부 사유는 3종(이미 포장·출고 완료 / 택배사 집화 완료 / 기타 —
+        상세 필수)이고 <b>소비자에게 그대로 전달</b>
         됩니다.
       </Hint>
     </Block>

@@ -1,5 +1,5 @@
 import type { StatusBadgeVariant } from "@/common/components/StatusBadge/StatusBadge";
-import { parseServerDateTime } from "@/common/utils/formatDate";
+import { parseServerDateTime, parseWallClock } from "@/common/utils/formatDate";
 import type {
   ClaimListItem,
   ClaimTone,
@@ -39,14 +39,30 @@ export function md(value: string | null): string {
   return value ? kst(value).format("MM.DD") : "—";
 }
 
+/** 서버 LocalDate(「2026-08-27」 · 시각 없음)를 「08.27」로 — 시간대를 옮기지 않는다 */
+export function mdDate(value: string | null): string {
+  return value ? dayjs(value).format("MM.DD") : "—";
+}
+
 /** 09.18 10:00 */
 export function mdHm(value: string | null): string {
   return value ? kst(value).format("MM.DD HH:mm") : "—";
 }
 
-/** 기한까지 남은 달력일 — 「D-12」 · 지났으면 「D+2」 */
+/*
+  기한(검수 기한 · 재발송비 결제 기한 · 보관 기한)은 서버가 날짜에 23:59:59를 붙인 벽시계다
+  (`BusinessDayCalculator.dueAt` · `endOfDayAfter` · `ClaimStoragePolicy`) — UTC 보정을 하면 다음 날
+  08:59로 밀리므로 그대로 읽는다. 이벤트 시각(신청 · 입고 · 이력 · 확정 예정)만 `md` · `mdHm`을 쓴다.
+*/
+
+/** 기한 날짜 — 09.16(벽시계 그대로) */
+export function mdDue(value: string | null): string {
+  return value ? parseWallClock(value).format("MM.DD") : "—";
+}
+
+/** 기한까지 남은 달력일 — 「D-12」 · 지났으면 「D+2」(기한 벽시계 기준) */
 export function dDay(value: string): string {
-  const days = kst(value)
+  const days = parseWallClock(value)
     .startOf("day")
     .diff(dayjs().utcOffset(9).startOf("day"), "day");
   return days >= 0 ? `D-${days}` : `D+${-days}`;
@@ -92,23 +108,26 @@ export function stageBadge(row: SellerClaimListItem): {
 }
 
 /**
- * 「경과」 열 — 시안의 「신청 1일 · 집화 2일 · 입고 3일 · 통과 1일 · 고지 1회 · 09.12(완료)」.
- * 서버 `elapsedDays`는 현재 단계 진입부터의 **달력일**이다(시안의 「영업일」 표기는 서버에 없다).
+ * 「경과」 열 — 시안의 「신청 1일 · 집화 2일 · 입고 3영업일 · 통과 1영업일 · 고지 1회 · 09.12(완료)」.
+ * 브랜드가 기한 안에 해야 하는 단계(입고·검수 · 재발송)는 서버 `elapsedBusinessDays`(영업일)로,
+ * 소비자·택배사 쪽 단계(신청 · 집화)는 시안대로 `claim.elapsedDays`(달력일)로 적는다. 기준점은 둘 다 단계 진입이다.
  */
-export function elapsedLabel(row: SellerClaimListItem): string {
+export function elapsedLabel(item: ClaimListItem): string {
+  const row = item.claim;
+  const business = item.elapsedBusinessDays;
   switch (row.stage) {
     case "COLLECT_WAIT":
       return `신청 ${row.elapsedDays}일`;
     case "COLLECTING":
-      return `회수 ${row.elapsedDays}일`;
+      return `집화 ${row.elapsedDays}일`;
     case "INSPECTION":
       return row.status === "ARRIVED"
-        ? `도착 ${row.elapsedDays}일`
-        : `입고 ${row.elapsedDays}일`;
+        ? `도착 ${business}영업일`
+        : `입고 ${business}영업일`;
     case "RESHIP":
       return row.reshipReason === "REJECT_RETURN"
-        ? `반려 ${row.elapsedDays}일`
-        : `통과 ${row.elapsedDays}일`;
+        ? `반려 ${business}영업일`
+        : `통과 ${business}영업일`;
     case "REJECT_HOLD":
       return row.storage
         ? `고지 ${row.storage.noticeCount}회`

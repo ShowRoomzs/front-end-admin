@@ -73,6 +73,8 @@ export const CLAIM_INITIAL_PARAMS: ClaimListParams = {
   searchField: "keyword",
   keyword: "",
   sort: "",
+  userId: "",
+  openOnly: "",
   page: 1,
   size: 20,
 };
@@ -88,8 +90,10 @@ export const CLAIM_TAB_LABEL: Record<ClaimTab, string> = Object.fromEntries(
   CLAIM_TABS.map((tab) => [tab.value, tab.label])
 ) as Record<ClaimTab, string>;
 
-/** 주문 조회 — 상세 경로가 없어 목록을 주문번호로 검색해 연다 */
-export const ORDER_LIST_PATH = "/order/list";
+/** 주문 조회 — `?orderId=`로 들어가면 그 주문의 상세가 바로 열린다 */
+export function orderDetailPath(orderId: number) {
+  return `/order/list?orderId=${orderId}`;
+}
 
 /** 1:1 문의 상세 — 소비자 이의의 원문 · 기각(답변)은 여기서 한다 */
 export function inquiryDetailPath(inquiryId: number) {

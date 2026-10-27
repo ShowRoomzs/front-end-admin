@@ -10,6 +10,7 @@ import { SELECT_SM_CLASS } from "@/features/order/components/shared/styles";
 import {
   ORDER_DEFAULT_SORT,
   ORDER_INITIAL_PARAMS,
+  ORDER_ISSUE_OPTIONS,
   ORDER_PAGE_SIZES,
   ORDER_SORT_LABEL,
   ORDER_SORT_OPTIONS,
@@ -17,6 +18,7 @@ import {
 } from "@/features/order/constants/params";
 import {
   useGetOrderBrandOptions,
+  useGetOrderCreatorOptions,
   useGetOrderDelayCount,
   useGetOrderList,
   useGetOrderSummary,
@@ -32,7 +34,7 @@ import {
   toSummaryQuery,
 } from "@/features/order/utils/params";
 import { resolvePeriod } from "@/features/order/utils/period";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
 /**
  * 주문 조회 — 전 브랜드·전 공구 주문의 조회 입구(시안 ui-admin-06a-orders A1~A5 · `AdminOrderController`).
@@ -78,15 +80,17 @@ export default function OrderManagement() {
     isLoading,
     isError,
     refetch,
-    isPlaceholderData,
   } = useGetOrderList(listQuery);
   const { data: summary } = useGetOrderSummary(summaryQuery);
   // 「처리 지연」은 필터와 무관한 06d 전체 숫자라 조건이 걸리지 않은 전체 탭에서만 보인다
   const showDelay = params.tab === "ALL" && !hasChips && !params.keyword;
   const { data: delayCount } = useGetOrderDelayCount(showDelay);
-  // 브랜드 이름은 칩에도 쓰이므로 브랜드가 걸려 있으면 접혀 있어도 받는다
+  // 브랜드 · 인플루언서 이름은 칩에도 쓰이므로 걸려 있으면 접혀 있어도 받는다
   const { data: brands } = useGetOrderBrandOptions(
     filterExpanded || Boolean(params.marketId)
+  );
+  const { data: creators } = useGetOrderCreatorOptions(
+    filterExpanded || Boolean(params.creatorId)
   );
 
   const pageInfo = usePaginationInfo({
@@ -147,38 +151,6 @@ export default function OrderManagement() {
     });
   }, []);
 
-  /*
-    반품·교환(06b)의 「주문 상세 열기」는 주문 id가 없어 `?searchType=ORDER_NUMBER&keyword=<주문번호>`로 온다.
-    진입 주소의 그 주문번호로 받은 첫 결과가 정확히 한 건이면 상세를 바로 연다 — 한 번만.
-  */
-  const [entryKeyword] = useState(() => {
-    const search = new URLSearchParams(window.location.search);
-    return search.get("searchType") === "ORDER_NUMBER" && !search.get("orderId")
-      ? (search.get("keyword")?.trim() ?? "")
-      : "";
-  });
-  const [autoOpenDone, setAutoOpenDone] = useState(entryKeyword === "");
-  useEffect(() => {
-    if (autoOpenDone || isPlaceholderData || !list) {
-      return;
-    }
-    if (listQuery.keyword !== entryKeyword) {
-      return; // 주소를 읽기 전 기본 조건의 결과다 — 다음 결과를 기다린다
-    }
-    setAutoOpenDone(true);
-    const only = list.content.length === 1 ? list.content[0] : null;
-    if (only && only.orderNumber === entryKeyword) {
-      openOrder(only.orderId);
-    }
-  }, [
-    autoOpenDone,
-    isPlaceholderData,
-    list,
-    listQuery.keyword,
-    entryKeyword,
-    openOrder,
-  ]);
-
   const rows = useMemo(() => list?.content ?? [], [list]);
   const orderIds = useMemo(() => rows.map((row) => row.orderId), [rows]);
   const brandName = brands?.find((b) => b.id === params.marketId)?.name;
@@ -193,6 +165,7 @@ export default function OrderManagement() {
         onSearch={update}
         summary={summary}
         brands={brands}
+        creators={creators}
         expanded={filterExpanded}
         onExpandedChange={setFilterExpanded}
         range={range}
@@ -225,6 +198,20 @@ export default function OrderManagement() {
                 건
               </>
             )}
+            {/* 배송 이상 탭(A3) — 유형별 건수. 유형을 골랐으면 총 건수가 곧 그 유형이다 */}
+            {total > 0 &&
+              params.tab === "DELIVERY_ISSUE" &&
+              !params.status &&
+              summary &&
+              ORDER_ISSUE_OPTIONS.map((item) => (
+                <Fragment key={item.value}>
+                  {` · ${item.label} `}
+                  <b className="text-sz-n-900">
+                    {summary.deliveryIssueCounts[item.value]}
+                  </b>
+                  건
+                </Fragment>
+              ))}
             {total > 0 && showDelay && delayCount !== undefined && (
               <>
                 {" · 처리 지연 "}

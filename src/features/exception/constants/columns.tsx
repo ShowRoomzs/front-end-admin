@@ -1,6 +1,7 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import type { ExceptionColumn } from "@/features/exception/components/shared/ExceptionTable";
 import OpenButton from "@/features/exception/components/shared/OpenButton";
+import StallNote from "@/features/exception/components/shared/StallNote";
 import { DELIVERY_KIND_VARIANT } from "@/features/exception/constants/labels";
 import type { ExceptionItem } from "@/features/exception/types";
 import {
@@ -187,8 +188,16 @@ export const DELIVERY_COLUMNS: Array<ExceptionColumn<ExceptionItem>> = [
     label: "경과",
     width: 100,
     align: "center",
-    // 시안 A2의 경과 열은 색이 없다 — 위험 · 경고는 유형 배지가 맡는다
-    render: (row) => <span className={TNUM}>{row.elapsedLabel}</span>,
+    // 시안 A2의 경과 열은 색이 없다 — 위험 · 경고는 유형 배지가 맡는다.
+    // 추적 정지는 아래에 소비자 선택 개방까지 남은 일수(기-15 【잠정】)를 붙인다
+    render: (row) => (
+      <>
+        <span className={TNUM}>{row.elapsedLabel}</span>
+        {row.kind === "TRACKING_STALLED" && row.stallChoice && (
+          <StallNote choice={row.stallChoice} />
+        )}
+      </>
+    ),
   },
   {
     key: "handler",

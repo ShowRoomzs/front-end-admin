@@ -20,9 +20,19 @@ export type ParticipantType = "SELLER" | "CREATOR" | "ADMIN";
 
 export type MessageType = "TEXT" | "SYSTEM";
 
+/**
+ * 백엔드 `MessageCardType`(origin/main). 1021 이후 6종(계약 동의 확인 · 해지 결과 · 직권 중단 통지 ·
+ * 조정 철회 · 정지 · 정지 해제)은 개발 서버 미배포 — 모르는 값이 와도 렌더러가 제목만 그린다.
+ */
 export type MessageCardType =
   | "CONTRACT_RESEND_REQUEST"
   | "CONTRACT_ADMIN_CANCELED"
+  /** 계약 취소 · 해지 동의 확인(기-06 · 20a A8 ②) — 요청하지 않은 쪽 채널 · 버튼 없음 */
+  | "CONTRACT_CLOSE_CONSENT_REQUEST"
+  /** 계약 해지 처리됨(기-05) — 양측 채널 */
+  | "CONTRACT_TERMINATED"
+  /** 직권 중단 사전 통지 · 소명 요청(기-21 · 20a A8 ①) — 양측 채널 · 버튼 없음 */
+  | "GROUP_BUY_SUSPENSION_NOTICE"
   | "SETTLEMENT_ADJUSTMENT_OPENED"
   | "SETTLEMENT_ADJUSTMENT_REQUEST"
   | "SETTLEMENT_ADJUSTMENT_COUNTER"
@@ -30,7 +40,12 @@ export type MessageCardType =
   | "SETTLEMENT_ADJUSTMENT_REJECTED"
   | "SETTLEMENT_ADJUSTMENT_DEADLINE_NOTICE"
   | "SETTLEMENT_ADJUSTMENT_AGREED"
-  | "SETTLEMENT_ADJUSTMENT_EXPIRED";
+  | "SETTLEMENT_ADJUSTMENT_EXPIRED"
+  /** 요청자 철회 · 원래 금액 확정(기-14) */
+  | "SETTLEMENT_ADJUSTMENT_WITHDRAWN"
+  /** 계정 이용 정지(20a A7) — 그 아래 답글이 곧 소명이다 */
+  | "ACCOUNT_SUSPENDED"
+  | "ACCOUNT_SUSPENSION_RELEASED";
 
 export type MessageCardTone = "WARNING" | "NEUTRAL";
 
@@ -43,8 +58,8 @@ export type ThreadKind =
   | "GROUP_BUY_FULFILLMENT"
   | "SETTLEMENT_ADJUSTMENT";
 
-/** 협의 상태 — OPEN(협의 중) · AGREED(합의) · EXPIRED(기한 만료) */
-export type AdjustmentStatus = "OPEN" | "AGREED" | "EXPIRED";
+/** 협의 상태 — OPEN(협의 중) · AGREED(합의) · EXPIRED(기한 만료) · WITHDRAWN(요청 철회 · 기-14) */
+export type AdjustmentStatus = "OPEN" | "AGREED" | "EXPIRED" | "WITHDRAWN";
 
 /**
  * 서버 톤 문자열(INFO · SUCCESS · NEUTRAL · WARNING …) — 배지 색은 `utils/tone.ts`가
@@ -144,6 +159,11 @@ export interface ChannelListItem {
   unreadCount: number;
   /** 탈퇴 회원 · 이슈 행은 false(열람만) */
   writable: boolean;
+  /**
+   * 「소명 미확인」 — 정지 회원이 정지 카드 뒤에 보낸 말풍선을 운영팀이 아직 읽지 않았다.
+   * true인 채널을 서버가 맨 위에 고정한다(20a A7). 개발 서버(main 미배포)는 이 필드가 없다 — 참일 때만 쓴다.
+   */
+  appealUnconfirmed: boolean;
   issue: IssueListItem | null;
 }
 
@@ -196,8 +216,25 @@ export interface ChannelProgress {
   contractConcluded: number | null;
   groupBuyOngoing: number | null;
   groupBuyEnded: number | null;
+  /** 중단 예정 공구 수 — 직권 중단 사전 통지 뒤 집행 · 철회 전. 개발 서버(main 미배포)는 없다 */
+  groupBuySuspensionScheduled?: number | null;
+  /** 미정산 건수 — 회원 상세 탈퇴 조건 「미정산」과 같은 숫자(main). 옛 서버는 브랜드도 null */
   unsettledCount: number | null;
   connectedBrandCount: number | null;
+}
+
+/**
+ * 정보 바의 정지 사유 · 일시 — 열린 정지 행 그대로(`AdminThreadDto.OpenSanction`).
+ * `suspendedAt`은 처리 시각(UTC 벽시계) · `endsOn` · `appealDeadlineAt`은 KST 벽시계.
+ */
+export interface OpenSanction {
+  reasonCode: string;
+  reasonLabel: string;
+  reasonDetail: string | null;
+  suspendedAt: string;
+  /** 정지 종료일(포함) — 다음 날 00:00 자동 해제. null = 기간 없음 */
+  endsOn: string | null;
+  appealDeadlineAt: string | null;
 }
 
 export interface OpenIssueThread {
@@ -289,6 +326,11 @@ export interface ChannelInfo {
   writable: boolean;
   profile: ChannelProfile | null;
   progress: ChannelProgress | null;
+  /**
+   * [정지 회원] 열린 정지의 사유 · 일시 — 정지 행이 없으면 null.
+   * 개발 서버(main 미배포)는 이 필드가 없다(undefined) — 없으면 사유 줄을 그리지 않는다.
+   */
+  sanction?: OpenSanction | null;
   openIssueThreads: Array<OpenIssueThread> | null;
   issue: IssuePanel | null;
   pair: PairInfo | null;
@@ -319,16 +361,71 @@ export interface AdjustmentDetail {
   closedAt?: string;
 }
 
+/**
+ * 계정 이용 정지 · 해제 카드의 사실(`MessageCardResponse.SanctionDetail`) — 1017 이후 카드에만.
+ * 기간 넷(`endsOn` · `autoReleaseAt` · `periodDays` · `appealDeadlineAt`)은 1021 이후 정지 카드에만 있다.
+ * `endsOn` · `autoReleaseAt` · `appealDeadlineAt`은 KST 벽시계(입력 · 기한).
+ */
+export interface SanctionDetail {
+  /** BRAND · CREATOR */
+  memberType?: string;
+  reasonCode?: string;
+  reasonLabel?: string;
+  /** 상세 사유 · 해제 메모 — 운영자가 적은 경우만 */
+  reasonDetail?: string;
+  /** [정지 카드] 지급 정지 사유인가 — 정산 줄 문구가 갈린다 */
+  payoutHeld?: boolean;
+  endsOn?: string;
+  /** 종료일 다음 날 00:00 */
+  autoReleaseAt?: string;
+  /** 정지일 · 종료일 포함 일수 */
+  periodDays?: number;
+  appealDeadlineAt?: string;
+}
+
+/** 안내 카드 종류 — 고정 문구를 이 값으로 고른다(`NoticeDetail.kind`) */
+export type NoticeKind = "CANCEL" | "TERMINATE" | "ADMIN_SUSPENSION";
+
+/**
+ * 계약 취소 · 해지 동의 확인 · 해지 결과 · 직권 중단 사전 통지 카드의 사실(`MessageCardResponse.NoticeDetail` · 1021).
+ * 버튼이 없다 — 동의 · 소명은 답글로 받고 결정은 각 관리 화면에서 한다.
+ * `executeScheduledAt` · `appealDeadlineAt`은 운영자가 M6에서 넣은 값이라 KST 벽시계다.
+ */
+export interface NoticeDetail {
+  /** 모르는 값이 와도 깨지지 않게 문자열로 받는다 */
+  kind?: NoticeKind | string;
+  /** 당사자에게 그대로 보이는 설명 — 요청 메모 · 해지 설명 · 통지 본문 */
+  body?: string;
+  /** [해지 결과] 생성된 공구가 함께 종결됐는가 */
+  groupBuyClosed?: boolean;
+  groupBuyId?: number;
+  groupBuyNumber?: string;
+  /** [직권 중단] 근거 호 코드(ART17_1_LAW 등) */
+  reasonClause?: string;
+  reasonClauseLabel?: string;
+  executeScheduledAt?: string;
+  /** [직권 중단] 소명 · 의견 기한 — 양측 같은 기한 */
+  appealDeadlineAt?: string;
+  counterpartyNoticed?: boolean;
+  /** [직권 중단] 이 채널의 상대 당사자 — 옛 카드 · 상대 없음이면 없다 */
+  counterpartyType?: SettlementParty;
+  counterpartyName?: string;
+}
+
 /** 값이 있는 필드만 내려온다(카드 종류마다 키가 다르다) */
 export interface CardDetail {
+  /** [재발송 요청 · 동의 확인] 요청한 쪽 */
   requesterType?: SettlementParty;
   requesterName?: string;
   requestedAt?: string;
+  /** [직권 취소 · 해지 · 동의 확인 · 직권 중단 · 정지] 사유 문장 */
   reasonLabel?: string;
   processedAt?: string;
   processedByName?: string;
   notifiedBothParties?: boolean;
   adjustment?: AdjustmentDetail;
+  sanction?: SanctionDetail;
+  notice?: NoticeDetail;
 }
 
 export interface CardAction {

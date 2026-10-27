@@ -6,15 +6,46 @@ import {
   formatDateOnly,
   formatDateTimeShort,
   parseServerDateTime,
+  parseWallClock,
 } from "@/common/utils/formatDate";
 import type {
   AdminGroupBuyDetail,
   FulfillmentTarget,
   GroupBuyActorType,
+  GroupBuyPostStatus,
+  GroupBuyTone,
 } from "@/features/groupBuy/types";
 import dayjs from "dayjs";
 
 export type Detail = AdminGroupBuyDetail;
+
+// ── 게시물 「노출 중지」(1021 기-08) ──────────────────
+
+/** 시안 rev.7 조치명 — 「숨김」을 「노출 중지」로 통일했다(버튼 · 모달 · 배지 · 이력 · 안내문) */
+export const POST_SUSPENDED_LABEL = "노출 중지";
+
+/**
+ * 노출 중지 상태인가 — 서버 main은 `EXPOSURE_SUSPENDED`, 아직 배포된 옛 서버는 `HIDDEN`을 내린다.
+ * 둘 다 같은 상태로 읽어야 백엔드 배포 순서와 상관없이 화면이 깨지지 않는다.
+ */
+export function isPostExposureSuspended(status: GroupBuyPostStatus): boolean {
+  return status === "EXPOSURE_SUSPENDED" || status === "HIDDEN";
+}
+
+/**
+ * 게시물 상태 배지 — 서버 라벨 · 톤을 그대로 쓰되 노출 중지만 덮어쓴다.
+ * 옛 서버 라벨 「숨김」을 시안 「노출 중지」로 바꾸고, 톤은 시안 rev.7 `.badge.b-warning`(경고)에 맞춘다
+ * — main은 DANGER를 내리지만 어드민 17 시안은 「경고는 반려와 노출 중지 둘뿐」으로 그린다.
+ */
+export function postStatusBadge(
+  status: GroupBuyPostStatus,
+  label: string,
+  tone: GroupBuyTone
+): { label: string; tone: GroupBuyTone } {
+  return isPostExposureSuspended(status)
+    ? { label: POST_SUSPENDED_LABEL, tone: "WARNING" }
+    : { label, tone };
+}
 
 export function num(value: number | null | undefined): string {
   return value === null || value === undefined
@@ -243,7 +274,9 @@ export type AdminView =
   | "extension"
   | "selling"
   | "ended"
-  | "suspended";
+  | "suspended"
+  /** 계약 해지로 오픈 전 종결(1021 기-05 · 17 시안에 상태 없음) — 중단 화면으로 그리지 않는다 */
+  | "terminated";
 
 export function adminView(detail: Detail): AdminView {
   const { groupBuy, post, activeRequest, adminSuspension, extension } = detail;
@@ -260,7 +293,7 @@ export function adminView(detail: Detail): AdminView {
       if (activeRequest) {
         return "request";
       }
-      if (post.status === "HIDDEN") {
+      if (isPostExposureSuspended(post.status)) {
         return "hidden";
       }
       if (extension?.status === "PENDING") {
@@ -270,10 +303,32 @@ export function adminView(detail: Detail): AdminView {
     case "ENDED":
     case "SETTLED":
       return "ended";
+    case "TERMINATED":
+      return "terminated";
     case "SUSPENDED":
     default:
       return "suspended";
   }
+}
+
+/**
+ * 시안 B5a — 주문이 모두 종결돼 정산 관리로 넘어갔는가. 미종결이 남았거나(UNCLOSED_ORDERS)
+ * 판매 포트가 비어 셀 수 없으면(CLOSURE_UNKNOWN) 아직 B5 「주문 종결 대기」다.
+ */
+export function settlementTransferred(detail: Detail): boolean {
+  if (detail.groupBuy.status === "SETTLED") {
+    return true;
+  }
+  const settlement = detail.afterEnd?.settlement;
+  const closure = detail.afterEnd?.orderClosure;
+  if (!settlement || !closure) {
+    return false;
+  }
+  return (
+    closure.unclosedCount === 0 &&
+    !settlement.blockers.includes("UNCLOSED_ORDERS") &&
+    !settlement.blockers.includes("CLOSURE_UNKNOWN")
+  );
 }
 
 // ── 처리 이력 ─────────────────────────────────────────
@@ -287,8 +342,9 @@ const EVENT_TEXT: Record<string, { label: string; tone: HistoryDotTone }> = {
   READY: { label: "준비 조건 충족 · 준비완료", tone: "success" },
   OPENED: { label: "공구 시작 · 게시물 노출", tone: "accent" },
   POST_EDITED: { label: "공구 게시물 수정", tone: "accent" },
-  POST_HIDDEN: { label: "공구 게시물 숨김", tone: "warn" },
-  POST_UNHIDDEN: { label: "공구 게시물 숨김 해제", tone: "success" },
+  // 서버 이벤트 이름(POST_HIDDEN · POST_UNHIDDEN)은 DB 저장 문자열이라 그대로다 — 표시만 시안 rev.7 B2b
+  POST_HIDDEN: { label: "공구 게시물 노출 중지", tone: "warn" },
+  POST_UNHIDDEN: { label: "공구 게시물 노출 중지 해제", tone: "success" },
   EXTENSION_REQUESTED: { label: "기간 연장 요청 발신", tone: "accent" },
   EXTENSION_ACCEPTED: {
     label: "기간 연장 수락 · 종료일 변경",
@@ -309,6 +365,8 @@ const EVENT_TEXT: Record<string, { label: string; tone: HistoryDotTone }> = {
   APPEAL_SUBMITTED: { label: "브랜드 소명 제출", tone: "accent" },
   SUSPENSION_WITHDRAWN: { label: "직권 중단 철회", tone: "success" },
   SUSPENDED_BY_ADMIN: { label: "직권 중단 집행", tone: "danger" },
+  // 1021 기-05 계약 해지로 오픈 전 종결 — 문구는 01 계약 rev.9 B7 이력 「계약 해지 · 생성 공구 함께 종료」에 맞춘다
+  TERMINATED_BY_CONTRACT: { label: "계약 해지 · 공구 종료", tone: "muted" },
   SUSPENDED_EMERGENCY: {
     label: "긴급 직권 중단(사후 통지)",
     tone: "danger",
@@ -439,3 +497,7 @@ export function toHistoryItems(history: Detail["history"]): Array<HistoryItem> {
     ];
   });
 }
+
+/** 서버가 계산한 영업일 기한(오픈 승인 기한 · 23:59:59 KST 벽시계) — 2026.10.19 */
+export const dueD = (value: string | null | undefined) =>
+  value ? parseWallClock(value).format("YYYY.MM.DD") : "—";

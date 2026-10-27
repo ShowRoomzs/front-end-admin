@@ -152,3 +152,29 @@ export const RAIL_NOTICE_TEXT: Record<OrderRailNotice, Rich> = {
   ],
   NO_ACTION: ["조치할 것이 없습니다."],
 };
+
+/**
+ * 기-16 — 신규 단계 판매 취소도 「직권 취소」(06a rev.5). main 서버는 `OrderCancelType.SELLER_DIRECT`
+ * 라벨을 「직권 취소」로 바꿨지만, 배포된 서버는 아직 「브랜드 직권 취소」를 내린다 — 둘 다 같은
+ * 표시로 맞춘다(백엔드 배포 뒤에도 그대로 둬도 된다).
+ */
+export function cancelTypeText(label: string) {
+  return label === "브랜드 직권 취소" ? "직권 취소" : label;
+}
+
+/*
+  【잠정】 기-15 추적 정지 → 소비자 선택(재발송 / 환불) 개방 — 변호사 확인 뒤 문구가 바뀔 수 있어
+  한 곳에 모은다. N(개방까지 남은 일수)은 서버 값(`stallChoice.daysUntilOpen`)이고, 값이 없으면
+  시안 그대로 「N일 [정책값 미정]」으로 둔다(하드코딩 금지).
+*/
+export const STALL_CHOICE_TEXT = {
+  /** 개방 전 — 「소비자 선택 개방까지 N일」(06a A3 · 06d A2 보조줄) */
+  waiting: (days: number | null) =>
+    days === null
+      ? "소비자 선택 개방까지 N일 [정책값 미정]"
+      : `소비자 선택 개방까지 ${days}일`,
+  /** 개방 뒤 · 선택 전 */
+  open: "소비자 선택 가능 · 재발송 / 환불",
+  /** 선택 뒤 — 처리는 브랜드(재발송 = 송장 수정 · 환불 = 소비자 환불 처리) */
+  chosen: (choiceLabel: string | null) => `소비자 선택 · ${choiceLabel ?? "—"}`,
+} as const;

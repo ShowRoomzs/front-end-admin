@@ -1,4 +1,4 @@
-import { parseServerDateTime } from "@/common/utils/formatDate";
+import { parseServerDateTime, parseWallClock } from "@/common/utils/formatDate";
 import dayjs from "dayjs";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -36,6 +36,32 @@ export function formatMonthDay(date: string) {
 /** 「09.09 10:52」 */
 export function formatMonthDayTime(date: string) {
   return parseServerDateTime(date).format("MM.DD HH:mm");
+}
+
+/*
+  KST 벽시계 값 — 운영자 · 회원이 넣은 시각과 거기서 나온 기한(합의 기한 · 소명 기한 · 집행 예정 ·
+  정지 종료일 · 이의 신청 기한)은 서버가 Asia/Seoul 벽시계로 저장한다. UTC로 보고 바꾸면 9시간 밀린다
+  (23:59 → 다음 날 08:59) — 위의 이벤트 시각 함수(parseServerDateTime)와 섞지 않는다.
+*/
+
+/** KST 기한 — 「2026.10.13」 */
+export function formatKstDay(date: string) {
+  return parseWallClock(date).format("YYYY.MM.DD");
+}
+
+/** KST 기한 — 「2026.09.03 23:59」 */
+export function formatKstDateTime(date: string) {
+  return parseWallClock(date).format("YYYY.MM.DD HH:mm");
+}
+
+/** KST 기한 — 「08.13」 */
+export function formatKstMonthDay(date: string) {
+  return parseWallClock(date).format("MM.DD");
+}
+
+/** KST 기한 — 「08.13 23:59」 */
+export function formatKstMonthDayTime(date: string) {
+  return parseWallClock(date).format("MM.DD HH:mm");
 }
 
 /** 날짜 구분선 키 — 같은 날의 메시지를 한 줄 아래에 묶는다 */

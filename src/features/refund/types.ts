@@ -11,7 +11,13 @@ export type RefundTab = "PENDING" | "FAILED" | "DONE";
 
 /** 경로 셀렉트 — 서버가 발생 경로(`RefundTaskSource`) 집합으로 바꾼다 */
 export type RefundRoute =
-  "CANCEL" | "RETURN" | "RETURN_SHIPMENT" | "EXCHANGE" | "OPERATOR";
+  | "CANCEL"
+  | "RETURN"
+  | "RETURN_SHIPMENT"
+  | "EXCHANGE"
+  | "OPERATOR"
+  /** 귀책 변경 운임 환급(1021 기-93 · main — 개발 서버 미배포) */
+  | "FREIGHT";
 /** 빈 문자열 = 경로 전체(쿼리에서 빠진다) */
 export type RefundRouteFilter = "" | RefundRoute;
 
@@ -26,7 +32,14 @@ export type RefundTaskSource =
   | "OPERATOR_REASON"
   | "USER_CANCEL_BEFORE_PREPARE"
   | "CLAIM_PAYMENT_CANCELLED"
-  | "LOST_IN_TRANSIT";
+  | "LOST_IN_TRANSIT"
+  /** 귀책 변경 운임 환급(main) */
+  | "FREIGHT_REFUND"
+  /** 추적 정지 · 소비자 환불 선택(main) */
+  | "STALL_REFUND_CHOSEN";
+
+/** `RefundMethod` — PG 취소 · 원래 결제액 초과분의 운영자 계좌 송금(기록만 · main) */
+export type RefundMethod = "PG_CANCEL" | "BANK_TRANSFER";
 
 /** 출처 — `RefundTaskOrigin` (PG 자동 · 운영자 사유) */
 export type RefundTaskOrigin = "PG_AUTO" | "OPERATOR";
@@ -42,7 +55,8 @@ export type OperatorRefundReason =
   | "RECALL"
   | "INSPECTION_UNANSWERED";
 
-export type ClaimChargeType = "EXCHANGE_RESHIP" | "REJECT_RESHIP";
+export type ClaimChargeType =
+  "EXCHANGE_RESHIP" | "REJECT_RESHIP" | "OVERTURN_RESHIP";
 
 export type ClaimChargeStatus =
   "PENDING" | "PAID" | "DEDUCTED" | "COVERED" | "VOID" | "REFUNDED" | "WAIVED";
@@ -61,6 +75,8 @@ export interface RefundListParams extends PageParams {
   /** 환불번호 · 주문번호 · PG 거래번호 — 서버가 셋 다 본다 */
   keyword: string;
   sort: RefundSort;
+  /** 소비자 상세(13)의 칩에서 넘어온 진입 — 그 소비자의 환불만(main · 56 C1). 화면 필터에는 없다 */
+  userId: string;
 }
 
 /** `AdminRefundListItem` — 목록 한 행 + 액션 가능 여부 */
@@ -104,8 +120,15 @@ export interface RefundItem {
   executable: boolean;
   /** [철회] 가능 — 집행 전 운영자 사유 환불(반려 이의 인용 제외) */
   voidable: boolean;
-  /** [수동 완료 기록] 가능 — 대기 · 실패 */
+  /** [수동 완료 기록] 가능 — 대기 · 실패(계좌 송금 행 제외) */
   manuallyCompletable: boolean;
+  /**
+   * 환불 수단(main · 개발 서버 미배포) — BANK_TRANSFER면 결제 열 「계좌 송금」 · [송금 처리].
+   * 배포된 서버는 내리지 않는다(없으면 PG 취소로 본다).
+   */
+  method?: RefundMethod;
+  /** [송금 완료 기록] 가능 — 송금 대기(BANK_TRANSFER ∧ PENDING) · main */
+  transferable?: boolean;
 }
 
 // ------------------------------------------------------------------ 요약
@@ -129,6 +152,8 @@ export interface RefundSummary {
   tabs: Partial<Record<RefundTab, RefundTabStat>>;
   /** 사이드바 배지 = 집행 대기 + 실패 */
   badge: number;
+  /** 송금 대기 건수 — 집행 대기 탭에 함께 있다(main) */
+  transferPending?: number;
 }
 
 // ------------------------------------------------------------------ 상세
@@ -195,6 +220,19 @@ export interface RefundClawback {
   /** PENDING · APPLIED · UNRECOVERABLE */
   status: string;
   statusLabel: string;
+  /** 브랜드 측 차감액 — 그 측 행이 없으면 null(이월로 나뉜 행은 서버가 합친다) */
+  brandAmount: number | null;
+  /** 인플루언서 측 차감액 — 그 측 행이 없으면 null */
+  creatorAmount: number | null;
+}
+
+/**
+ * `AdminRefundExpectedClawback` — 집행하면 생길 차감액(저장 전 예정액).
+ * 집행 후 `clawback`과 같은 식이다.
+ */
+export interface RefundExpectedClawback {
+  brandAmount: number;
+  creatorAmount: number;
 }
 
 export interface RefundSettlement {
@@ -203,6 +241,21 @@ export interface RefundSettlement {
   stateLabel: string;
   settlementNumber: string | null;
   clawback: RefundClawback | null;
+  /**
+   * M1 「클로백(다음 정산 차감)」 예정액 — 정산 생성 후 ∧ 차감 대상(운영자 사유 ·
+   * 운영자 개설 반품 통과) ∧ 차감 행이 아직 없을 때만. 그 밖은 null
+   */
+  expectedClawback: RefundExpectedClawback | null;
+}
+
+/** `AdminRefundAutoRetry` — M2 「자동 재시도 N회 · 실패 · 시각」 */
+export interface RefundAutoRetry {
+  /** 자동 재시도 횟수 — 최초 자동 집행은 세지 않는다 */
+  count: number;
+  /** 마지막 시스템 실패 시각 */
+  lastAt: string;
+  /** 자동 시도가 상한에 닿았다 — 거짓이면 배치가 다시 시도한다 */
+  exhausted: boolean;
 }
 
 export interface RefundFailureAttempt {
@@ -256,12 +309,64 @@ export interface RefundDetail {
   attempt: number;
   /** 자동 시도 상한(최초 포함) */
   autoMaxAttempts: number;
+  /** PG 자동 환불만 — 운영자 사유 환불 · 아직 실패가 없으면 null */
+  autoRetry: RefundAutoRetry | null;
   failure: RefundFailure | null;
   execution: RefundExecution | null;
   executable: boolean;
   voidable: boolean;
   manuallyCompletable: boolean;
   history: Array<RefundHistory>;
+  /** 환불 수단(main) — BANK_TRANSFER면 `transfer`가 있다 */
+  method?: RefundMethod;
+  /** M3 계좌 송금(main) — 원래 결제액 초과 운임 환급 행만 · 그 밖은 null */
+  transfer?: RefundTransfer | null;
+  /**
+   * 【서버 없음】 M1 「운임 정산」 줄 — 이 환불에 붙은 귀책 변경 운임(방향 · 금액 · 계좌 송금 행 번호).
+   * 서버 운임 정산 행(`order_claim_freight_adjustment`)은 06b 상세에만 나온다 — 백엔드 요청. DEV 목업만.
+   */
+  freightAdjustment?: RefundFreightAdjustment | null;
+}
+
+/** 【서버 없음】 M1 운임 정산 요약 */
+export interface RefundFreightAdjustment {
+  /** CHARGE_CONSUMER(착불 운임 소비자 청구) · REFUND_CONSUMER(선불 운임 환급) */
+  direction: "CHARGE_CONSUMER" | "REFUND_CONSUMER";
+  /** 운임(정액 · 기본 배송비 편도) */
+  amount: number;
+  /** 원래 결제액 초과분 계좌 송금 행 — 「RFD-0918-T」 */
+  transferRefundNo: string | null;
+}
+
+/** `AdminRefundTransferAccount` — 폼 기본값(소비자가 저장해 둔 환불 계좌 · 원문) */
+export interface RefundTransferAccount {
+  bankCode: string;
+  bankName: string | null;
+  accountNumber: string;
+  holderName: string;
+}
+
+/** `AdminRefundTransferRecord` — 송금 완료 기록(완료 뒤에만) */
+export interface RefundTransferRecord {
+  bankCode: string;
+  bankName: string | null;
+  /** 뒤 4자리만 */
+  accountNumberMasked: string;
+  holderName: string;
+  /** 이벤트 시각(UTC) */
+  transferredAt: string;
+  transferredBy: number;
+  transferredByName: string | null;
+}
+
+/** `AdminRefundTransfer` — M3. 시스템은 송금하지 않는다 — 운영자가 송금한 뒤 계좌 · 완료를 기록한다 */
+export interface RefundTransfer {
+  transferable: boolean;
+  /** 소비자가 저장해 둔 환불 계좌 — 없으면 null(1:1 문의로 받는다) */
+  suggestedAccount: RefundTransferAccount | null;
+  /** 이 환급 건으로 소비자가 쓴 1:1 문의(「환불 계좌 안내」) 최신 1건 */
+  linkedInquiryId: number | null;
+  transferred: RefundTransferRecord | null;
 }
 
 // ------------------------------------------------------------------ 쓰기
@@ -276,6 +381,21 @@ export interface RefundExecuteResponse {
 export interface RefundVoidRequest {
   /** 1~300자 */
   reason: string;
+}
+
+/**
+ * `AdminRefundTransferCompleteRequest` — M3 송금 완료 기록
+ * (`POST /v1/admin/refunds/{refundTaskId}/transfer-complete` · main · 개발 서버 미배포)
+ */
+export interface RefundTransferCompleteRequest {
+  /** 은행 코드(최대 10) */
+  bankCode: string;
+  /** 숫자 · 하이픈(최대 30) */
+  accountNumber: string;
+  /** 예금주(최대 50) — 주문자 실명 확인은 운영자 체크 */
+  holderName: string;
+  /** 「송금을 완료했습니다」 — true 여야 한다 */
+  transferConfirmed: boolean;
 }
 
 /** `AdminRefundManualCompleteRequest` — PG 밖에서 이미 돌려준 환불의 기록 */

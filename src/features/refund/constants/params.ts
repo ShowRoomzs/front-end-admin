@@ -23,6 +23,8 @@ export const REFUND_ROUTE_OPTIONS: Array<{
   // 시안에는 없다 — 39 설계서 3-1 「교환 재발송비 환불이 속할 곳」으로 서버가 한 칸 더했다
   { value: "EXCHANGE", label: "교환" },
   { value: "OPERATOR", label: "운영자 사유" },
+  // 1021 기-93 — 귀책 변경 운임 환급(PG 취소분 · 계좌 송금분). main 서버에만 있다(개발 서버 미배포)
+  { value: "FREIGHT", label: "운임 환급" },
 ];
 
 export const REFUND_SORT_OPTIONS: Array<{ value: RefundSort; label: string }> =
@@ -39,6 +41,7 @@ export const REFUND_INITIAL_PARAMS: RefundListParams = {
   route: "",
   keyword: "",
   sort: "LATEST",
+  userId: "",
   page: 1,
   size: 20,
 };

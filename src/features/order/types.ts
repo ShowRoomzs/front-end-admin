@@ -72,7 +72,11 @@ export type RefundTaskSource =
   | "OPERATOR_REASON"
   | "USER_CANCEL_BEFORE_PREPARE"
   | "CLAIM_PAYMENT_CANCELLED"
-  | "LOST_IN_TRANSIT";
+  | "LOST_IN_TRANSIT"
+  /** 귀책 변경 운임 환급(1021 기-93) — main에만 있다(개발 서버 미배포) */
+  | "FREIGHT_REFUND"
+  /** 추적 정지 뒤 소비자가 환불을 고름(1021 기-15) — main에만 있다 */
+  | "STALL_REFUND_CHOSEN";
 
 /** `RefundTaskOrigin` */
 export type RefundTaskOrigin = "PG_AUTO" | "OPERATOR";
@@ -104,6 +108,17 @@ export type ClaimReason =
 /** `ClaimType` */
 export type ClaimType = "RETURN" | "EXCHANGE";
 
+/**
+ * `ClaimChargeType` — 교환 선결제 · 반려 재발송비(둘 다 편도 재발송 배송비) · 교환 사유 번복
+ * (재발송 배송비 + 착불 운임 · 1021 기-17 — main에만 있다)
+ */
+export type ClaimChargeType =
+  "EXCHANGE_RESHIP" | "REJECT_RESHIP" | "OVERTURN_RESHIP";
+
+/** `ClaimChargeStatus` */
+export type ClaimChargeStatus =
+  "PENDING" | "PAID" | "DEDUCTED" | "COVERED" | "VOID" | "REFUNDED" | "WAIVED";
+
 /** `ClaimStatus` */
 export type ClaimStatus =
   | "PAYMENT_PENDING"
@@ -117,6 +132,12 @@ export type ClaimStatus =
   | "REJECT_HOLD"
   | "COMPLETED";
 
+/** `ClaimResult` — 종결 결과 */
+export type ClaimResult = "REFUNDED" | "EXCHANGED" | "REJECTED" | "CANCELLED";
+
+/** `StallChoice` — 추적 정지 소비자 선택(1021 기-15) */
+export type StallChoiceValue = "RESHIP" | "REFUND";
+
 // ── 목록 ────────────────────────────────────────────────
 
 /** `GET /v1/admin/orders` 쿼리 — 빈 값은 보내지 않는다 */
@@ -126,6 +147,8 @@ export interface AdminOrderListQuery extends BaseParams {
   marketId?: number;
   groupBuyId?: number;
   creatorId?: number;
+  /** 소비자 상세에서 넘어온 진입(main · 56 C1) — 그 소비자의 주문만 */
+  userId?: number;
   paymentMethod?: PaymentMethod;
   trackingAlert?: TrackingAlert;
   searchType?: AdminOrderSearchType;
@@ -135,13 +158,53 @@ export interface AdminOrderListQuery extends BaseParams {
   from?: string;
   /** 결제일 끝(포함) — yyyy-MM-dd */
   to?: string;
+  /** 검토 중 취소 요청이 있는 하위주문만(main · 56 C1) — 요약은 무시한다 */
+  cancelRequested?: boolean;
 }
 
 /** `GET /v1/admin/orders/summary` 쿼리 — 탭 · 상태 · 이상 유형 · 정렬은 받지 않는다 */
 export type AdminOrderSummaryQuery = Omit<
   AdminOrderListQuery,
-  "tab" | "status" | "trackingAlert" | "sort" | "page" | "size"
+  | "tab"
+  | "status"
+  | "trackingAlert"
+  | "sort"
+  | "page"
+  | "size"
+  | "cancelRequested"
 >;
+
+/** `AdminOrderClaimSummary` — 하위주문의 반품 · 교환 요약(가장 최근 신청 1건 + 건수 · main) */
+export interface AdminOrderClaimSummary {
+  claimId: number;
+  claimNumber: string;
+  type: ClaimType;
+  status: ClaimStatus;
+  /** 종결 전이면 null */
+  result: ClaimResult | null;
+  /** 「반품완료」 · 「교환완료」 · 「환불완료」 · 「반품 반려」 · 「반품 진행중」 … */
+  label: string;
+  /** 신청 시각(이벤트) */
+  requestedAt: string;
+  /** 접수된 반품 · 교환 건수 — 2 이상이면 「외 N건」 */
+  count: number;
+}
+
+/** `AdminOrderStallChoice` — 추적 정지 · 소비자 선택(1021 기-15 · main) */
+export interface AdminOrderStallChoice {
+  /** WAITING · OPEN · CHOSEN */
+  state: "WAITING" | "OPEN" | "CHOSEN";
+  /** 선택 개방 시각 = 추적 정지 판정 + N일(이벤트 시각 · UTC) */
+  opensAt: string | null;
+  /** 선택 개방까지 N일 */
+  daysUntilOpen: number | null;
+  daysStalled: number | null;
+  choice: StallChoiceValue | null;
+  /** 「재발송」 · 「환불」 */
+  choiceLabel: string | null;
+  /** 이벤트 시각 · UTC */
+  chosenAt: string | null;
+}
 
 /** `AdminOrderGroupSummary` */
 export interface AdminOrderGroupSummary {
@@ -157,6 +220,31 @@ export interface AdminOrderGroupSummary {
   shipDueAt: string | null;
   shipOverdue: boolean;
   cancelRequested: boolean;
+  /** 행 확장 항목 요약 — 「데일리 선크림 외 1종」(1종이면 옵션까지) */
+  itemSummary: string;
+  /** 항목 수량 합 */
+  itemQuantity: number;
+  /** 상품 합계 + 배송비 — 한 주문의 합이 `totalAmount` */
+  amount: number;
+  carrier: DeliveryCarrier | null;
+  carrierLabel: string | null;
+  trackingNumber: string | null;
+  /** 공구명(계약 제목) — 공구 밖 하위주문이면 null */
+  groupBuyTitle: string | null;
+  /** 배송 이상 기준 시각 — 송장 등록 · 마지막 추적 · 반송 감지. 이상이 없으면 null */
+  issueSince: string | null;
+  /** 배송 이상 경과 문구 — 「등록 후 26시간」 · 「8일 무갱신」 · 「감지 09.12」 */
+  issueElapsedLabel: string | null;
+  /**
+   * 반품 · 교환 요약(main · 개발 서버 미배포) — 없으면 null. 배포된 서버는 이 필드를 내리지 않아
+   * `undefined`일 수 있다.
+   */
+  claim?: AdminOrderClaimSummary | null;
+  /**
+   * 【서버 없음】 추적 정지 소비자 선택 — main 목록 응답에도 아직 없다(상세 `stallChoice`만 있다).
+   * 백엔드 요청: `AdminOrderGroupSummary.stallChoice`. 지금은 DEV 목업(`?mock=stall`)만 채운다.
+   */
+  stallChoice?: AdminOrderStallChoice | null;
 }
 
 /** `AdminOrderListItem` */
@@ -171,9 +259,24 @@ export interface AdminOrderListItem {
   attentionCount: number;
 }
 
-/** `AdminOrderSummaryResponse` — ALL · DELIVERY_ISSUE · CANCEL 세 키가 항상 있다 */
+/** `AdminOrderSummaryResponse` */
 export interface AdminOrderSummary {
+  /** ALL · DELIVERY_ISSUE · CANCEL 세 키가 항상 있다 */
   tabCounts: Record<AdminOrderTab, number>;
+  /**
+   * 상태 셀렉트 건수(전체 탭 기준) — PENDING을 뺀 키가 항상 있다. 상태가 갈린 주문은 상태마다
+   * 세므로 합이 전체보다 클 수 있다
+   */
+  statusCounts: Record<Exclude<FulfillmentStatus, "PENDING">, number>;
+  /** 이상 유형 셀렉트 건수(배송 이상 탭 기준) — 반송 중은 `status=RETURNING`과 같은 수 */
+  deliveryIssueCounts: Record<TrackingAlert | "RETURNING", number>;
+}
+
+/** `AdminGroupBuyCreatorOption` — 인플루언서 셀렉트 한 줄 */
+export interface AdminOrderCreatorOption {
+  creatorId: number;
+  /** 쇼룸명 — 공구 목록 `creatorName`과 같은 값 */
+  showroomName: string | null;
 }
 
 // ── 상세 ────────────────────────────────────────────────
@@ -205,6 +308,42 @@ export interface AdminOrderPayment {
   /** 부분 취소 누적액 */
   cancelledAmount: number;
   paidAt: string;
+  /**
+   * 운영자 사유 환불 상한 = 취소 가능 잔액 − 아직 나가지 않은 환불(대기 · 집행 중 · 실패).
+   * 넘기면 409 `REFUND_AMOUNT_EXCEEDED`
+   */
+  operatorRefundableAmount: number;
+}
+
+/** `AdminOrderInquiry` — 이 주문을 가리키는 1:1 문의 */
+export interface AdminOrderInquiry {
+  inquiryId: number;
+  typeLabel: string;
+  createdAt: string;
+  answered: boolean;
+}
+
+/** `AdminOrderAdditionalPayment` — 클레임 재발송비 결제(성립한 것만) */
+export interface AdminOrderAdditionalPayment {
+  deliveryGroupId: number;
+  collectionId: number;
+  /** 그 요청의 첫 클레임 — 06b 상세 링크 */
+  claimId: number;
+  claimNumber: string;
+  chargeId: number;
+  chargeType: ClaimChargeType;
+  /** 「교환 재발송비」 · 「반려 재발송비」 */
+  typeLabel: string;
+  amount: number;
+  status: ClaimChargeStatus;
+  statusLabel: string;
+  paymentId: string;
+  /** PG 거래번호 */
+  pgTxId: string | null;
+  methodLabel: string;
+  paidAt: string | null;
+  /** 결제됐고 취소 전이면 결제액, 아니면 0(전액 취소만 한다) */
+  cancellableAmount: number;
 }
 
 /** `AdminOrderShipping` */
@@ -213,14 +352,21 @@ export interface AdminOrderShipping {
   shipDueBusinessDays: number;
   shipOverdue: boolean;
   overdueNoticeCount: number;
+  /** 마지막 자동 알림 시각 — 알림 전이면 null */
+  lastOverdueNoticeAt: string | null;
   prepareStartedAt: string | null;
   shippedAt: string | null;
   carrier: DeliveryCarrier | null;
   carrierLabel: string | null;
   trackingNumber: string | null;
+  /** 송장 출처 — SELLER(브랜드 등록) · ADMIN(운영자 대행). 송장이 없으면 null */
+  invoiceSource: "SELLER" | "ADMIN" | null;
+  invoiceSourceLabel: string | null;
   trackingAlert: TrackingAlert | null;
   trackingAlertLabel: string | null;
   lastTrackingAt: string | null;
+  /** 마지막 스캔 문구(「간선 상차」) — 연동 업체 원문 · 스캔 전이면 null */
+  lastTrackingLabel: string | null;
   returnDetectedAt: string | null;
   returnCompletedAt: string | null;
   deliveredAt: string | null;
@@ -343,6 +489,12 @@ export interface AdminOrderGroupDetail {
   marketId: number;
   brandName: string;
   groupBuyNumber: string | null;
+  /** 공구 · 인플루언서 — 공구 밖 하위주문이면 넷 다 null */
+  groupBuyId: number | null;
+  groupBuyTitle: string | null;
+  creatorId: number | null;
+  /** 인플루언서 쇼룸명 */
+  creatorName: string | null;
   status: FulfillmentStatus;
   statusLabel: string;
   statusTone: OrderBadgeTone;
@@ -357,6 +509,11 @@ export interface AdminOrderGroupDetail {
   history: Array<AdminOrderHistory>;
   settlement: AdminOrderSettlement | null;
   actions: AdminOrderActions;
+  /**
+   * 추적 정지 · 소비자 선택(main · 개발 서버 미배포) — 없으면 null. 배포된 서버는 내리지 않아
+   * `undefined`일 수 있다.
+   */
+  stallChoice?: AdminOrderStallChoice | null;
 }
 
 /** `AdminOrderDetailResponse` */
@@ -369,6 +526,10 @@ export interface AdminOrderDetail {
   recipient: AdminOrderRecipient;
   payment: AdminOrderPayment | null;
   inquiryCount: number;
+  /** 이 주문을 가리키는 1:1 문의 — 최신순 · `inquiryCount`와 같은 집합 */
+  inquiries: Array<AdminOrderInquiry>;
+  /** ① 추가 결제 — 클레임 재발송비 중 PG 결제가 붙은 것(원래 결제와 거래가 따로) */
+  additionalPayments: Array<AdminOrderAdditionalPayment>;
   groups: Array<AdminOrderGroupDetail>;
 }
 
@@ -425,6 +586,11 @@ export interface DefectClaimRequest {
   reasonCode: ClaimReason;
   detail: string;
   evidenceImageUrls: Array<string>;
+  /**
+   * 하자 인지일(yyyy-MM-dd) — 배송완료일 이후 · 오늘 이전. 「인지 + 30일」 기산점.
+   * 서버는 선택(nullable)이지만 시안 B6이 필수라 폼이 필수로 막는다(사용자 결정 · 백엔드 요청: 필수화).
+   */
+  defectNoticedOn?: string;
 }
 
 /** `AdminDefectClaimResponse` */
@@ -454,12 +620,15 @@ export interface OrderListParams extends BaseParams {
   to: string;
   marketId: string;
   groupBuyId: string;
-  /** 고르는 셀렉트가 없다 — 다른 화면에서 넘어온 값만 칩으로 보인다 */
   creatorId: string;
   paymentMethod: string;
   sort: AdminOrderSort;
   /** 상세 모달로 바로 연다(예외 관리 「열기」 · `?orderId=`) */
   orderId: string;
+  /** 소비자 상세(13)의 칩에서 넘어온 진입 — 그 소비자의 주문만. 화면 필터에는 없다 */
+  userId: string;
+  /** 취소 탭의 「검토 중 취소 요청」만 — 소비자 상세 칩 진입 전용("true" | "") */
+  cancelRequested: string;
 }
 
 export interface OrderBadgeData {

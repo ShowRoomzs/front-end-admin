@@ -1,36 +1,54 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import type { Columns } from "@/common/components/Table/types";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
-import { CHANGE_REQUEST_TYPE_LABELS } from "@/features/changeRequest/constants/params";
+import { CHANGE_REQUESTER_LABELS } from "@/features/changeRequest/constants/params";
 import type { ChangeRequestInfo } from "@/features/changeRequest/services/changeRequestService";
+import {
+  getTypeLabel,
+  resolveRequester,
+} from "@/features/changeRequest/utils/requester";
 import { getChangeRequestStatusBadge } from "@/features/changeRequest/utils/statusBadge";
 
 /**
- * 시안 고정 너비 23 / 14 / 18 / 18 / 11 / 16 %.
+ * 시안 고정 너비 23 / 14 / 18 / 18 / 11 / 16 %(요청자 · 요청 유형 · 요청일시 · 승인반려일시 · 경과 · 상태).
  *
  * `Table`이 `fitWidth`에서 측정 너비를 %로 환산하므로, 합이 1000이 되도록 비례 값을 주면
  * 그대로 시안 비율이 나온다. 일부만 지정하면 나머지가 실제 내용 폭으로 측정돼 비율이 깨진다.
  */
 export const CHANGE_REQUEST_COLUMNS: Columns<ChangeRequestInfo> = [
   {
-    key: "brandName",
+    /*
+      rev.7 「브랜드」 → 「요청자」 — 브랜드 · 인플루언서가 한 큐에 섞여 들어오므로 이름 앞에
+      구분 배지를 붙인다. 옛 응답(requester 없음)은 브랜드로 메운다(resolveRequester).
+    */
+    key: "requester",
     // 시안은 좌우 끝 셀에 여백 20px을 더한다(공용 Table은 px-4 고정)
-    label: <span className="pl-1">브랜드</span>,
+    label: <span className="pl-1">요청자</span>,
     width: 230,
-    render: (value) => (
-      <span className="pl-1 text-[13px] font-medium text-sz-n-900">
-        {value as string}
-      </span>
-    ),
+    render: (_value, record) => {
+      const requester = resolveRequester(record);
+      return (
+        <span className="flex min-w-0 items-center gap-1.5 pl-1">
+          <span className="shrink-0">
+            <StatusBadge variant="neutral" hideDot>
+              {CHANGE_REQUESTER_LABELS[requester.type] ?? requester.type}
+            </StatusBadge>
+          </span>
+          <span className="truncate text-[13px] font-medium text-sz-n-900">
+            {requester.name}
+          </span>
+        </span>
+      );
+    },
   },
   {
     key: "type",
     label: "요청 유형",
     align: "center",
     width: 140,
-    render: (value) => (
+    render: (_value, record) => (
       <StatusBadge variant="neutral" hideDot>
-        {CHANGE_REQUEST_TYPE_LABELS[value as ChangeRequestInfo["type"]]}
+        {getTypeLabel(record.type, record.typeLabel)}
       </StatusBadge>
     ),
   },

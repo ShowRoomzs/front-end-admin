@@ -1,7 +1,11 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import { toneToVariant } from "@/features/contract/utils/statusBadge";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/features/groupBuy/constants/params";
-import type { GroupBuyTone } from "@/features/groupBuy/types";
+import type {
+  GroupBuyPostStatus,
+  GroupBuyTone,
+} from "@/features/groupBuy/types";
+import { postStatusBadge } from "@/features/groupBuy/utils/view";
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import {
@@ -37,8 +41,18 @@ export function GbBadge(props: {
   );
 }
 
+/** 게시물 상태 배지 — 노출 중지(새 EXPOSURE_SUSPENDED · 옛 HIDDEN)는 시안 라벨 · 톤으로 덮어쓴다 */
+export function PostStatusBadge(props: {
+  status: GroupBuyPostStatus;
+  label: string;
+  tone: GroupBuyTone;
+}) {
+  const badge = postStatusBadge(props.status, props.label, props.tone);
+  return <GbBadge tone={badge.tone}>{badge.label}</GbBadge>;
+}
+
 /**
- * 시안 `.card` — 공용 DetailCard는 본문 여백이 목록형(상 4px)이라 시안 `.card-b`(16px)와 어긋난다.
+ * 시안 `.card` —공용 DetailCard는 본문 여백이 목록형(상 4px)이라 시안 `.card-b`(16px)와 어긋난다.
  * `inlineNote`는 제목 바로 옆에 붙는 보조 문구(게시물 카드 · 게시물번호), `badge`는 우측 끝.
  */
 export function GbCard(props: {
@@ -203,15 +217,16 @@ export function ReqBox(props: {
   );
 }
 
-export function SettlementMachine(props: {
-  stage: "WAITING" | "CONFIRMED" | "TRANSFERRED";
-}) {
+/**
+ * 시안 rev.7 B5 · B5a 「주문 종결 대기 › 정산 관리로 이관」 — 공구 관리는 주문 종결까지만 담당한다(2026.10.06).
+ * 구 3단계(정산 대기 → 운영자 확인 → 이체 완료)는 정산 관리(07) 소관으로 옮겨 갔다.
+ */
+export function SettlementMachine(props: { transferred: boolean }) {
   const steps = [
-    { key: "WAITING", label: "정산 대기" },
-    { key: "CONFIRMED", label: "운영자 확인" },
-    { key: "TRANSFERRED", label: "이체 완료" },
+    { key: "UNCLOSED", label: "주문 종결 대기" },
+    { key: "TRANSFERRED", label: "정산 관리로 이관" },
   ] as const;
-  const current = steps.findIndex((step) => step.key === props.stage);
+  const current = props.transferred ? 1 : 0;
   return (
     <div className="mt-[2px] flex items-center">
       {steps.map((step, index) => (
@@ -258,7 +273,7 @@ export function MWarn(props: {
   );
 }
 
-/** 시안 `.unmask` — 카드 하단 보조 버튼(게시물 숨김 · 숨김 해제 · 본문 대조) */
+/** 시안 `.unmask` — 카드 하단 보조 버튼(게시물 노출 중지 · 노출 중지 해제 · 본문 대조) */
 export function MiniBtn(props: {
   children: ReactNode;
   onClick?: () => void;

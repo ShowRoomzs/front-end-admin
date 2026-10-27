@@ -20,10 +20,13 @@ import {
 } from "@/features/settlement/components/shared/StlParts";
 import {
   ADJUSTMENT_TONE,
+  BREAKDOWN_NOTE,
   BUSINESS_TYPE_LABEL,
   ITEM_STATUS_TONE,
+  REVIEW_PERIOD_LABEL,
   TAX_DOCUMENT_TONE,
 } from "@/features/settlement/constants/params";
+import { THREAD_PAGE_PATH } from "@/features/thread/constants/params";
 import type {
   AmountCount,
   Payout,
@@ -33,6 +36,7 @@ import type {
 } from "@/features/settlement/types";
 import {
   md,
+  mdhmDue,
   minus,
   periodFull,
   plus,
@@ -42,16 +46,16 @@ import {
 } from "@/features/settlement/utils/format";
 import {
   accountText,
+  brandExtraLines,
   brandInvoicesOf,
   creatorInvoiceOf,
   hasFixedFee,
   hasPendingEvidence,
   isCreatorInvoiceOpen,
-  isResidentNumberMissing,
 } from "@/features/settlement/utils/view";
 import { cn } from "@/lib/utils";
-import dayjs from "dayjs";
 import type { ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 
 type Detail = SettlementDetail;
 
@@ -81,7 +85,7 @@ function StageLine(props: { detail: Detail }) {
   };
   const labels = [
     "주문 종결",
-    "정산 확인 3영업일",
+    `정산 확인 ${REVIEW_PERIOD_LABEL}`,
     "조정 협의",
     rail.confirmReasonLabel ??
       (stage.current === "ADJUSTMENT" ? "확정" : "자동 확정"),
@@ -171,6 +175,41 @@ function countLabel(label: string, value: AmountCount): string {
   return value.count > 0 ? `${label} ${value.count}건` : label;
 }
 
+/** 「소비자 결제분 · 9건」 — 건수가 0이면 앞말만 */
+function noteWithCount(note: string, count: number): string {
+  return count > 0 ? `${note} · ${count}건` : note;
+}
+
+/**
+ * 판매 리워드 칩(기-11) 「확정 거래액 × 리워드율 10%」 — 서버가 정산 단위 리워드율을 내리지 않아
+ * 명세 전 건이 화면에 있고 요율이 하나일 때만 숫자를 붙인다(상품마다 다르면 숫자 없이).
+ */
+function rewardBasisLabel(detail: Detail): string {
+  const { rows, total } = detail.items;
+  const rates = new Set(rows.map((row) => row.rewardRate));
+  const uniform = rows.length > 0 && rows.length === total && rates.size === 1;
+  return uniform
+    ? `확정 거래액 × 리워드율 ${Number(rows[0].rewardRate.toFixed(2))}%`
+    : "확정 거래액 × 리워드율";
+}
+
+/** 카드 머리 산식 — 실제로 그려지는 줄만 잇는다(시안 07b D1 · D3) */
+function breakdownFormula(detail: Detail): string {
+  const { brand } = detail.breakdown;
+  const extra = brandExtraLines(detail);
+  const parts = ["확정 거래액 − PG − 플랫폼 − 리워드 − 리워드 부가세"];
+  if (brand.consumerDeliveryFee > 0 || brand.reshipFee.amount > 0) {
+    parts.push("+ 배송비 · 재발송비(소비자 결제분)");
+  }
+  if (extra.returnDeductionFee.amount > 0) {
+    parts.push("+ 반품 시 차감한 최초 배송비");
+  }
+  if (extra.freightAdjustment.amount !== 0) {
+    parts.push("± 운임 정산(귀책 변경)");
+  }
+  return `${parts.join(" ")} = 브랜드 수취액`;
+}
+
 /** 두 축을 한 카드에 — 브랜드 축과 인플루언서 축이 판매 리워드에서 만난다(요율은 정산 행의 스냅샷) */
 export function BreakdownCard(props: { detail: Detail }) {
   const { detail } = props;
@@ -184,6 +223,7 @@ export function BreakdownCard(props: { detail: Detail }) {
     },
   ].filter((row) => row.value.amount > 0);
   const rewardChanged = brand.originalRewardAmount !== brand.rewardAmount;
+  const { returnDeductionFee, freightAdjustment } = brandExtraLines(detail);
   const isBusiness = creator.businessType === "BUSINESS";
   const withholdingRate = creator.withholding
     ? rate(creator.withholding.incomeRate + creator.withholding.localRate)
@@ -194,7 +234,7 @@ export function BreakdownCard(props: { detail: Detail }) {
       note={
         detail.status === "REVIEWING"
           ? "주문 종결 기준 확정 거래액 · 조정이 합의되면 리워드·브랜드 수취액만 바뀐다"
-          : "확정 거래액 − PG − 플랫폼 − 리워드 − 리워드 부가세 = 브랜드 수취액"
+          : breakdownFormula(detail)
       }
       flush
     >
@@ -242,7 +282,7 @@ export function BreakdownCard(props: { detail: Detail }) {
                 kind="sub"
                 label={
                   <>
-                    판매 리워드
+                    판매 리워드 <Pb>{rewardBasisLabel(detail)}</Pb>
                     {rewardChanged && (
                       <Pb>합의 · 원래 {won(brand.originalRewardAmount)}</Pb>
                     )}
@@ -259,18 +299,71 @@ export function BreakdownCard(props: { detail: Detail }) {
                 }
                 value={minus(brand.rewardVat.amount)}
               />
-              {brand.reshipFee.amount > 0 && (
-                <MRowTr
-                  kind="sub"
-                  label={countLabel("교환 재발송비", brand.reshipFee)}
-                  value={plus(brand.reshipFee.amount)}
-                />
-              )}
+              {/* 기-19 · 기-18 · 기-93 — 리워드 부가세 다음, 브랜드 수취액 바로 위(1021 설계서 6-1 줄 순서) */}
               {brand.consumerDeliveryFee > 0 && (
                 <MRowTr
                   kind="sub"
-                  label="소비자 배송비"
+                  label={
+                    <>
+                      + 배송비 <Pb>{BREAKDOWN_NOTE.consumerDeliveryFee}</Pb>
+                    </>
+                  }
                   value={plus(brand.consumerDeliveryFee)}
+                />
+              )}
+              {brand.reshipFee.amount > 0 && (
+                <MRowTr
+                  kind="sub"
+                  label={
+                    <>
+                      + 재발송비{" "}
+                      <Pb>
+                        {noteWithCount(
+                          BREAKDOWN_NOTE.reshipFee,
+                          brand.reshipFee.count
+                        )}
+                      </Pb>
+                    </>
+                  }
+                  value={plus(brand.reshipFee.amount)}
+                />
+              )}
+              {returnDeductionFee.amount > 0 && (
+                <MRowTr
+                  kind="sub"
+                  label={
+                    <>
+                      + 반품 시 차감한 최초 배송비{" "}
+                      <Pb>
+                        {BREAKDOWN_NOTE.returnDeductionFee}
+                        {returnDeductionFee.count > 0 &&
+                          ` ${returnDeductionFee.count}건`}{" "}
+                        · 환불에서 차감
+                      </Pb>
+                    </>
+                  }
+                  value={plus(returnDeductionFee.amount)}
+                />
+              )}
+              {freightAdjustment.amount !== 0 && (
+                <MRowTr
+                  kind="sub"
+                  label={
+                    <>
+                      {freightAdjustment.amount < 0 ? "−" : "+"} 운임 정산{" "}
+                      <Pb>
+                        {noteWithCount(
+                          BREAKDOWN_NOTE.freightAdjustment,
+                          freightAdjustment.count
+                        )}
+                      </Pb>
+                    </>
+                  }
+                  value={
+                    freightAdjustment.amount < 0
+                      ? minus(-freightAdjustment.amount)
+                      : plus(freightAdjustment.amount)
+                  }
                 />
               )}
               {brand.clawbackAmount > 0 && (
@@ -357,6 +450,8 @@ export function BreakdownCard(props: { detail: Detail }) {
 
 // ── 3자 분배 ─────────────────────────────────────────
 
+const ACCOUNT_CELL = "break-all text-[11px] tabular-nums text-sz-n-500";
+
 /** 지급 상태 옆의 보조줄 — 예정일 · 지급일 · 실패 사유 · 재분배 횟수 */
 function payoutMeta(row: Payout): string | null {
   const parts: Array<string> = [];
@@ -373,7 +468,11 @@ function payoutMeta(row: Payout): string | null {
 function payoutAccount(row: Payout): ReactNode {
   const text = accountText(row);
   if (!text) {
-    return row.payee === "PLATFORM" ? "—" : <TDim>등록 계좌 없음</TDim>;
+    return row.payee === "PLATFORM" ? (
+      "플랫폼 정산 계좌"
+    ) : (
+      <TDim>등록 계좌 없음</TDim>
+    );
   }
   return (
     <>
@@ -385,16 +484,66 @@ function payoutAccount(row: Payout): ReactNode {
   );
 }
 
-/** PG가 각 수취자에게 직접 지급 — 지급 합계 = 들어온 돈 − 원천징수(tfoot 검산) */
+function PayoutStatusCell(props: { row: Payout }) {
+  const { row } = props;
+  const meta = payoutMeta(row);
+  return (
+    <>
+      {row.status === "NOT_APPLICABLE" ? (
+        <TSub>{row.statusLabel}</TSub>
+      ) : (
+        <StlBadge tone={row.statusTone} hideDot>
+          {row.statusLabel}
+        </StlBadge>
+      )}
+      {meta && <TSub className="mt-0.5 block tabular-nums">{meta}</TSub>}
+    </>
+  );
+}
+
+/** 재원 중 확정 거래액 밖의 돈 — 「배송비 · 재발송비 · 차감 배송비」(실제로 있는 줄만) */
+function extraInflowLabel(detail: Detail): string {
+  const { brand } = detail.breakdown;
+  const extra = brandExtraLines(detail);
+  return [
+    brand.consumerDeliveryFee !== 0 && "배송비",
+    brand.reshipFee.amount !== 0 && "재발송비",
+    extra.returnDeductionFee.amount !== 0 && "차감 배송비",
+    extra.freightAdjustment.amount !== 0 && "운임 정산",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * PG가 각 수취자에게 직접 지급 — 07b rev.3(기-18 변경)의 배치: 브랜드 + 플랫폼(리워드 + 부가세) + PG = 지급 합계.
+ * 리워드는 플랫폼이 지급하는 구조라 인플루언서 실지급은 플랫폼 몫에서 나가는 하위 행이다(합계에 넣지 않는다).
+ * 서버는 수취자 행을 따로 내리므로(플랫폼 행 = 수수료 + 부가세 차액 + 차감) 플랫폼 몫 =
+ * 플랫폼 행 + 인플루언서 행 + 원천징수로 다시 묶는다 — 합계는 서버 검산(`check.total`)과 같다.
+ */
 export function DistributionCard(props: { detail: Detail }) {
   const { detail } = props;
   const { payouts } = detail;
-  const total = payouts
-    ? payouts.check.total - payouts.check.withholdingAmount
-    : 0;
+  const rowOf = (payee: Payout["payee"]) =>
+    payouts?.rows.find((row) => row.payee === payee);
+  const brandRow = rowOf("BRAND");
+  const creatorRow = rowOf("CREATOR");
+  const platformRow = rowOf("PLATFORM");
+  const withholding = payouts?.check.withholdingAmount ?? 0;
+  const platformShare =
+    (platformRow?.amount ?? 0) + (creatorRow?.amount ?? 0) + withholding;
   const extraInflow = payouts
     ? payouts.check.inflowAmount - payouts.check.confirmedSalesAmount
     : 0;
+  const { brand, creator } = detail.breakdown;
+  // 플랫폼 행이 리워드 부가세 차액뿐이면 「부가세」 — 수수료 · 차감이 섞이면 「플랫폼」
+  const platformOnlyVat =
+    (platformRow?.amount ?? 0) === brand.rewardVat.amount - creator.vatAmount;
+  // 플랫폼 행이 0원(해당 없음)이면 그 몫은 인플루언서 지급뿐이라 인플루언서 행 상태를 따른다
+  const platformStatusRow =
+    platformRow?.status === "NOT_APPLICABLE" && creatorRow
+      ? creatorRow
+      : platformRow;
   return (
     <StlCard
       title="3자 분배"
@@ -424,41 +573,63 @@ export function DistributionCard(props: { detail: Detail }) {
         <tbody className="[&>tr:first-child>td]:border-t-0">
           {payouts ? (
             <>
-              {payouts.rows.map((row) => {
-                const meta = payoutMeta(row);
-                return (
-                  <tr key={row.payoutId}>
-                    <td className={LTAB_CELL}>
-                      {row.payeeName} <TSub>{row.payeeLabel}</TSub>
-                    </td>
-                    <td className={cn(LTAB_CELL, "text-right tabular-nums")}>
-                      {won(row.amount)}
-                    </td>
-                    <td
-                      className={cn(
-                        LTAB_CELL,
-                        "break-all text-[11px] tabular-nums text-sz-n-500"
-                      )}
-                    >
-                      {payoutAccount(row)}
-                    </td>
-                    <td className={LTAB_CELL}>
-                      {row.status === "NOT_APPLICABLE" ? (
-                        <TSub>{row.statusLabel}</TSub>
-                      ) : (
-                        <StlBadge tone={row.statusTone} hideDot>
-                          {row.statusLabel}
-                        </StlBadge>
-                      )}
-                      {meta && (
-                        <TSub className="mt-0.5 block tabular-nums">
-                          {meta}
-                        </TSub>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+              {brandRow && (
+                <tr>
+                  <td className={LTAB_CELL}>
+                    {brandRow.payeeName} <TSub>{brandRow.payeeLabel}</TSub>
+                  </td>
+                  <td className={cn(LTAB_CELL, "text-right tabular-nums")}>
+                    {won(brandRow.amount)}
+                  </td>
+                  <td className={cn(LTAB_CELL, ACCOUNT_CELL)}>
+                    {payoutAccount(brandRow)}
+                  </td>
+                  <td className={LTAB_CELL}>
+                    <PayoutStatusCell row={brandRow} />
+                  </td>
+                </tr>
+              )}
+              {platformRow && (
+                <tr>
+                  <td className={LTAB_CELL}>
+                    {platformRow.payeeName}{" "}
+                    <TSub>{platformRow.payeeLabel} · 리워드 + 부가세</TSub>
+                  </td>
+                  <td className={cn(LTAB_CELL, "text-right tabular-nums")}>
+                    {won(platformShare)}
+                  </td>
+                  <td className={cn(LTAB_CELL, ACCOUNT_CELL)}>
+                    {payoutAccount(platformRow)}
+                  </td>
+                  <td className={LTAB_CELL}>
+                    {platformStatusRow && (
+                      <PayoutStatusCell row={platformStatusRow} />
+                    )}
+                  </td>
+                </tr>
+              )}
+              {creatorRow && (
+                <tr>
+                  <td className={cn(LTAB_CELL, "pl-6")}>
+                    <TDim>└</TDim> {creatorRow.payeeName}{" "}
+                    <TSub>{creatorRow.payeeLabel} · 플랫폼 몫에서 지급</TSub>
+                  </td>
+                  <td
+                    className={cn(
+                      LTAB_CELL,
+                      "text-right tabular-nums text-sz-n-600"
+                    )}
+                  >
+                    {won(creatorRow.amount)}
+                  </td>
+                  <td className={cn(LTAB_CELL, ACCOUNT_CELL)}>
+                    {payoutAccount(creatorRow)}
+                  </td>
+                  <td className={LTAB_CELL}>
+                    <PayoutStatusCell row={creatorRow} />
+                  </td>
+                </tr>
+              )}
               <tr>
                 <td className={LTAB_CELL}>
                   PG사 <TSub>결제 수수료</TSub>
@@ -498,18 +669,33 @@ export function DistributionCard(props: { detail: Detail }) {
             <tr>
               <td className={LTAB_FOOT}>지급 합계</td>
               <td className={cn(LTAB_FOOT, "text-right tabular-nums")}>
-                {won(total)}
+                {won(payouts.check.total)}
               </td>
               <td
                 className={cn(LTAB_FOOT, "text-[11px] text-sz-n-500")}
                 colSpan={2}
               >
-                확정 거래액 {won(payouts.check.confirmedSalesAmount)}
-                {extraInflow > 0 && (
-                  <> + 재발송비·배송비 {won(extraInflow)}</>
+                브랜드 + 플랫폼 + PG = 확정 거래액{" "}
+                {won(payouts.check.confirmedSalesAmount)}
+                {extraInflow !== 0 && (
+                  <>
+                    {" "}
+                    {extraInflow > 0 ? "+" : "−"} {extraInflowLabel(detail)}{" "}
+                    {won(Math.abs(extraInflow))}
+                  </>
                 )}{" "}
-                − 원천징수 {won(payouts.check.withholdingAmount)}{" "}
-                <TDim>(플랫폼이 납세 대리로 보유)</TDim>
+                <TDim>
+                  (인플루언서 {won(creatorRow?.amount ?? 0)}
+                  {withholding > 0 && <> + 원천징수 {won(withholding)}</>}
+                  {(platformRow?.amount ?? 0) > 0 && (
+                    <>
+                      {" "}
+                      + {platformOnlyVat ? "부가세" : "플랫폼"}{" "}
+                      {won(platformRow?.amount ?? 0)}
+                    </>
+                  )}{" "}
+                  = 플랫폼 몫)
+                </TDim>
                 {!payouts.check.balanced && (
                   <span className="mt-0.5 block text-sz-danger-text">
                     검산 불일치 — 개발팀에 확인해 주세요
@@ -562,16 +748,20 @@ export function ClawbackAppliedCard(props: { detail: Detail }) {
   );
 }
 
-/** 어드민 이슈 스레드(20b) 화면이 아직 없다 — 링크 자리만 두고 안내한다 */
-export function ThreadLinkPlaceholder(props: { threadId: number }) {
+/**
+ * 20b 이슈 스레드 링크 — 소통 스레드 화면이 `?threadId=` 딥링크로 그 스레드를 연다.
+ * 다른 상세(계약 · 공구)의 스레드 링크처럼 같은 탭으로 간다(「↗」는 다른 화면으로 간다는 표시).
+ */
+export function ThreadLink(props: { threadId: number }) {
+  const navigate = useNavigate();
   return (
-    <span
-      className="ml-3 shrink-0 cursor-not-allowed text-[12px] text-sz-n-400"
-      title={`이슈 스레드 #${props.threadId} — 어드민 소통 스레드 화면 준비 중`}
-      aria-disabled="true"
+    <button
+      type="button"
+      className={cn(FLINK_CLASS, "ml-3 shrink-0 text-[12px]")}
+      onClick={() => navigate(`${THREAD_PAGE_PATH}?threadId=${props.threadId}`)}
     >
-      이슈 스레드 열기 ↗ · 준비 중
-    </span>
+      이슈 스레드 열기 ↗
+    </button>
   );
 }
 
@@ -584,7 +774,11 @@ export function AdjustmentCard(props: { detail: Detail }) {
     <StlCard
       title="조정 내역"
       note="양측 합의로만 바뀜 · 운영자는 금액을 정하지 않음"
-      extra={<ThreadLinkPlaceholder threadId={adjustment.threadId} />}
+      extra={
+        adjustment.threadId ? (
+          <ThreadLink threadId={adjustment.threadId} />
+        ) : undefined
+      }
     >
       <FRow label="원래 금액">
         리워드{" "}
@@ -617,7 +811,7 @@ export function AdjustmentCard(props: { detail: Detail }) {
           <TSub>
             · 합의 기한{" "}
             <span className="tabular-nums">
-              {dayjs(adjustment.deadlineAt).format("MM.DD HH:mm")}
+              {mdhmDue(adjustment.deadlineAt)}
             </span>
             {adjustment.remainingBusinessDays !== null &&
               ` · ${adjustment.remainingBusinessDays}영업일 남음`}{" "}
@@ -719,29 +913,10 @@ function documentRow(doc: TaxDocument, detail: Detail): EvidenceRow {
   };
 }
 
-/** 비사업자 주민번호 미등록 — 문서가 아니라 보류 사유라 증빙 카드에 가상 줄로 보인다 */
-function residentNumberRow(detail: Detail): EvidenceRow {
-  return {
-    key: "resident-number",
-    title: "원천징수영수증",
-    direction: `플랫폼 → 인플루언서 · ${detail.overview.showroomName}`,
-    amounts: (
-      <>
-        원천징수{" "}
-        <b>{won(detail.breakdown.creator.withholding?.amount ?? 0)}원</b>
-      </>
-    ),
-    badge: { label: "주민번호 미등록", tone: "NEUTRAL" },
-    meta: "인플루언서 입력 대기 · 자동 알림",
-    action: null,
-  };
-}
-
 function evidenceHint(detail: Detail): ReactNode {
   const isBusiness = detail.overview.creatorBusinessType === "BUSINESS";
   if (hasPendingEvidence(detail)) {
     const invoiceHeld = isCreatorInvoiceOpen(creatorInvoiceOf(detail));
-    const rrnMissing = isResidentNumberMissing(detail);
     const brandPending = brandInvoicesOf(detail).some(
       (doc) => doc.status === "PENDING_ISSUE"
     );
@@ -749,13 +924,7 @@ function evidenceHint(detail: Detail): ReactNode {
       <>
         {invoiceHeld && (
           <>
-            인플루언서 건은 <b>승인번호 확인 전 지급 보류</b>입니다.{" "}
-          </>
-        )}
-        {rrnMissing && (
-          <>
-            주민번호가 등록되기 전에는 <b>인플루언서 몫이 지급 보류</b>
-            입니다(인플루언서에게 자동 알림).{" "}
+            인플루언서 건은 <b>대조 확인 전 지급 보류</b>입니다.{" "}
           </>
         )}
         {brandPending && (
@@ -804,12 +973,9 @@ export function EvidenceCard(props: {
     doc,
     row: documentRow(doc, detail),
   }));
-  const virtual = isResidentNumberMissing(detail)
-    ? [{ doc: null, row: residentNumberRow(detail) }]
-    : [];
   return (
     <StlCard title="증빙" note="MVP — 외부 발행 서비스 없음 · 홈택스 수동">
-      {[...rows, ...virtual].map(({ doc, row }) => (
+      {rows.map(({ doc, row }) => (
         <IBar
           key={row.key}
           className="mt-2 first:mt-0"
@@ -827,11 +993,11 @@ export function EvidenceCard(props: {
             </>,
           ]}
           action={
-            doc && row.action === "verify" ? (
+            row.action === "verify" ? (
               <Btn variant="primary" onClick={() => onVerify(doc)}>
                 대조
               </Btn>
-            ) : doc && row.action === "register" ? (
+            ) : row.action === "register" ? (
               <Btn variant="secondary" onClick={() => onRegister(doc)}>
                 발행본 등록
               </Btn>

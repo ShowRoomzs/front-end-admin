@@ -9,6 +9,7 @@ import Stepper from "@/features/contract/components/detail/Stepper";
 import Btn from "@/features/contract/components/shared/Btn";
 import { GROUP_BUY_STATUS_LABEL } from "@/features/contract/constants/params";
 import { rejectReasonLabel } from "@/features/contract/constants/labels";
+import { TERMINATED_CARD_NOTE } from "@/features/contract/constants/provisional";
 import type { AdminContractDetail } from "@/features/contract/types";
 import {
   buildStepper,
@@ -16,10 +17,7 @@ import {
   isSignatureOverdue,
   SIGNING_PHASE,
 } from "@/features/contract/utils/contractView";
-import {
-  formatMonthDayTime,
-  toParts,
-} from "@/features/contract/utils/datetime";
+import { toParts } from "@/features/contract/utils/datetime";
 
 export interface SignDrafts {
   brand: SignDraft;
@@ -35,9 +33,6 @@ interface ProgressCardProps {
   canSave: boolean;
   onRevert: () => void;
   onSave: () => void;
-  onHandleResend: () => void;
-  isHandlingResend: boolean;
-  onOpenThread?: () => void;
   onOpenGroupBuy: () => void;
 }
 
@@ -58,6 +53,8 @@ function cardNote(detail: AdminContractDetail) {
       return "만료로 종결 — 만료 시점의 서명 기록만 남습니다";
     case "DECLINED":
       return "인플루언서 거절로 종결 — 거절 시점의 서명 기록만 남습니다";
+    case "TERMINATED":
+      return TERMINATED_CARD_NOTE;
     default:
       return undefined;
   }
@@ -96,7 +93,7 @@ function AsOf(props: { detail: AdminContractDetail }) {
 
 /**
  * 시안 좌측 첫 카드 「검토 진행 / 서명 진행」 — 스텝퍼 + 상태별 본문.
- * 서명 현황 입력(`.sbox.edit`)은 서명 진행중·체결 처리 대기에서만 열리고 체결 완료부터 잠긴다.
+ * 서명 현황 입력(`.sbox.edit`)은 서명 진행중·공구 생성 대기에서만 열리고 공구 생성부터 잠긴다.
  */
 export default function ProgressCard(props: ProgressCardProps) {
   const {
@@ -107,12 +104,9 @@ export default function ProgressCard(props: ProgressCardProps) {
     canSave,
     onRevert,
     onSave,
-    onHandleResend,
-    isHandlingResend,
-    onOpenThread,
     onOpenGroupBuy,
   } = props;
-  const { contract, review, signature, permissions, resend, groupBuy } = detail;
+  const { contract, review, signature, permissions, groupBuy } = detail;
   const status = contract.status;
   const isSigningPhase = SIGNING_PHASE.includes(status);
   const isClosed = CLOSED_STATUSES.includes(status);
@@ -225,46 +219,7 @@ export default function ProgressCard(props: ProgressCardProps) {
             <b className="font-semibold">대시보드를 확인한 뒤</b> 저장하세요.
           </Notice>
         )}
-        {isSigningPhase && resend.pendingCount > 0 && (
-          <Notice tone="info" className="mt-3">
-            <b className="font-semibold">
-              서명 안내 재발송 요청 {resend.pendingCount}건
-            </b>{" "}
-            —{" "}
-            {resend.lastRequesterType === "SELLER"
-              ? contract.brand.name
-              : resend.lastRequesterType === "CREATOR"
-                ? (contract.creator?.name ?? "인플루언서")
-                : "당사자"}
-            이{" "}
-            <span className="tabular-nums">
-              {formatMonthDayTime(resend.lastRequestedAt)}
-            </span>
-            에 [서명 안내 다시 받기]를 눌러{" "}
-            <b className="font-semibold">운영팀 소통 스레드에 자동 등록</b>
-            됐습니다. 모두싸인에서 재발송한 뒤 기록하면{" "}
-            <b className="font-semibold">
-              스레드에 재발송 완료 답글이 함께 남습니다
-            </b>
-            .
-            <div className="mt-[9px] flex gap-2">
-              {permissions.canHandleResend && (
-                <Btn
-                  variant="secondary"
-                  isLoading={isHandlingResend}
-                  onClick={onHandleResend}
-                >
-                  재발송 처리 기록
-                </Btn>
-              )}
-              {onOpenThread && (
-                <Btn variant="secondary" onClick={onOpenThread}>
-                  소통 스레드 열기 ↗
-                </Btn>
-              )}
-            </div>
-          </Notice>
-        )}
+        {/* rev.8 ② — 서명 안내 재발송 요청은 20a 운영팀 채널 카드에서 끝난다(안내 블록 · [재발송 처리 기록] 없음) */}
         {status === "CONCLUSION_PENDING" && (
           <Notice tone="info" className="mt-4">
             <b className="font-semibold">양측 서명이 확인됐습니다.</b>{" "}

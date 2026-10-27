@@ -2,9 +2,11 @@ import type {
   AdminOrderSearchType,
   AdminOrderSort,
   AdminOrderTab,
+  FulfillmentStatus,
   OrderListParams,
   OrderPeriod,
   PaymentMethod,
+  TrackingAlert,
 } from "@/features/order/types";
 
 /** 라우터가 이 경로로 주문 조회를 연다(`common/router`) */
@@ -13,6 +15,11 @@ export const ORDER_LIST_PATH = "/order/list";
 export const ORDER_CLAIM_PATH = "/order/claim";
 export const ORDER_EXCEPTION_PATH = "/order/exception";
 export const THREAD_PATH = "/monitoring/threads";
+
+/** CS · 1:1 문의 상세(`common/router` `support/inquiry/:inquiryId`) */
+export function inquiryDetailPath(inquiryId: number) {
+  return `/support/inquiry/${inquiryId}`;
+}
 
 /** 탭 3종(`AdminOrderTab`) — 라벨은 enum 라벨 그대로 */
 export const ORDER_TABS: Array<{ value: AdminOrderTab; label: string }> = [
@@ -23,9 +30,12 @@ export const ORDER_TABS: Array<{ value: AdminOrderTab; label: string }> = [
 
 /**
  * 상태 셀렉트(전체 탭) — `FulfillmentStatus`에서 PENDING(목록 밖)을 뺀 7종.
- * 셀렉트 옵션에는 서버 라벨이 없어 enum 라벨을 옮겼다. 건수 API가 없어 건수는 붙이지 않는다.
+ * 셀렉트 옵션에는 서버 라벨이 없어 enum 라벨을 옮겼다. 옆 숫자는 요약 `statusCounts`.
  */
-export const ORDER_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
+export const ORDER_STATUS_OPTIONS: Array<{
+  value: Exclude<FulfillmentStatus, "PENDING">;
+  label: string;
+}> = [
   { value: "NEW", label: "신규(준비 대기)" },
   { value: "PREPARING", label: "상품준비중" },
   { value: "SHIPPING", label: "배송중" },
@@ -37,9 +47,13 @@ export const ORDER_STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 
 /**
  * 이상 유형 셀렉트(배송 이상 탭) — 집화 확인 필요 · 추적 정지는 `trackingAlert`,
- * 반송 중은 이상 유형 파라미터가 없어 `status=RETURNING`으로 보낸다.
+ * 반송 중은 `TrackingAlert` 값이 아니라 상태라 `status=RETURNING`으로 보낸다.
+ * 옆 숫자는 요약 `deliveryIssueCounts`.
  */
-export const ORDER_ISSUE_OPTIONS: Array<{ value: string; label: string }> = [
+export const ORDER_ISSUE_OPTIONS: Array<{
+  value: TrackingAlert | "RETURNING";
+  label: string;
+}> = [
   { value: "PICKUP_UNCONFIRMED", label: "집화 확인 필요" },
   { value: "STALLED", label: "추적 정지" },
   { value: "RETURNING", label: "반송 중" },
@@ -119,6 +133,8 @@ export const ORDER_INITIAL_PARAMS: OrderListParams = {
   paymentMethod: "",
   sort: "PAID_DESC",
   orderId: "",
+  userId: "",
+  cancelRequested: "",
   page: 1,
   size: 20,
 };
