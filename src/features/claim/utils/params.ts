@@ -40,6 +40,7 @@ export function normalizeClaimParams(params: ClaimListParams) {
       : initial.sort,
     userId: /^\d+$/.test(params.userId ?? "") ? params.userId : "",
     openOnly: params.openOnly === "true" ? "true" : "",
+    marketId: /^\d+$/.test(params.marketId ?? "") ? params.marketId : "",
     page: Number.isInteger(page) && page > 0 ? page : initial.page,
     size: CLAIM_PAGE_SIZES.includes(size) ? size : initial.size,
   };
@@ -63,6 +64,7 @@ export function toClaimListQuery(params: ClaimListParams): ClaimListQuery {
     sort: params.sort || undefined,
     userId: params.userId ? Number(params.userId) : undefined,
     openOnly: params.openOnly === "true" || undefined,
+    marketId: params.marketId ? Number(params.marketId) : undefined,
     page: params.page,
     size: params.size,
   };

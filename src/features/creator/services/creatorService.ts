@@ -1,11 +1,6 @@
-import dayjs from "dayjs";
 import { apiInstance } from "@/common/lib/apiInstance";
 import type { BaseParams, PageInfo } from "@/common/types";
-import {
-  CREATOR_REAPPLY_COOLDOWN_DAYS,
-  CREATOR_REJECTION_REASONS,
-  type CREATOR_APPLICATION_STATUS,
-} from "@/features/creator/constants/params";
+import type { CREATOR_APPLICATION_STATUS } from "@/features/creator/constants/params";
 
 export type CreatorApplicationStatus =
   keyof typeof CREATOR_APPLICATION_STATUS | null; // null은 전체 조회
@@ -101,6 +96,11 @@ export interface CreatorApplicationDetailInfo {
   processorEmail: string | null;
   rejectReasonType: string | null;
   rejectReasonDetail: string | null;
+  /**
+   * 반려 통지 메일(백엔드 58 5-24) — true 발송 성공 · false 발송 실패(재발송하지 않는다 · 신청자에게 따로 연락) ·
+   * null 기록 없음(이 기능 이전 반려 · 업무 이메일 없음 · 발송 중)
+   */
+  noticeSent: boolean | null;
 
   // 본인 인증 — PASS 미연동 상태라 아직 더미값이 내려온다
   name: string | null;
@@ -180,40 +180,15 @@ export const creatorService = {
       data
     );
   },
-  /**
-   * 반려 통지 미리보기(기-36 C1).
-   *
-   * 이 API는 개발 서버에 아직 배포되지 않았다(back-end main 10-24). 실패하면
-   * 같은 규칙(사유별 통지 라벨 · 오늘 + 14일)으로 화면에서 만든다 — 가짜 값이
-   * 아니라 서버 템플릿과 같은 계산이라 배포 전에도 운영자가 볼 수 있다.
-   * 백엔드 배포 후에는 catch 분기를 지워도 된다.
-   */
+  /** 반려 통지 미리보기(기-36 C1) — 개발 서버에 배포돼 실호출만 한다(58 반영 · 화면 계산 대체 분기 삭제) */
   getRejectionNoticePreview: async (
     applicationId: number,
     reasonType: CreatorRejectionReasonType
   ): Promise<CreatorRejectionNoticePreview> => {
-    try {
-      const { data } = await apiInstance.get<CreatorRejectionNoticePreview>(
-        `/admin/creator/applications/${applicationId}/reject-preview`,
-        { params: { reasonType } }
-      );
-      return data;
-    } catch {
-      const reason = CREATOR_REJECTION_REASONS.find(
-        (item) => item.value === reasonType
-      );
-      const today = dayjs();
-      return {
-        reasonType,
-        internalLabel: reason?.label ?? reasonType,
-        noticeLabel: reason?.noticeLabel ?? reasonType,
-        rejectedOn: today.format("YYYY-MM-DD"),
-        reapplyAvailableOn: today
-          .add(CREATOR_REAPPLY_COOLDOWN_DAYS, "day")
-          .format("YYYY-MM-DD"),
-        subject: "",
-        body: "",
-      };
-    }
+    const { data } = await apiInstance.get<CreatorRejectionNoticePreview>(
+      `/admin/creator/applications/${applicationId}/reject-preview`,
+      { params: { reasonType } }
+    );
+    return data;
   },
 };

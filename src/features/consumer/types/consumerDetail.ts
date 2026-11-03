@@ -5,11 +5,10 @@ import type {
 
 /*
   13 소비자 상세 — 백엔드 origin/main `AdminUserDto`(UserAdminController)와 1:1.
-  필드명 · nullable · enum 값은 서버 그대로다. 날짜는 두 종류가 섞인다:
-  - UTC 벽시계(`now()` 이벤트) → `parseServerDateTime`: 가입 · 로그인 · 인증 · 주문 · 문의 · 메모 ·
-    이력 · 정지 일시 · 해제 시각 · 탈퇴 일시
-  - KST 벽시계(입력값 · 거기서 나온 기한) → 그대로: `term.endsOn` · `autoReleaseAt` ·
-    `appealDeadlineAt` · `suspensionTerm.appealDeadlineAt`
+  필드명 · nullable · enum 값은 서버 그대로다. 시각은 전부 UTC 순간(`…Z`) → `parseServerDateTime`:
+  - `now()` 이벤트: 가입 · 로그인 · 인증 · 주문 · 문의 · 메모 · 이력 · 정지 일시 · 해제 시각 · 탈퇴 일시
+  - KST로 계산한 기한(UTC로 바꿔 내린다): `autoReleaseAt` · `appealDeadlineAt` · `suspensionTerm.appealDeadlineAt`
+    → `formatKstDate`로 KST 날짜를 쓴다. `term.endsOn`은 LocalDate(KST 날짜)다.
 */
 
 /** `UserSuspensionReason` — 정지 사유 6종(기타만 상세 필수) */
@@ -97,7 +96,7 @@ export interface AdminReasonOption<C extends string = string> {
 export interface AdminSuspensionTermPreview {
   /** 이의 신청 기한 영업일 수 — 「통지 후 N영업일 이상」 */
   appealBusinessDays: number;
-  /** 지금 정지하면 잡힐 이의 신청 기한(KST 벽시계 · 응답 시각 기준 미리보기) */
+  /** 지금 정지하면 잡힐 이의 신청 기한(23:59:59 KST → UTC · 응답 시각 기준 미리보기) */
   appealDeadlineAt: string;
   /** 소명 검토 N영업일 — [정책값 미정]이면 null */
   appealReviewBusinessDays: number | null;
@@ -114,6 +113,8 @@ export interface MemberSanctionTerm {
   /** 이의 신청 기한 — 통지 + N영업일 23:59:59(KST) */
   appealDeadlineAt: string | null;
   appealReviewBusinessDays: number | null;
+  /** 이의 신청 기한 영업일 수 — 「통지 후 N영업일 이내」(백엔드 58 6-1) */
+  appealBusinessDays: number;
 }
 
 // ── 사유 목록 · 요청 ─────────────────────────────────────────────
@@ -400,6 +401,8 @@ export interface ConsumerMemo {
   modifiedAt: string | null;
   /** 작성자 본인 ∧ 24시간 이내 ∧ 탈퇴 아님(요청 운영자 기준) */
   editable: boolean;
+  /** 내가 쓴 메모(작성자 = 요청 운영자 · 백엔드 58 5-27) — editable과 별개 */
+  mine: boolean;
 }
 
 /** `AdminUserDto.MemoPage` — 상세에는 최신 3건 + 전체 건수 */
@@ -482,14 +485,29 @@ export interface ConsumerDetail {
   judgement: ConsumerJudgement;
 }
 
-// ── 약관 동의 내역(서버 없음) ───────────────────────────────────────
+// ── 약관 동의 내역 ───────────────────────────────────────────────
+
+/** 동의 대상 약관 3종 — 서버 `TermsType`(운영정책 OPERATION_POLICY는 열람 전용이라 오지 않는다) */
+export type ConsumerTermsType =
+  "TERMS_OF_SERVICE" | "PRIVACY_POLICY" | "MARKETING_CONSENT";
 
 /**
- * 【서버 없음】 약관 동의 내역 — 약관 버전 테이블이 법률 자문 뒤로 보류됐다(55 계획서 4-3-4 · D16).
- * 서버 모양이 정해지지 않아 화면이 그리는 최소 형태만 둔다. DEV 목업 전용 · 배포본 「준비 중」.
+ * `AdminUserDto.ConsentRow` — GET /v1/admin/users/{userId}/consents(백엔드 58 5-29) 한 줄. 3행 고정
+ * (이용 약관 · 개인정보 · 마케팅). 동의 기록에 버전 열이 없어 버전은 「동의 시각에 시행 중이던 버전」으로 서버가 파생한다.
  */
 export interface ConsumerTermsAgreement {
-  title: string;
-  version: string;
-  agreedAt: string;
+  termsType: ConsumerTermsType | string;
+  /** 동의 시각에 시행 중이던 문서 이름 — 문서가 없으면 유형 이름 */
+  termsName: string;
+  /** 찾을 수 없으면 null */
+  version: string | null;
+  /** 현재 동의 상태 — 마케팅은 철회하면 false */
+  agreed: boolean;
+  /** 동의(철회) 시각 — 필수 약관은 가입 시각 · 마케팅은 마지막 변경 시각. 기록이 없으면 null */
+  agreedAt: string | null;
+}
+
+/** `AdminUserDto.ConsentList` */
+export interface ConsumerTermsAgreementList {
+  content: Array<ConsumerTermsAgreement>;
 }

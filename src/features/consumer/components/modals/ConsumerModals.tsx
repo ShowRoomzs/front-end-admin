@@ -1,4 +1,5 @@
 import { ModalShell } from "@/common/components/ModalShell/ModalShell";
+import { usePolicyValues } from "@/common/hooks/usePolicyValues";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import {
@@ -94,6 +95,14 @@ export function SuspendModal(props: SuspendModalProps) {
   );
   const detailRequired = selected?.detailRequired ?? false;
   const term = options?.suspensionTerm;
+  // 영업일 수는 사유 목록의 미리보기(term)가 우선 — 없으면 공용 정책값(58 6-1), 그것도 없으면 「N」
+  const { data: policy } = usePolicyValues();
+  const appealDays =
+    term?.appealBusinessDays ?? policy?.sanctionAppealBusinessDays ?? null;
+  const reviewDays =
+    term?.appealReviewBusinessDays ??
+    policy?.sanctionAppealReviewBusinessDays ??
+    null;
   const canSubmit =
     reason !== "" &&
     endsOn !== "" &&
@@ -211,20 +220,17 @@ export function SuspendModal(props: SuspendModalProps) {
             이의 신청 기한
           </span>
           <span>
-            {term ? (
+            통지 후{" "}
+            <b className="font-semibold">{appealDays ?? "N"}영업일 이상</b>
+            {term && (
               <>
-                통지 후{" "}
-                <b className="font-semibold">
-                  {term.appealBusinessDays}영업일 이상
-                </b>{" "}
+                {" "}
                 ·{" "}
                 <span className="tabular-nums">
                   {formatKstDate(term.appealDeadlineAt)}
                 </span>
                 까지
               </>
-            ) : (
-              "—"
             )}
           </span>
         </div>
@@ -232,10 +238,8 @@ export function SuspendModal(props: SuspendModalProps) {
           <span className="w-[84px] shrink-0 text-sz-n-600">소명 검토</span>
           <span>
             접수 후{" "}
-            {term?.appealReviewBusinessDays != null ? (
-              <b className="font-semibold">
-                {term.appealReviewBusinessDays}영업일
-              </b>
+            {reviewDays !== null ? (
+              <b className="font-semibold">{reviewDays}영업일</b>
             ) : (
               <>
                 <b className="font-semibold">N영업일</b>{" "}

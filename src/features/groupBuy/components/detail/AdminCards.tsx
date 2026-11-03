@@ -1,3 +1,7 @@
+import {
+  policyDaysText,
+  usePolicyValues,
+} from "@/common/hooks/usePolicyValues";
 import Btn from "@/features/contract/components/shared/Btn";
 import { formatPercent } from "@/features/contract/utils/format";
 import {
@@ -36,10 +40,10 @@ import {
   POST_SUSPENDED_LABEL,
   postStatusBadge,
   quantityText,
+  settlementStageTone,
   settlementTransferred,
   won,
 } from "@/features/groupBuy/utils/view";
-import { SETTLEMENT_REVIEW_PERIOD_TEXT } from "@/features/groupBuy/constants/params";
 import { useState, type ReactNode } from "react";
 
 /*
@@ -212,6 +216,7 @@ export function NoticeCard(props: {
 }) {
   const { detail, onOpenAttachment, onOpenRevisions, onOpenThread } = props;
   const [filesOpen, setFilesOpen] = useState(false);
+  const { data: policy } = usePolicyValues();
   const suspension = detail.adminSuspension;
   if (!suspension) {
     return null;
@@ -276,8 +281,9 @@ export function NoticeCard(props: {
             {dt(suspension.appealDeadlineAt)}
           </span>{" "}
           <TSub>
-            · 수신일 +3영업일(제17조④) ·{" "}
-            {creatorOpinion && "브랜드 · 인플루언서 동일 · "}
+            · 수신일 +
+            {policyDaysText(policy, "groupBuySuspensionAppealBusinessDays")}
+            (제17조④) · {creatorOpinion && "브랜드 · 인플루언서 동일 · "}
             <B>
               {suspension.appealDeadlinePassed
                 ? "기한 경과"
@@ -925,6 +931,7 @@ export function SettlementCard(props: {
   onGoSettlement: () => void;
 }) {
   const { detail, onGoSettlement } = props;
+  const { data: policy } = usePolicyValues();
   const settlement = detail.afterEnd?.settlement;
   if (!settlement) {
     return null;
@@ -940,14 +947,46 @@ export function SettlementCard(props: {
       {transferred ? (
         <>
           {/*
-            시안 B5a 「정산 STL-… · 조정 협의 [정산 상세 보기 ↗]」 — 공구 상세 응답에 정산번호 · 정산 ID ·
-            정산 단계가 없어(AdminGroupBuyDetailResponse.Settlement) 정산 관리 목록으로 보낸다. 백엔드 요청.
+            시안 B5a 「정산 STL-… · 조정 협의 [정산 상세 보기 ↗]」 — 서버 정산번호 · 단계 라벨(58 계획 5-23).
+            정산 행이 아직 없으면(「정산 대기」) 번호 · 링크 대신 정산 관리 목록으로 보낸다.
           */}
-          <div className="mt-3.5 flex items-center gap-2 text-[12px] text-sz-n-700">
-            <span className="text-sz-n-500">정산</span>
-            <MiniBtn className="ml-auto" onClick={onGoSettlement}>
-              정산 관리 열기 ↗
-            </MiniBtn>
+          <div className="mt-3">
+            <FRow label="정산">
+              {settlement.settlementId !== null ? (
+                <>
+                  <span className="tabular-nums">
+                    {settlement.settlementNumber ?? "—"}
+                  </span>{" "}
+                  ·{" "}
+                  <GbBadge
+                    hideDot
+                    tone={settlementStageTone(settlement.stageLabel)}
+                  >
+                    {settlement.stageLabel}
+                  </GbBadge>{" "}
+                  <button
+                    type="button"
+                    className={FLINK}
+                    onClick={onGoSettlement}
+                  >
+                    정산 상세 보기 ↗
+                  </button>
+                </>
+              ) : (
+                <>
+                  <GbBadge hideDot tone="NEUTRAL">
+                    {settlement.stageLabel}
+                  </GbBadge>{" "}
+                  <button
+                    type="button"
+                    className={FLINK}
+                    onClick={onGoSettlement}
+                  >
+                    정산 관리 열기 ↗
+                  </button>
+                </>
+              )}
+            </FRow>
           </div>
           <MWarn info className="mb-0 mt-3.5">
             모든 주문이 종결돼 <B>정산 관리로 이관</B>됐습니다. 이 공구의 정산
@@ -968,8 +1007,12 @@ export function SettlementCard(props: {
           <MWarn info className="mb-0 mt-3.5">
             정산은 <B>모든 주문 항목이 종결</B>(구매확정 · 환불 · 반려 확정)된
             뒤 시작됩니다. 종결되면 <B>정산 관리</B>로 넘어가 금액이 산출되고{" "}
-            <B>정산 확인 기간 {SETTLEMENT_REVIEW_PERIOD_TEXT}</B>이 열립니다 —
-            정산 조정 요청 · 확정 · 지급은 모두 정산 관리 소관입니다.
+            <B>
+              정산 확인 기간{" "}
+              {policyDaysText(policy, "settlementReviewBusinessDays")}
+            </B>
+            이 열립니다 — 정산 조정 요청 · 확정 · 지급은 모두 정산 관리
+            소관입니다.
           </MWarn>
         </>
       )}

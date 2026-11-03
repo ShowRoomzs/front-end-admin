@@ -17,7 +17,7 @@ const QUEUE_PATH: Record<string, string> = {
   TAX_INVOICE_ISSUE: "/settlement/group-buy?tab=EVIDENCE",
   TAX_INVOICE_VERIFY: "/settlement/group-buy?tab=EVIDENCE",
   INQUIRY: "/support/inquiry?status=WAITING",
-  PRODUCT_INQUIRY_DELETE: "/support/product-inquiry?status=DELETE_REQUESTED",
+  // 상품 문의 삭제 요청은 할 일에서 빠졌다(사이드바 하위 숫자만 · 백엔드 58 5-33)
   // 공구 목록은 큐 필터가 없다 — 조치 필요 탭이 네 큐(오픈 승인 · 중단 · 조기 마감 · 소명)를 모은다
   OPEN_REVIEW: "/group-buy?tab=ACTION_REQUIRED",
   SUSPEND_REQUEST: "/group-buy?tab=ACTION_REQUIRED",
@@ -51,7 +51,7 @@ const CONTRACT_QUEUE_PREFIX = "CONTRACT_";
 
 function queuePath(row: AdminHomeTodoRow) {
   if (row.queue.startsWith(CONTRACT_QUEUE_PREFIX)) {
-    // 계약 조치 큐 5종 — CONTRACT_REVIEW → `/contract?queue=REVIEW`
+    // 계약 조치 큐 4종(재발송 요청은 할 일에서 빠졌다 · 58 5-33) — CONTRACT_REVIEW → `/contract?queue=REVIEW`
     return `/contract?queue=${row.queue.slice(CONTRACT_QUEUE_PREFIX.length)}`;
   }
   return QUEUE_PATH[row.queue] ?? MENU_PATH[row.menu] ?? null;

@@ -430,7 +430,10 @@ export function InfluencerActivityCard(props: {
                   </b>{" "}
                   · 노출 중지{" "}
                   <b className="tabular-nums">
-                    {count(activity.hiddenCount)}회
+                    {count(
+                      activity.exposureSuspendedCount ?? activity.hiddenCount
+                    )}
+                    회
                   </b>{" "}
                   <button
                     type="button"

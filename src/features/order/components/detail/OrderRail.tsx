@@ -1,4 +1,4 @@
-import { parseWallClock } from "@/common/utils/formatDate";
+import { parseServerDateTime } from "@/common/utils/formatDate";
 import CorrectDeliveredAtForm from "@/features/order/components/detail/forms/CorrectDeliveredAtForm";
 import OpenReturnForm from "@/features/order/components/detail/forms/OpenReturnForm";
 import ProxyInvoiceForm from "@/features/order/components/detail/forms/ProxyInvoiceForm";
@@ -110,8 +110,11 @@ function statusRows(detail: AdminOrderDetail) {
     const suffix = multi ? ` ${subOrderSuffix(group.subOrderNumber)}` : "";
     const request = group.cancelRequest;
     if (request) {
-      // 응답 마감은 영업일 기한(23:59:59 벽시계)이라 보정 없이 읽는다
-      const hours = parseWallClock(request.respondDueAt).diff(dayjs(), "hour");
+      // 응답 마감은 영업일 기한(23:59:59 KST를 UTC로 바꾼 값)이라 지금 시각과 바로 뺀다
+      const hours = parseServerDateTime(request.respondDueAt).diff(
+        dayjs(),
+        "hour"
+      );
       rows.push({
         label: `응답 마감${suffix}`,
         value: formatDueShort(request.respondDueAt),

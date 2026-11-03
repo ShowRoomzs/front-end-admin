@@ -6,10 +6,7 @@ import {
   CONSUMER_TERMS_QUERY_KEY,
   CONSUMERS_QUERY_KEY,
 } from "@/features/consumer/constants/queryKey";
-import {
-  ConsumerDetailOutdatedError,
-  consumerDetailService,
-} from "@/features/consumer/services/consumerDetailService";
+import { consumerDetailService } from "@/features/consumer/services/consumerDetailService";
 import type {
   ConsumerDetail,
   ConsumerReleaseRequest,
@@ -17,7 +14,6 @@ import type {
   ConsumerSuspendRequest,
   ConsumerUnmaskRequest,
 } from "@/features/consumer/types/consumerDetail";
-import { ApiNotReadyError } from "@/common/utils/devMock";
 import {
   useMutation,
   useQuery,
@@ -27,23 +23,11 @@ import {
 
 const detailKey = (userId: number) => [CONSUMER_DETAIL_QUERY_KEY, userId];
 
-/** 「준비 중」 오류는 다시 불러도 같다 — 재시도로 로딩만 길어지지 않게 한다 */
-function retryUnlessNotReady(failureCount: number, error: Error) {
-  if (
-    error instanceof ConsumerDetailOutdatedError ||
-    error instanceof ApiNotReadyError
-  ) {
-    return false;
-  }
-  return failureCount < 2;
-}
-
 export function useConsumerDetail(userId: number) {
   return useQuery({
     queryKey: detailKey(userId),
     queryFn: () => consumerDetailService.getDetail(userId),
     enabled: Number.isFinite(userId) && userId > 0,
-    retry: retryUnlessNotReady,
     /*
       마스킹 해제 상태는 이 운영자의 세션에 묶인 값이라, 창을 다시 볼 때마다 몰래 다시 부르면
       카운트다운이 서버 남은 초로 튀어 버린다. 갱신은 조치 · 만료 시점에만 명시적으로 한다.
@@ -81,12 +65,12 @@ export function useConsumerMemos(userId: number, enabled: boolean) {
   });
 }
 
-/** 【서버 없음】 약관 동의 내역 — 배포본은 ApiNotReadyError */
+/** 약관 동의 내역 — GET /{userId}/consents(58 5-29) */
 export function useConsumerTerms(userId: number) {
   return useQuery({
     queryKey: [CONSUMER_TERMS_QUERY_KEY, userId],
     queryFn: () => consumerDetailService.getTermsAgreements(userId),
-    retry: retryUnlessNotReady,
+    enabled: Number.isFinite(userId) && userId > 0,
   });
 }
 

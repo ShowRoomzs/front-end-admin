@@ -1,5 +1,5 @@
 import type { StatusBadgeVariant } from "@/common/components/StatusBadge/StatusBadge";
-import { parseServerDateTime, parseWallClock } from "@/common/utils/formatDate";
+import { parseServerDateTime } from "@/common/utils/formatDate";
 import type {
   ClaimListItem,
   ClaimTone,
@@ -27,7 +27,7 @@ export function toneToVariant(tone: ClaimTone): StatusBadgeVariant {
 
 /*
   날짜는 시안처럼 연도 없이 「09.18」·「09.18 10:00」로 쓴다.
-  서버 LocalDateTime(시간대 없음 · UTC 벽시계)을 읽어 운영자 기준(KST)으로 고정한다 —
+  서버 LocalDateTime(UTC 순간 · `…Z`)을 읽어 운영자 기준(KST)으로 고정한다 —
   브라우저 시간대가 달라도 같은 날로 보이게.
 */
 function kst(value: string) {
@@ -50,19 +50,19 @@ export function mdHm(value: string | null): string {
 }
 
 /*
-  기한(검수 기한 · 재발송비 결제 기한 · 보관 기한)은 서버가 날짜에 23:59:59를 붙인 벽시계다
-  (`BusinessDayCalculator.dueAt` · `endOfDayAfter` · `ClaimStoragePolicy`) — UTC 보정을 하면 다음 날
-  08:59로 밀리므로 그대로 읽는다. 이벤트 시각(신청 · 입고 · 이력 · 확정 예정)만 `md` · `mdHm`을 쓴다.
+  기한(검수 기한 · 재발송비 결제 기한 · 보관 기한)은 서버가 한국 날짜에 23:59:59를 붙여 UTC로 바꾼 값이다
+  (`BusinessDayCalculator.dueAt` · `endOfDayAfter` · `ClaimStoragePolicy` — 09.16 23:59 KST =
+  `2026-09-16T14:59:59Z`). 이벤트 시각과 같이 KST로 읽는다 — 문자열을 그대로 쓰면 9시간 이르게 보인다.
 */
 
-/** 기한 날짜 — 09.16(벽시계 그대로) */
+/** 기한 날짜 — 09.16 */
 export function mdDue(value: string | null): string {
-  return value ? parseWallClock(value).format("MM.DD") : "—";
+  return value ? kst(value).format("MM.DD") : "—";
 }
 
-/** 기한까지 남은 달력일 — 「D-12」 · 지났으면 「D+2」(기한 벽시계 기준) */
+/** 기한까지 남은 달력일 — 「D-12」 · 지났으면 「D+2」(KST 달력일 기준) */
 export function dDay(value: string): string {
-  const days = parseWallClock(value)
+  const days = kst(value)
     .startOf("day")
     .diff(dayjs().utcOffset(9).startOf("day"), "day");
   return days >= 0 ? `D-${days}` : `D+${-days}`;

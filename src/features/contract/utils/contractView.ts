@@ -8,13 +8,10 @@ import type {
   ContractStatus,
 } from "@/features/contract/types";
 import {
-  SIGNATURE_DEADLINE_DAYS_BEFORE_START,
-  SIGNATURE_DEADLINE_SUGGEST_TIME,
-} from "@/features/contract/constants/params";
-import {
   formatMonthDay,
   formatTime,
   formatMonthDayTime,
+  toParts,
   type DateTimeParts,
 } from "@/features/contract/utils/datetime";
 
@@ -59,12 +56,12 @@ function signProgress(detail: AdminContractDetail, empty = "대기") {
 /**
  * 당사자 계정 정지 중에 서명 기한이 지났다(B3-s · 기-07) — 정지된 쪽은 서명을 마칠 수 없으므로
  * 만료 확인 화면(C5 뒤)으로 넘기지 않고 「모두싸인 기한 연장 · 재발송」을 먼저 안내한다.
- * 서버 플래그(origin/main)만 근거로 쓴다 — 배포 전 서버는 내리지 않아 false다.
+ * 서버 플래그(`signature.deadlineOverdueWhileHeld`)만 근거로 쓴다.
  */
 export function isHeldDeadlineOverdue(detail: AdminContractDetail) {
   return (
     detail.contract.status === "SIGNING" &&
-    detail.signature.deadlineOverdueWhileHeld === true
+    detail.signature.deadlineOverdueWhileHeld
   );
 }
 
@@ -272,30 +269,14 @@ export function buildStepper(detail: AdminContractDetail): Array<StepChip> {
 
 /**
  * C1 서명 기한 기본값(기-07) — 공구 시작일(KST) N일 전 23:55. 운영자가 확인한 뒤 모두싸인에 같은 값을 넣는다.
- * 서버 `signature.deadlineSuggestedAt`은 UTC 벽시계로 저장된 공구 시작의 **UTC 날짜**로 23:55를 붙여
- * 다른 시각 필드와 시간대가 어긋난다(KST 10:00 시작이면 다음 날 08:55로 보인다) — 그래서 FE가 같은 규칙으로
- * 계산한다(백엔드 요청). 제안값이 이미 지났으면 서버와 같이 비워 둔다.
+ * 서버 `signature.deadlineSuggestedAt`(「KST 날짜 − N일 23:55 KST」를 UTC로 · 백엔드 58 계획 1-7)을 그대로 쓴다.
+ * 서버가 null이면(공구 시작 없음 · 제안값이 이미 지남) 비워 둔다.
  */
 export function suggestedDeadlineParts(
   detail: AdminContractDetail
 ): DateTimeParts | null {
-  const { startAt } = detail.contract;
-  if (!startAt) {
-    return null;
-  }
-  const suggested = parseServerDateTime(startAt)
-    .subtract(SIGNATURE_DEADLINE_DAYS_BEFORE_START, "day")
-    .hour(Number(SIGNATURE_DEADLINE_SUGGEST_TIME.hour))
-    .minute(Number(SIGNATURE_DEADLINE_SUGGEST_TIME.minute))
-    .second(0);
-  if (!suggested.isAfter(dayjs())) {
-    return null;
-  }
-  return {
-    date: suggested.format("YYYY-MM-DD"),
-    hour: SIGNATURE_DEADLINE_SUGGEST_TIME.hour,
-    minute: SIGNATURE_DEADLINE_SUGGEST_TIME.minute,
-  };
+  const suggested = detail.signature.deadlineSuggestedAt;
+  return suggested ? toParts(suggested) : null;
 }
 
 /** 상세 헤더 설명 줄 — "CTR · 브랜드 × 인플루언서 · 시각 이벤트" */

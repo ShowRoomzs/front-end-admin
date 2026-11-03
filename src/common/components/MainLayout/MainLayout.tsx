@@ -3,6 +3,8 @@ import type { MenuItem } from "@/common/types";
 import { useGetAdminContractSummary } from "@/features/contract/hooks/useAdminContractQueries";
 import { contractActionRequiredCount } from "@/features/contract/utils/summary";
 import { useGetAdminPostSummary } from "@/features/post/hooks/useAdminPost";
+import { useGetAdminBadges } from "@/features/home/hooks/useAdminHome";
+import { withAdminBadges } from "@/features/home/utils/sidebarBadges";
 import { useGetAdminGroupBuySummary } from "@/features/groupBuy/hooks/useAdminGroupBuy";
 import { useGetChangeRequestPendingCount } from "@/features/changeRequest/hooks/useGetChangeRequestPendingCount";
 import { useGetCreatorPendingCount } from "@/features/creator/hooks/useGetCreatorPendingCount";
@@ -297,6 +299,7 @@ export default function MainLayout() {
   const { data: exceptionSummary } = useGetExceptionSummary();
   const { data: threadSummary } = useGetThreadSummary();
   const { data: postSummary } = useGetAdminPostSummary();
+  const { data: adminBadges } = useGetAdminBadges();
 
   // 목록 화면은 메뉴에 지정된 제목을 페이지 타이틀로 쓴다.
   // 상세 화면(하위 경로)은 브랜드명 등 자체 타이틀을 렌더링하므로 비워둔다.
@@ -328,14 +331,22 @@ export default function MainLayout() {
 
   return (
     <div className="flex h-screen bg-sz-n-50">
+      {/*
+        서버 배지(`GET /v1/admin/badges` · 백엔드 58 5-33)가 맨 바깥에서 그룹 배지 · 입점 하위 · 회원 수 ·
+        CS 하위를 덮는다 — 「홈 할 일 합계 = 배지 합」을 서버가 보장한다. 응답이 없으면 아래 화면별 요약 값이 남고,
+        거래 하위(반품·교환 · 환불 · 예외) 숫자는 서버가 나눠 주지 않아 화면별 요약 값을 쓴다.
+      */}
       <Sidebar
-        menus={withTransactionCounts(
-          withSettlementCount(menus, settlementSummary?.gnbBadge ?? 0),
-          {
-            claim: claimSummary?.disputeCount ?? 0,
-            refund: refundSummary?.badge ?? 0,
-            exception: exceptionSummary?.badge ?? 0,
-          }
+        menus={withAdminBadges(
+          withTransactionCounts(
+            withSettlementCount(menus, settlementSummary?.gnbBadge ?? 0),
+            {
+              claim: claimSummary?.disputeCount ?? 0,
+              refund: refundSummary?.badge ?? 0,
+              exception: exceptionSummary?.badge ?? 0,
+            }
+          ),
+          adminBadges
         )}
       />
 

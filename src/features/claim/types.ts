@@ -4,7 +4,7 @@ import type { BaseParams, PageResponse } from "@/common/types";
   어드민 반품·교환(06b) — 백엔드 `AdminTransactionDto`(06b 부분)와 그 안에 감싼
   `SellerClaimListItem` · `SellerClaimDetailResponse` · `SellerClaimSummaryResponse`,
   `domain/order/type/Claim*`를 그대로 옮겼다.
-  LocalDateTime은 시간대 없는 ISO 문자열이고 표시할 때 `utils/format`이 읽는다.
+  LocalDateTime은 UTC 순간(`…Z`) ISO 문자열이고(기한도 KST로 계산해 UTC로) 표시할 때 `utils/format`이 읽는다.
 */
 
 // ── enum ──────────────────────────────────────────────
@@ -178,7 +178,12 @@ export interface SellerClaimListItem {
   reshipCarrier: DeliveryCarrier | null;
   reshipCarrierLabel: string | null;
   reshipTrackingNumber: string | null;
+  /** 반려 건은 반려 재발송 배송비, 교환은 사유 번복 청구(재발송 배송비 + 착불 운임)가 있으면 그것 · 없으면 선결제분 */
   reshipFee: ClaimReshipFee | null;
+  /** 검수 판정 요약(요청 단위) — 판정 전이면 null */
+  inspectionResult: ClaimInspectionResult | null;
+  /** 「사유 번복」 */
+  inspectionResultLabel: string | null;
   rejectReasonLabel: string | null;
   sellerEvidenceCount: number;
   rejectedAt: string | null;
@@ -286,14 +291,14 @@ export interface ClaimDetailActions {
   canReject: boolean;
   canRegisterReshipment: boolean;
   canUpdateReshipment: boolean;
-  /** [사유 번복] 가능(main · 1021 기-17) — 배포된 서버는 내리지 않는다 */
-  canOverturn?: boolean;
+  /** [사유 번복] 가능(1021 기-17) */
+  canOverturn: boolean;
 }
 
-/** `ClaimInspectionResult` — 검수 판정(1021 기-17 · main) */
+/** `ClaimInspectionResult` — 검수 판정(1021 기-17) */
 export type ClaimInspectionResult = "PASSED" | "REASON_OVERTURNED" | "REJECTED";
 
-/** `FreightAdjustmentTrigger` — 귀책 변경 운임 정산의 발생 지점(1021 기-93 · main) */
+/** `FreightAdjustmentTrigger` — 귀책 변경 운임 정산의 발생 지점(1021 기-93) */
 export type FreightAdjustmentTrigger =
   | "REASON_OVERTURNED"
   | "FAULT_TO_SELLER_ON_PASS"
@@ -324,7 +329,7 @@ export interface ClaimFreightRow {
   settledVia: FreightSettledVia;
 }
 
-/** `SellerClaimInspection` — 검수 판정 · 운임 정산(main · 판정 · 운임 행 · 자동 입고가 있을 때만) */
+/** `SellerClaimInspection` — 검수 판정 · 운임 정산(판정 · 운임 행 · 자동 입고가 있을 때만) */
 export interface ClaimInspection {
   result: ClaimInspectionResult | null;
   /** 「검수 통과」 · 「사유 번복」 · 「검수 반려」 */
@@ -338,6 +343,20 @@ export interface ClaimInspection {
   freight: Array<ClaimFreightRow>;
 }
 
+/** `SellerClaimFreightPreview` — 판정 전 운임 미리보기(파트너 B2b · B1r · M1 금액 줄과 같은 출처) */
+export interface ClaimFreightPreview {
+  /** 기본 배송비(편도 · 주문 시점) */
+  baseDeliveryFee: number;
+  /** 결제 시점 권역 추가비(제주 · 도서산간) */
+  regionSurcharge: number;
+  /** 재발송 배송비 = 기본 배송비 + 권역 추가비 */
+  reshipFee: number;
+  /** 원래 결제액 — 결제가 없는 주문이면 null */
+  originalPaidAmount: number | null;
+  /** PG로 더 돌려줄 수 있는 금액(취소 가능 잔액 − 집행 대기 환불) — 결제가 없는 주문이면 null */
+  pgRefundableAmount: number | null;
+}
+
 export interface SellerClaimDetail {
   summary: SellerClaimListItem;
   orderNumber: string;
@@ -346,12 +365,14 @@ export interface SellerClaimDetail {
   /** 마스킹된 값 */
   consumerPhone: string | null;
   reasonDetail: string | null;
-  /** 교환만 — [호환] main은 `reshipFeeCharged`와 같은 값으로 1릴리스 더 내린다 */
+  /** 교환만 — [호환 · 1릴리스 뒤 제거] `reshipFeeCharged`와 같은 값 */
   exchangeFeeCharged: boolean | null;
-  /** 교환 재발송 배송비 청구 여부(main · 기-18 개명) — 배포된 서버에는 없다 */
-  reshipFeeCharged?: boolean | null;
-  /** 검수 판정 · 운임 정산(main · 기-17 · 기-93) — 배포된 서버에는 없다 */
-  inspection?: ClaimInspection | null;
+  /** 교환 재발송 배송비 청구 여부(기-18 개명 · 구 `exchangeFeeCharged`) — 교환만 */
+  reshipFeeCharged: boolean | null;
+  /** 검수 판정 · 운임 정산(기-17 · 기-93) — 판정이 기록됐거나 운임 정산 행이 있을 때만 */
+  inspection: ClaimInspection | null;
+  /** 판정 전 운임 미리보기(58 계획 5-4) — 판정 전 단계(요청 · 회수 중 · 도착 · 검수 대기)만 */
+  freightPreview: ClaimFreightPreview | null;
   /** 반품만 */
   refund: ClaimRefund | null;
   consumerAttachments: Array<string>;
@@ -435,16 +456,26 @@ export interface ClaimDetail {
   /** B4 정산 반영 — 정산 생성 전이면 null */
   settlement: ClaimSettlement | null;
   /**
-   * 【서버 없음】 최초 배송비 차감 근거 — 무료배송 기준 판정(「전량 반품이라 남은 금액 0원(기준 미달)」 ·
-   * 「남은 금액 32,000원 · 기준 30,000원 이상」). 1021 설계서 4-3의 `deductionReason`은 아직 구현되지
-   * 않았다(백엔드 요청). DEV 목업만 채운다 — 배포본은 근거 줄을 그리지 않는다.
+   * 최초 배송비 차감 근거(보조줄 · 58 계획 5-13) — 이 박스에서 최초 배송비를 뺐을 때만. 서버 문장
+   * (「무료배송 기준 50,000원 미만이 되어 최초 배송비 3,000원 차감(소비자 귀책 반품)」) · 그 밖은 null
    */
-  deductionReason?: string | null;
+  deductionReason: string | null;
   /**
-   * 【서버 없음】 B2 「운임 정산 · 인용 시 + N 소비자 환급」 — 인용 전 선불 운임 환급 예정액(기본 배송비
-   * 편도 정액). 인용 뒤에는 `claim.inspection.freight`에 실제 행이 생긴다. 백엔드 요청 · DEV 목업만.
+   * B2 인용하면 생길 운임 환급 예정액(58 계획 5-13) — 인용할 수 있을 때만(`canAcceptDispute`) · 그 밖은 null.
+   * 인용 환불액(`disputeRefundAmount`)과 따로 운임 환급으로 나간다(원래 결제액을 넘으면 운영자 계좌 송금).
+   * 인용 뒤에는 `claim.inspection.freight`에 실제 행이 생긴다.
    */
-  disputeFreightRefund?: number | null;
+  disputePreview: ClaimDisputePreview | null;
+}
+
+/** `AdminClaimDisputePreview` — B2 인용 전 운임 환급 예정액 */
+export interface ClaimDisputePreview {
+  /** 선불 운임 환급 — 귀책이 브랜드로 바뀌어 소비자가 낸 반품 운임을 돌려준다. 이미 브랜드 귀책이면 0 */
+  prepaidFreightRefund: number;
+  /** 차감했던 최초 배송비 환원 — 통과분 환불에서 실제로 뺐을 때만 */
+  initialFeeRestored: number;
+  /** 합계 */
+  total: number;
 }
 
 // ── 운영자 조치 ───────────────────────────────────────
@@ -481,14 +512,18 @@ export interface ClaimListParams extends BaseParams {
   userId: string;
   /** 진행 중(종결 전) 신청만 — 소비자 상세 칩 진입 전용("true" | "") */
   openOnly: string;
+  /** 브랜드 상세(15) 진행 중 칩에서 넘어온 진입 — 그 브랜드의 신청만. 화면 필터에는 없다 */
+  marketId: string;
 }
 
 /** 서버로 보내는 목록 조건(`GET /admin/claims`) */
 export interface ClaimListQuery {
   tab: ClaimTab;
-  /** main · 56 C1 — 소비자 상세 진입 */
+  /** 56 C1 — 소비자 상세 진입 */
   userId?: number;
   openOnly?: boolean;
+  /** 브랜드 상세 진입 */
+  marketId?: number;
   types?: Array<ClaimType>;
   from?: string;
   keyword?: string;

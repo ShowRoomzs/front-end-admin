@@ -2,6 +2,7 @@ import type {
   AdjustmentStatus,
   ClawbackRowStatus,
   CreatorBusinessType,
+  FreightDirection,
   InvoiceVerifyResult,
   SettlementEventType,
   SettlementItemStatus,
@@ -19,7 +20,6 @@ export const SETTLEMENT_QUERY_KEYS = {
   SUMMARY: "adminSettlementSummary",
   LIST: "adminSettlementList",
   DETAIL: "adminSettlementDetail",
-  COMPANY_INFO: "adminSettlementCompanyInfo",
 } as const;
 
 export const SETTLEMENT_TABS: Array<{ value: SettlementTab; label: string }> = [
@@ -70,6 +70,7 @@ export const SETTLEMENT_INITIAL_PARAMS: SettlementListParams = {
   tab: "ALL",
   keyword: "",
   sort: "SCHEDULE_DESC",
+  marketId: "",
   page: 1,
   size: 20,
 };
@@ -192,18 +193,6 @@ export const LEGACY_RESIDENT_NUMBER_MISSING = "RESIDENT_NUMBER_MISSING";
 /** 세금계산서 확인 전 보류 사유 코드 — 증빙 줄이 따로 말한다 */
 export const TAX_INVOICE_UNVERIFIED = "TAX_INVOICE_UNVERIFIED";
 
-/**
- * 지급 예정일 영업일 수를 서버가 따로 내리지 않는다(`settlement.payout-business-days` · [정책값 미정]).
- * 확정 이력 문장(`rail.payoutBasis` — 「자동 확정 10.06 + 3영업일 · …」)에서 읽고, 없으면 「N영업일」로 둔다.
- */
-export const PAYOUT_DAYS_FALLBACK = "N영업일";
-
-/**
- * 정산 확인 기간 — 서버 `settlement.review-business-days`(기본 3)를 어드민 응답이 내리지 않는다.
- * 시안은 정책값 미정 표기 없이 「3영업일」로 쓴다 — 서버가 값을 내리면 이 한 곳을 바꾼다(백엔드 요청).
- */
-export const REVIEW_PERIOD_LABEL = "3영업일";
-
 /** 운임 정산 · 반품 차감 배송비 줄 설명(시안 07b D1 · D3 `.pb`) */
 export const BREAKDOWN_NOTE = {
   consumerDeliveryFee: "소비자 결제분",
@@ -211,3 +200,18 @@ export const BREAKDOWN_NOTE = {
   returnDeductionFee: "무료배송 · 소비자 귀책",
   freightAdjustment: "귀책 변경",
 } as const;
+
+/**
+ * 운임 정산 줄의 방향별 보조줄(시안 07b D3 「귀책 변경 · 소비자 → 브랜드 · 선불 반품 운임 환급 1건(CLM-2981)」).
+ * REFUND_CONSUMER = 소비자 → 브랜드 귀책(브랜드 부담 · −) · CHARGE_CONSUMER = 브랜드 → 소비자 귀책(착불 운임 회수 · +).
+ */
+export const FREIGHT_DIRECTION_NOTE: Record<
+  FreightDirection,
+  { direction: string; action: string }
+> = {
+  REFUND_CONSUMER: {
+    direction: "소비자 → 브랜드",
+    action: "선불 반품 운임 환급",
+  },
+  CHARGE_CONSUMER: { direction: "브랜드 → 소비자", action: "착불 운임 회수" },
+};

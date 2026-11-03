@@ -1,23 +1,20 @@
 import type { StatusBadgeVariant } from "@/common/components/StatusBadge/StatusBadge";
-import { parseServerDateTime, parseWallClock } from "@/common/utils/formatDate";
+import { parseServerDateTime } from "@/common/utils/formatDate";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 
 dayjs.extend(utc);
 
 /*
-  서버 시각은 두 종류다.
-  - 이벤트 시각(가입 · 승인 · 정지 · 이력 · 메모 · 접속) = `now()`로 찍은 UTC 벽시계 → parseServerDateTime 후 KST로 고정한다.
-  - 기한 · 입력 날짜(정지 종료일 · 자동 해제 · 이의 신청 기한 · 정산 지급일) = KST 벽시계 → 보정하지 않고 그대로 읽는다.
-    보정하면 23:59:59 기한이 다음 날 08:59로 밀린다. 시간대 꼬리표가 붙어 와도 벽시계로 읽도록 떼어 낸다.
+  서버 시각은 전부 UTC 순간(`…Z`)이다 — parseServerDateTime 후 KST로 고정한다.
+  - 이벤트 시각(가입 · 승인 · 정지 · 이력 · 메모 · 접속) = `now()`.
+  - 기한(자동 해제 · 이의 신청 기한 · 조정 합의 기한) = 서버가 한국 날짜 00:00 · 23:59:59로 계산해 UTC로 바꾼 값
+    (10.22 23:59 KST → `2026-10-22T14:59:59Z`). 문자열을 그대로 읽으면 9시간 이르게 보인다.
+  - 날짜(정지 종료일 `endsOn` · 정산 지급일 `payoutDueDate`) = LocalDate(KST 날짜) — UTC 0시로 읽혀도 KST로는 같은 날이다.
 */
 
 function kst(value: string) {
   return parseServerDateTime(value).utcOffset(9);
-}
-
-function wall(value: string) {
-  return parseWallClock(value);
 }
 
 /** 이벤트 날짜 — 2026.07.28 */
@@ -45,14 +42,14 @@ export function eventMonthDay(value: string | null | undefined): string {
   return value ? kst(value).format("MM.DD") : "—";
 }
 
-/** 기한 · 입력 날짜(KST 벽시계) — 2026.10.22 */
+/** 기한 · 입력 날짜(KST 달력) — 2026.10.22 */
 export function wallDate(value: string | null | undefined): string {
-  return value ? wall(value).format("YYYY.MM.DD") : "—";
+  return value ? kst(value).format("YYYY.MM.DD") : "—";
 }
 
-/** 기한 짧게(KST 벽시계) — 09.17 */
+/** 기한 짧게(KST 달력) — 09.17 */
 export function wallMonthDay(value: string | null | undefined): string {
-  return value ? wall(value).format("MM.DD") : "—";
+  return value ? kst(value).format("MM.DD") : "—";
 }
 
 /** 오늘(KST) — `<input type="date">` 값 형식 YYYY-MM-DD */

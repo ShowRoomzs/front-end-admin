@@ -195,6 +195,7 @@ export default function RefundManagement() {
         <RefundTableBar
           tab={listParams.tab}
           stat={summary?.tabs[listParams.tab]}
+          summary={summary}
           sort={listParams.sort}
           size={listParams.size}
           onSortChange={(sort: RefundSort) => updateParams({ sort, page: 1 })}

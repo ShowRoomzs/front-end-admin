@@ -2,7 +2,7 @@ import type { PageResponse } from "@/common/types/page";
 
 /*
   어드민 예외 관리 타입 — 백엔드 `AdminOrderExceptionDto`(06d · 40 설계서)와 1:1이다.
-  LocalDateTime은 시간대 없는 ISO 문자열(「2026-10-07T23:59:59」 · 서버 한국 시각)로 온다.
+  LocalDateTime은 UTC 순간(`…Z`)으로 온다 — 기한 10.07 23:59 KST는 「2026-10-07T14:59:59Z」다.
 
   이 화면은 관찰 화면이다 — 쓰기 엔드포인트가 없고 행은 [열기]로 주문·클레임 상세에 간다.
   기한 · 경과 · 다음 단계 · 처리 주체 문장은 서버가 만든다(FE가 유형별 매핑표를 들지 않는다).
@@ -100,19 +100,26 @@ export interface ExceptionItem {
   handlerLabel: string | null;
   link: ExceptionLink;
   /**
-   * 【서버 없음】 추적 정지 · 소비자 선택(06d rev.5 기-15) — `AdminOrderExceptionDto.ExceptionItem`에
-   * 아직 없다(main 주문 상세 `AdminOrderDto.StallChoice`와 같은 모양으로 요청). DEV 목업(`?mock=stall`)만 채운다.
+   * 추적 정지 · 소비자 선택(06d rev.5 기-15 · 58 계획 5-12) — 추적 정지 행만 채우고 그 밖은 null.
+   * 06a 하위주문 상세 `stallChoice`와 같은 값이다.
    */
-  stallChoice?: ExceptionStallChoice | null;
+  stallChoice: ExceptionStallChoice | null;
 }
 
-/** 【서버 없음】 `AdminOrderStallChoice`와 같은 모양으로 요청한다 */
+/** `AdminOrderStallChoice`(`AdminOrderDto.StallChoice`) */
 export interface ExceptionStallChoice {
+  /** 서버 타입은 String — WAITING · OPEN · CHOSEN */
   state: "WAITING" | "OPEN" | "CHOSEN";
-  /** 선택 개방까지 N일 — 값이 없으면 「N일 [정책값 미정]」 */
+  /** 선택 개방 시각(UTC) */
+  opensAt: string | null;
+  /** 선택 개방까지 N일 — 개방 전(WAITING)이면 서버가 늘 채운다 */
   daysUntilOpen: number | null;
+  daysStalled: number | null;
+  choice: "RESHIP" | "REFUND" | null;
   /** 「재발송」 · 「환불」 */
   choiceLabel: string | null;
+  /** 선택 시각(UTC) */
+  chosenAt: string | null;
 }
 
 /** `ExceptionPage` — 목록 응답. `asOf`는 경과 · 다음 회차 계산의 서버 기준 시각 */

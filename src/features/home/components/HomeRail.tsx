@@ -3,11 +3,7 @@ import type {
   AdminHomeMetricsToday,
   AdminHomeScheduleItem,
 } from "@/features/home/types";
-import {
-  formatNumber,
-  serverClock,
-  wallClock,
-} from "@/features/home/utils/format";
+import { formatNumber, serverClock } from "@/features/home/utils/format";
 import { Link } from "react-router-dom";
 
 const CARD = "overflow-hidden rounded-[8px] border border-sz-n-200 bg-white";
@@ -38,7 +34,7 @@ export function TodaySchedule(props: { items: Array<AdminHomeScheduleItem> }) {
               className="flex justify-between gap-2.5 border-b border-sz-n-100 py-1.5 text-[12px] last:border-b-0"
             >
               <span className="shrink-0 tabular-nums text-sz-n-500">
-                {wallClock(item.time)}
+                {serverClock(item.time)}
               </span>
               <span className="text-right font-medium text-sz-n-900">
                 {item.title}

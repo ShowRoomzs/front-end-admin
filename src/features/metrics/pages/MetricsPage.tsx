@@ -126,7 +126,11 @@ export default function MetricsPage() {
         </div>
       ) : (
         <>
-          <MetricsChart chart={metrics.chart} legend={labels.current} />
+          <MetricsChart
+            chart={metrics.chart}
+            legend={labels.current}
+            compareLegend={labels.previous}
+          />
           {shownTab === "CORE" && metrics.cards && metrics.cards.length > 0 && (
             <CoreCards cards={metrics.cards} />
           )}

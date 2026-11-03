@@ -135,6 +135,8 @@ export default function OpenReturnForm(props: {
     });
 
   const handleSubmit = async () => {
+    // 인지일은 필수(58 계획 5-11) — 버튼이 `noticedValid`로 막혀 있어 여기서는 늘 있다
+    if (!noticed) return;
     try {
       await mutateAsync({
         orderId: detail.orderId,
@@ -147,7 +149,7 @@ export default function OpenReturnForm(props: {
           reasonCode,
           detail: detailText.trim(),
           evidenceImageUrls: urls,
-          defectNoticedOn: noticed?.format("YYYY-MM-DD"),
+          defectNoticedOn: noticed.format("YYYY-MM-DD"),
         },
       });
       toast.success("반품을 열었습니다 — 반품·교환에서 이어서 처리합니다");

@@ -3,16 +3,15 @@ import type {
   AdminOrderGroupDetail,
   OrderBadgeTone,
 } from "@/features/order/types";
-import { parseServerDateTime, parseWallClock } from "@/common/utils/formatDate";
+import { parseServerDateTime } from "@/common/utils/formatDate";
 import dayjs from "dayjs";
 
 /*
   시안의 표기 — 일시는 `09.16 14:22`(목록) · `2026.09.16 14:22`(상세), 금액은 `58,400원`.
-  서버 LocalDateTime(시간대 표기 없음)은 두 종류가 섞인다 — 값마다 골라 읽는다.
-  - 이벤트 시각(결제 · 송장 등록 · 추적 · 배송완료 · 이력 · 문의 · 환불 · 정산 확정 · 선택 개방):
-    서버가 `now()`나 택배사 시각을 서버 시간대(UTC)로 바꿔 저장한다 → `parseServerDateTime`.
-  - 영업일 기한(발송 기한 · 취소 요청 응답 마감 — `BusinessDayCalculator.dueAt`의 23:59:59):
-    날짜에 붙인 벽시계 → 그대로 읽는다(`formatDue*`). 보정하면 다음 날 08:59로 보인다.
+  서버 LocalDateTime은 전부 UTC 순간(`…Z`)이다 → `parseServerDateTime`.
+  - 이벤트 시각(결제 · 송장 등록 · 추적 · 배송완료 · 이력 · 문의 · 환불 · 정산 확정 · 선택 개방): `now()` · 택배사 시각.
+  - 영업일 기한(발송 기한 · 취소 요청 응답 마감 — `BusinessDayCalculator.dueAt`): 한국 날짜 23:59:59를
+    UTC로 바꾼 값(09.16 23:59 KST = `2026-09-16T14:59:59Z`) → 같은 방식으로 읽는다(`formatDue*`).
 */
 
 /** 이벤트 시각 · 목록 — 09.16 14:22 */
@@ -35,14 +34,14 @@ export function toEventTime(value: string) {
   return parseServerDateTime(value);
 }
 
-/** 영업일 기한 · 목록 — 09.16 23:59(벽시계 그대로) */
+/** 영업일 기한 · 목록 — 09.16 23:59 */
 export function formatDueShort(value: string) {
-  return parseWallClock(value).format("MM.DD HH:mm");
+  return parseServerDateTime(value).format("MM.DD HH:mm");
 }
 
-/** 영업일 기한 · 상세 — 2026.09.16 23:59(벽시계 그대로) */
+/** 영업일 기한 · 상세 — 2026.09.16 23:59 */
 export function formatDueFull(value: string) {
-  return parseWallClock(value).format("YYYY.MM.DD HH:mm");
+  return parseServerDateTime(value).format("YYYY.MM.DD HH:mm");
 }
 
 /** 58,400 */

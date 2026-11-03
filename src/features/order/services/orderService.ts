@@ -29,19 +29,14 @@ const groupPath = (deliveryGroupId: number, action: string) =>
   `${BASE}/groups/${deliveryGroupId}/${action}`;
 
 /*
-  DEV 목업 시나리오(`?mock=<값>` · 개발 서버 전용 · 배포본은 항상 실호출):
-  - `stall`        목록 = 06a A3 배송 이상 4건(추적 정지 보조줄 「소비자 선택 개방까지 N일 [정책값 미정]」)
-                   · 상세 = 추적 정지 · 소비자 선택 개방 전(3일)
-  - `stall-open`   상세 = 추적 정지 · 소비자 선택 가능
-  - `stall-chosen` 상세 = 추적 정지 · 소비자가 재발송을 고름
-  목록 `stallChoice`는 서버에 없다(백엔드 요청) · 상세 `stallChoice`는 main에 있고 개발 서버에 미배포다.
+  DEV 목업 시나리오(`?mock=stall` · 개발 서버 전용 · 배포본은 항상 실호출):
+  목록 = 06a A3 배송 이상 4건 + 추적 정지 보조줄 「소비자 선택 개방까지 N일」 · 요약 · 행을 누르면 그 주문 상세.
+  남긴 이유: 목록 `AdminOrderGroupSummary`에 `stallChoice`가 아직 없다(origin/main · 백엔드 요청 — 58 계획 5-12는
+  06d만 더했다). 상세 `stallChoice`는 서버가 주지만, 목업 목록 행의 주문 id가 서버에 없어 상세도 목업으로 짝을 맞춘다.
+  목록 `stallChoice`가 서버에 생기면 이 분기와 `mocks/orderMock.ts`를 지운다.
 */
-const STALL_SCENARIOS = ["stall", "stall-open", "stall-chosen"];
 function stallScenario() {
-  const scenario = mockScenario();
-  return DEV_MOCK_ENABLED && scenario && STALL_SCENARIOS.includes(scenario)
-    ? scenario
-    : null;
+  return DEV_MOCK_ENABLED && mockScenario() === "stall";
 }
 
 /**
@@ -51,7 +46,7 @@ function stallScenario() {
 export const orderService = {
   getList: async (query: AdminOrderListQuery) => {
     if (stallScenario()) {
-      // DEV 목업 — 목록 `stallChoice`가 서버에 생기고 배포되면 삭제
+      // DEV 목업 — 목록 `stallChoice`가 서버에 생기면 삭제
       const { mockOrderList } = await import("../mocks/orderMock");
       return mockDelay(mockOrderList());
     }
@@ -65,7 +60,7 @@ export const orderService = {
   /** 탭 · 상태 · 이상 유형 건수 — 목록과 같은 조건(탭 · 상태 · 이상 유형 · 정렬 제외) */
   getSummary: async (query: AdminOrderSummaryQuery) => {
     if (stallScenario()) {
-      // DEV 목업 — 위 목록 목업과 짝(백엔드 배포 후 삭제)
+      // DEV 목업 — 위 목록 목업과 짝
       const { mockOrderSummary } = await import("../mocks/orderMock");
       return mockDelay(mockOrderSummary());
     }
@@ -77,11 +72,10 @@ export const orderService = {
   },
 
   getDetail: async (orderId: number) => {
-    const scenario = stallScenario();
-    if (scenario) {
-      // DEV 목업 — 상세 `stallChoice`(main)가 개발 서버에 배포되면 삭제
+    if (stallScenario()) {
+      // DEV 목업 — 위 목록 목업 행의 짝(목업 주문 id는 서버에 없다)
       const { mockOrderDetail } = await import("../mocks/orderMock");
-      return mockDelay(mockOrderDetail(orderId, scenario));
+      return mockDelay(mockOrderDetail(orderId));
     }
     const { data } = await apiInstance.get<AdminOrderDetail>(
       `${BASE}/${orderId}`

@@ -21,12 +21,12 @@ export const EXCEPTION_KINDS: Array<{
 
 /**
  * 【잠정】 기-15 추적 정지 → 소비자 선택(재발송 / 환불) 개방 — 06d A2 경과 열 보조줄.
- * 변호사 확인 뒤 문구가 바뀔 수 있어 한 곳에 둔다. N은 서버 값만 쓴다(없으면 「N일 [정책값 미정]」).
+ * 변호사 확인 뒤 문구가 바뀔 수 있어 한 곳에 둔다. N은 서버 값(`daysUntilOpen`)만 쓴다 — 개방 전이면
+ * 서버가 늘 채우고, 혹시 비면 시안 자리 그대로 「N일」로 둔다(숫자를 지어내지 않는다).
  */
 export const STALL_CHOICE_NOTE = {
-  waitingPrefix: "선택 개방까지",
-  unsetDays: "N일",
-  unsetTag: "[정책값 미정]",
+  waiting: (days: number | null) =>
+    `선택 개방까지 ${days === null ? "N" : days}일`,
   open: "소비자 선택 가능",
   chosen: (choiceLabel: string | null) => `소비자 선택 · ${choiceLabel ?? "—"}`,
 } as const;

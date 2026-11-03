@@ -19,10 +19,7 @@ import {
 import { formatMonthDayTime } from "@/features/contract/utils/datetime";
 import { formatKRW } from "@/features/contract/utils/format";
 import { toHistoryItems } from "@/features/contract/utils/history";
-import {
-  statusLabelOf,
-  toneToVariant,
-} from "@/features/contract/utils/statusBadge";
+import { toneToVariant } from "@/features/contract/utils/statusBadge";
 import type { ReactNode } from "react";
 
 export interface StatusRailActions {
@@ -384,10 +381,7 @@ function StatusCard(props: {
             <Btn
               variant="primary"
               className="flex-1"
-              // 배포 전 서버는 `canCreateGroupBuy` 없이 같은 값의 `canConclude`만 내린다
-              disabled={
-                !(permissions.canCreateGroupBuy ?? permissions.canConclude)
-              }
+              disabled={!permissions.canCreateGroupBuy}
               onClick={actions.onCreateGroupBuy}
             >
               공구 생성
@@ -631,7 +625,7 @@ function StatusCard(props: {
       <div className="flex items-center justify-between gap-2.5 border-b border-sz-n-100 pb-3 pt-2">
         <span className="text-[12px] text-sz-n-500">현재 상태</span>
         <StatusBadge variant={toneToVariant(contract.statusTone)}>
-          {statusLabelOf(contract.status, contract.statusLabel)}
+          {contract.statusLabel}
         </StatusBadge>
       </div>
       <div className="pt-1">

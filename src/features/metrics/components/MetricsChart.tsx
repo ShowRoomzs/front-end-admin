@@ -26,16 +26,27 @@ function labelStep(count: number) {
 
 /**
  * 대표 지표 막대 차트(시안 `.cc`) — 저장소에 차트 라이브러리가 없어 시안의 div 막대를 그대로 옮겼다.
- * 서버 응답에는 이번 기간 점만 있다(`chart.points`) — 시안의 비교 기간 회색 막대 · 범례는 그릴 값이 없어 뺐다(백엔드 요청).
- * 막대가 적으면(주별 계약 체결 3칸) 시안 K2처럼 넓은 막대로 그린다.
+ * 칸마다 비교 기간 회색 막대(`.b` · `chart.comparePoints[i]`) 오른쪽에 이번 기간 막대(`.a` · `points[i]`)를 붙인다.
+ * 비교 점이 모자란 칸(비교 기간이 짧을 때)은 회색 막대를 비운다. 막대가 적으면(주별 계약 체결 3칸) 시안 K2처럼 넓게 그린다.
  */
 export default function MetricsChart(props: {
   chart: AdminMetrics["chart"];
+  /** 이번 기간 범례(「10.01 ~ 16」) */
   legend: string;
+  /** 비교 기간 범례(「09.01 ~ 16」) */
+  compareLegend: string;
 }) {
-  const { chart, legend } = props;
+  const { chart, legend, compareLegend } = props;
   const points = chart.points;
-  const max = niceMax(Math.max(0, ...points.map((point) => point.value)));
+  // 응답에 없을 때(빈 배열 · 누락)는 이번 기간 막대만 그린다
+  const comparePoints = chart.comparePoints ?? [];
+  const max = niceMax(
+    Math.max(
+      0,
+      ...points.map((point) => point.value),
+      ...comparePoints.map((point) => point.value)
+    )
+  );
   const wide = points.length <= 6;
   const step = labelStep(points.length);
   const columns = {
@@ -69,6 +80,10 @@ export default function MetricsChart(props: {
             <i className="mr-[5px] inline-block h-2.5 w-2.5 rounded-[2px] bg-sz-accent-500 align-[-1px]" />
             {legend}
           </span>
+          <span>
+            <i className="mr-[5px] inline-block h-2.5 w-2.5 rounded-[2px] bg-sz-n-300 align-[-1px]" />
+            {compareLegend}
+          </span>
         </span>
       </div>
       <div
@@ -78,21 +93,39 @@ export default function MetricsChart(props: {
         <span className="absolute top-[-2px] left-0 bg-white pr-1 text-[10px] leading-none tabular-nums text-sz-n-500">
           {compactValue(max, chart.metricKey)}
         </span>
-        {points.map((point) => (
-          <div
-            key={point.bucket}
-            className="flex h-full items-end justify-center"
-            title={`${point.label} · ${formatNumber(point.value)}${unit}`}
-          >
-            <i
+        {points.map((point, index) => {
+          const compare = comparePoints[index];
+          const bar = cn(
+            "block rounded-t-[2px]",
+            wide ? "w-9" : "w-[42%] max-w-[14px]"
+          );
+          return (
+            <div
+              key={point.bucket}
               className={cn(
-                "block rounded-t-[2px] bg-sz-accent-500",
-                wide ? "w-9" : "w-[42%] max-w-[14px]"
+                "flex h-full items-end justify-center",
+                wide ? "gap-1.5" : "gap-0.5"
               )}
-              style={{ height: `${(point.value / max) * 100}%` }}
-            />
-          </div>
-        ))}
+              title={
+                compare
+                  ? `${point.label} · ${formatNumber(point.value)}${unit} (비교 ${compare.label} · ${formatNumber(compare.value)}${unit})`
+                  : `${point.label} · ${formatNumber(point.value)}${unit}`
+              }
+            >
+              {/* 비교 점이 없는 칸도 자리를 비워 이번 기간 막대 위치를 맞춘다 */}
+              <i
+                className={cn(bar, "bg-sz-n-300")}
+                style={{
+                  height: compare ? `${(compare.value / max) * 100}%` : 0,
+                }}
+              />
+              <i
+                className={cn(bar, "bg-sz-accent-500")}
+                style={{ height: `${(point.value / max) * 100}%` }}
+              />
+            </div>
+          );
+        })}
       </div>
       <div
         className="mt-[5px] grid text-center text-[10px] tabular-nums text-sz-n-500"

@@ -1,8 +1,9 @@
 /*
   어드민 홈 · 사이드바 배지 — 백엔드 `AdminHomeDto`(origin/main · 1017 설계서 6절)와 1:1.
-  필드명 · nullable은 DTO 그대로다. 시각 필드 두 종류를 가른다(서버 JVM = UTC):
-  - `asOf` · `metricsToday.asOf` · `Integration.since`는 now() 기반 이벤트 시각(UTC 벽시계) → parseServerDateTime
-  - `ScheduleItem.time`은 공구 시작 · 종료 · 정산 확인 마감 · 조정 기한 같은 입력 · 기한 시각(KST 벽시계) → 그대로
+  필드명 · nullable은 DTO 그대로다. 시각 필드는 전부 UTC 순간(`…Z`)이다 → parseServerDateTime:
+  - `asOf` · `metricsToday.asOf` · `Integration.since`는 now() 기반 이벤트 시각
+  - `ScheduleItem.time`은 공구 시작 · 종료 · 정산 확인 마감 · 조정 기한 같은 입력 · 기한 시각 — 서버가 한국 시각으로
+    계산해 UTC로 바꿔 내린다(23:59 KST = `…T14:59:59Z`)
 */
 
 /** 연동 3종 — PG · DELIVERY_TRACKING · E_SIGN */
@@ -15,7 +16,7 @@ export interface AdminHomeIntegration {
   key: IntegrationKey | string;
   label: string;
   status: IntegrationStatus | string;
-  /** 장애 시작 시각(DEGRADED) — UTC 벽시계 */
+  /** 장애 시작 시각(DEGRADED) — UTC 순간 */
   since: string | null;
   message: string | null;
   /** 영향받는 큐 — 배너 「배송 예외 확인」 */
@@ -60,7 +61,7 @@ export interface AdminHomeTarget {
 
 export interface AdminHomeTodoRow {
   urgency: TodoUrgency | string;
-  /** 상태 배지 문구(「실패」 · 「D-1」 · 「대기」 …) */
+  /** 상태 배지 문구 — 서버 문구 그대로(「환불 실패」 · 「분배 실패」 · 「기한 초과」 · 「D-1」 · 「대기」 …) */
   badge: string;
   /** 큐 코드(예: OPEN_REVIEW · CONTRACT_REVIEW) */
   queue: string;
@@ -99,7 +100,7 @@ export type ScheduleKind =
   | "ADMIN_SUSPENSION_EXECUTE";
 
 export interface AdminHomeScheduleItem {
-  /** KST 벽시계 */
+  /** UTC 순간(`…Z`) — 한국 시각으로 계산한 일정 · 기한 */
   time: string;
   kind: ScheduleKind | string;
   title: string;
@@ -147,15 +148,20 @@ export interface AdminBadges {
     creatorCount: number;
     userCount: number;
   };
-  /** 검토 대기 · 공구 생성 대기 · 만료 확인 · 재발송 요청 · 해지 요청 */
+  /**
+   * 검토 대기 · 공구 생성 대기 · 만료 확인 · 해지 요청(계약 요약 actionRequiredCount와 같다).
+   * 재발송 요청은 소통 스레드에서 끝나 넣지 않는다(시안 rev.8 ② · 백엔드 58 5-33)
+   */
   contracts: number;
   groupBuys: number;
   transactions: number;
   settlements: number;
   cs: {
-    /** 1:1 문의 답변 대기 + 상품 문의 삭제 요청 */
+    /** CS 조치 필요 합 = 1:1 문의 답변 대기(상품 문의 삭제 요청은 더하지 않는다 · rev.8 ②) */
     total: number;
     inquiries: number;
+    /** 상품 문의 삭제 요청 — 상품 문의 메뉴 하위 숫자. total · 홈 할 일 합계에 들지 않는다 */
+    productInquiryDeleteRequests: number;
   };
   posts: {
     /** 게시물 조치 필요 합(소통 스레드 제외) */

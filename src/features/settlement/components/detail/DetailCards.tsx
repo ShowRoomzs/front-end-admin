@@ -1,3 +1,7 @@
+import {
+  policyDaysText,
+  usePolicyValues,
+} from "@/common/hooks/usePolicyValues";
 import Btn from "@/features/contract/components/shared/Btn";
 import {
   Axis,
@@ -22,14 +26,17 @@ import {
   ADJUSTMENT_TONE,
   BREAKDOWN_NOTE,
   BUSINESS_TYPE_LABEL,
+  FREIGHT_DIRECTION_NOTE,
   ITEM_STATUS_TONE,
-  REVIEW_PERIOD_LABEL,
   TAX_DOCUMENT_TONE,
 } from "@/features/settlement/constants/params";
 import { THREAD_PAGE_PATH } from "@/features/thread/constants/params";
 import type {
   AmountCount,
+  FreightAdjustment,
+  FreightDirection,
   Payout,
+  ReshipFee,
   SettlementDetail,
   TaxDocument,
   Tone,
@@ -46,7 +53,6 @@ import {
 } from "@/features/settlement/utils/format";
 import {
   accountText,
-  brandExtraLines,
   brandInvoicesOf,
   creatorInvoiceOf,
   hasFixedFee,
@@ -66,10 +72,12 @@ type StepState = "done" | "current" | "danger" | "skipped" | "future";
 /**
  * 시안 정산 개요 머리의 단계 줄 — 주문 종결 › 정산 확인 3영업일 › 조정 협의 › 확정 › 지급.
  * 서버 `stage.current`(REVIEW · ADJUSTMENT · CONFIRMED · PAID)를 따르고, 조정 없이 확정된 회차
- * (`adjustmentSkipped`)는 「조정 협의」에 취소선을 긋는다.
+ * (`adjustmentSkipped`)는 「조정 협의」에 취소선을 긋는다. 확인 기간 영업일은 서버 정책값
+ * (`settlementReviewBusinessDays`) — 못 읽으면 「N영업일」.
  */
 function StageLine(props: { detail: Detail }) {
   const { status, stage, rail } = props.detail;
+  const { data: policy } = usePolicyValues();
   const adjustState: StepState = stage.adjustmentSkipped ? "skipped" : "done";
   const states: Record<Detail["stage"]["current"], Array<StepState>> = {
     REVIEW: ["done", "current", "future", "future", "future"],
@@ -85,7 +93,7 @@ function StageLine(props: { detail: Detail }) {
   };
   const labels = [
     "주문 종결",
-    `정산 확인 ${REVIEW_PERIOD_LABEL}`,
+    `정산 확인 ${policyDaysText(policy, "settlementReviewBusinessDays")}`,
     "조정 협의",
     rail.confirmReasonLabel ??
       (stage.current === "ADJUSTMENT" ? "확정" : "자동 확정"),
@@ -181,30 +189,62 @@ function noteWithCount(note: string, count: number): string {
 }
 
 /**
- * 판매 리워드 칩(기-11) 「확정 거래액 × 리워드율 10%」 — 서버가 정산 단위 리워드율을 내리지 않아
- * 명세 전 건이 화면에 있고 요율이 하나일 때만 숫자를 붙인다(상품마다 다르면 숫자 없이).
+ * 판매 리워드 칩(기-11) 「확정 거래액 × 리워드율 10%」 — 서버 `breakdown.rewardRateLabel`
+ * (율이 하나면 「10%」 · 여럿이면 「상품별」 · 없으면 null)을 그대로 붙인다.
  */
 function rewardBasisLabel(detail: Detail): string {
-  const { rows, total } = detail.items;
-  const rates = new Set(rows.map((row) => row.rewardRate));
-  const uniform = rows.length > 0 && rows.length === total && rates.size === 1;
-  return uniform
-    ? `확정 거래액 × 리워드율 ${Number(rows[0].rewardRate.toFixed(2))}%`
-    : "확정 거래액 × 리워드율";
+  const label = detail.breakdown.rewardRateLabel;
+  return label ? `확정 거래액 × 리워드율 ${label}` : "확정 거래액 × 리워드율";
+}
+
+/** 「소비자 결제분 · 교환 8건(소비자 귀책) · 반려 1건」(시안 07b D1) — 0건인 종류는 뺀다 */
+function reshipFeeNote(fee: ReshipFee): string {
+  return [
+    BREAKDOWN_NOTE.reshipFee,
+    fee.exchangeCount > 0 && `교환 ${fee.exchangeCount}건(소비자 귀책)`,
+    fee.rejectCount > 0 && `반려 ${fee.rejectCount}건`,
+    fee.overturnCount > 0 && `사유 번복 ${fee.overturnCount}건`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * 「귀책 변경 · 소비자 → 브랜드 · 선불 반품 운임 환급 1건(CLM-2981)」(시안 07b D3) — 서버 클레임별 줄을
+ * 방향별로 묶는다. 줄이 없으면(옛 정산) 건수만.
+ */
+function freightNote(freight: FreightAdjustment): string {
+  if (freight.items.length === 0) {
+    return noteWithCount(BREAKDOWN_NOTE.freightAdjustment, freight.count);
+  }
+  const directions: Array<FreightDirection> = [
+    "REFUND_CONSUMER",
+    "CHARGE_CONSUMER",
+  ];
+  const groups = directions.flatMap((direction) => {
+    const items = freight.items.filter((item) => item.direction === direction);
+    if (items.length === 0) return [];
+    const note = FREIGHT_DIRECTION_NOTE[direction];
+    const numbers = items
+      .map((item) => item.claimNumber)
+      .filter((value): value is string => Boolean(value));
+    const suffix = numbers.length > 0 ? `(${numbers.join(", ")})` : "";
+    return [`${note.direction} · ${note.action} ${items.length}건${suffix}`];
+  });
+  return [BREAKDOWN_NOTE.freightAdjustment, ...groups].join(" · ");
 }
 
 /** 카드 머리 산식 — 실제로 그려지는 줄만 잇는다(시안 07b D1 · D3) */
 function breakdownFormula(detail: Detail): string {
   const { brand } = detail.breakdown;
-  const extra = brandExtraLines(detail);
   const parts = ["확정 거래액 − PG − 플랫폼 − 리워드 − 리워드 부가세"];
   if (brand.consumerDeliveryFee > 0 || brand.reshipFee.amount > 0) {
     parts.push("+ 배송비 · 재발송비(소비자 결제분)");
   }
-  if (extra.returnDeductionFee.amount > 0) {
+  if (brand.returnDeductionFee.amount > 0) {
     parts.push("+ 반품 시 차감한 최초 배송비");
   }
-  if (extra.freightAdjustment.amount !== 0) {
+  if (brand.freightAdjustment.amount !== 0) {
     parts.push("± 운임 정산(귀책 변경)");
   }
   return `${parts.join(" ")} = 브랜드 수취액`;
@@ -223,7 +263,7 @@ export function BreakdownCard(props: { detail: Detail }) {
     },
   ].filter((row) => row.value.amount > 0);
   const rewardChanged = brand.originalRewardAmount !== brand.rewardAmount;
-  const { returnDeductionFee, freightAdjustment } = brandExtraLines(detail);
+  const { returnDeductionFee, freightAdjustment } = brand;
   const isBusiness = creator.businessType === "BUSINESS";
   const withholdingRate = creator.withholding
     ? rate(creator.withholding.incomeRate + creator.withholding.localRate)
@@ -316,13 +356,7 @@ export function BreakdownCard(props: { detail: Detail }) {
                   kind="sub"
                   label={
                     <>
-                      + 재발송비{" "}
-                      <Pb>
-                        {noteWithCount(
-                          BREAKDOWN_NOTE.reshipFee,
-                          brand.reshipFee.count
-                        )}
-                      </Pb>
+                      + 재발송비 <Pb>{reshipFeeNote(brand.reshipFee)}</Pb>
                     </>
                   }
                   value={plus(brand.reshipFee.amount)}
@@ -351,12 +385,7 @@ export function BreakdownCard(props: { detail: Detail }) {
                   label={
                     <>
                       {freightAdjustment.amount < 0 ? "−" : "+"} 운임 정산{" "}
-                      <Pb>
-                        {noteWithCount(
-                          BREAKDOWN_NOTE.freightAdjustment,
-                          freightAdjustment.count
-                        )}
-                      </Pb>
+                      <Pb>{freightNote(freightAdjustment)}</Pb>
                     </>
                   }
                   value={
@@ -504,12 +533,11 @@ function PayoutStatusCell(props: { row: Payout }) {
 /** 재원 중 확정 거래액 밖의 돈 — 「배송비 · 재발송비 · 차감 배송비」(실제로 있는 줄만) */
 function extraInflowLabel(detail: Detail): string {
   const { brand } = detail.breakdown;
-  const extra = brandExtraLines(detail);
   return [
     brand.consumerDeliveryFee !== 0 && "배송비",
     brand.reshipFee.amount !== 0 && "재발송비",
-    extra.returnDeductionFee.amount !== 0 && "차감 배송비",
-    extra.freightAdjustment.amount !== 0 && "운임 정산",
+    brand.returnDeductionFee.amount !== 0 && "차감 배송비",
+    brand.freightAdjustment.amount !== 0 && "운임 정산",
   ]
     .filter(Boolean)
     .join(" · ");

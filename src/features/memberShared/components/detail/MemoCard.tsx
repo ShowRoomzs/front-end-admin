@@ -245,7 +245,10 @@ export function MemoCard(props: MemoCardProps) {
                 )
               ) : (
                 <div className="mt-[5px] text-[11px] text-sz-n-400">
-                  작성자 본인만 24시간 내 수정·삭제
+                  {/* 「24시간 경과」는 내가 쓴 메모에만 맞는 말이다(서버 mine · 문구는 시안 13과 같다) */}
+                  {memo.mine
+                    ? "작성 후 24시간 경과 · 수정·삭제 불가"
+                    : "작성자 본인만 24시간 내 수정·삭제"}
                 </div>
               )}
             </div>

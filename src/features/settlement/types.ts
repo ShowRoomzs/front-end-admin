@@ -4,9 +4,9 @@ import type { PageInfo, PageParams } from "@/common/types/page";
   어드민 정산 관리 — 공구 정산(ui-admin-07a · 07b). 서버 `/v1/admin/settlements`.
 
   이름 · enum · nullable은 백엔드 `AdminSettlementDto`(api/admin/settlement/dto)와 도메인 enum
-  (domain/settlement/type)을 그대로 따른다. 금액은 원 단위 정수, 날짜는 로컬 ISO 문자열
-  (LocalDate `2026-08-31` · LocalDateTime `2026-08-31T09:02:00`), 요율(BigDecimal)은 숫자다
-  (0.03 = 3% · 명세 항목의 `rewardRate`만 퍼센트 값 10.0).
+  (domain/settlement/type)을 그대로 따른다. 금액은 원 단위 정수, 날짜(LocalDate)는 KST 날짜
+  `2026-08-31`, 시각(LocalDateTime)은 UTC 순간 `2026-08-31T00:02:00Z`(기한 포함 · 백엔드 58 계획 3-2),
+  요율(BigDecimal)은 숫자다(0.03 = 3% · 명세 항목의 `rewardRate`만 퍼센트 값 10.0).
 */
 
 // ── 도메인 enum ──────────────────────────────────────
@@ -125,6 +125,11 @@ export interface SettlementListParams extends PageParams {
   keyword: string;
   /** 고정 정렬 탭이면 빈 문자열(보내지 않는다) */
   sort: SettlementSort | "";
+  /**
+   * 브랜드(마켓) ID — 브랜드 상세 칩이 `?marketId=`로 넘긴다(백엔드 58 계획 5-31). 주소 값이라 문자열 ·
+   * 없으면 빈 문자열. 서버는 정산 탭에만 걸고 증빙 · 차감 탭은 전체를 준다.
+   */
+  marketId: string;
 }
 
 export type ScheduleKind =
@@ -267,6 +272,39 @@ export interface RateAmount {
   amount: number;
 }
 
+/** AdminSettlementReshipFee — + 재발송비 · 건수를 청구 종류별로 나눈다(백엔드 58 계획 5-16) */
+export interface ReshipFee {
+  amount: number;
+  /** 합계 건수 */
+  count: number;
+  /** 교환 재발송(교환 요청 때 결제) */
+  exchangeCount: number;
+  /** 반려 재발송 */
+  rejectCount: number;
+  /** 사유 번복 재발송 */
+  overturnCount: number;
+}
+
+/** CHARGE_CONSUMER(소비자 부담 · +) · REFUND_CONSUMER(소비자 환급 · −) */
+export type FreightDirection = "CHARGE_CONSUMER" | "REFUND_CONSUMER";
+
+/** AdminSettlementFreightItem — 클레임별 운임 정산 줄 */
+export interface FreightItem {
+  /** 접수번호 — 요청 단위 행이면 null */
+  claimNumber: string | null;
+  direction: FreightDirection;
+  /** 부호 있음 */
+  amount: number;
+}
+
+/** AdminSettlementFreightAdjustment — ± 운임 정산(1021 기-93) · 부호 있는 합 + 클레임별 줄(58 계획 5-17) */
+export interface FreightAdjustment {
+  /** 부호 있음(− 소비자→브랜드 귀책 환급 · + 브랜드→소비자 귀책 회수) */
+  amount: number;
+  count: number;
+  items: Array<FreightItem>;
+}
+
 export interface SettlementOverview {
   groupBuyId: number;
   groupBuyNumber: string;
@@ -305,16 +343,13 @@ export interface BrandAxis {
   rewardAmount: number;
   rewardVat: RateAmount;
   /** 재발송비(소비자 결제분) — 교환 · 반려 · 번복 재발송 합산(기-18 「+ 재발송비」 한 줄) */
-  reshipFee: AmountCount;
+  reshipFee: ReshipFee;
   /** 배송비(소비자 결제분) — 확정 거래액에서 뺀 배송비를 되돌린다(기-19) */
   consumerDeliveryFee: number;
-  /**
-   * + 반품 시 차감한 최초 배송비(1021 기-18 · origin/main V211).
-   * 백엔드 배포 전 서버는 내리지 않는다(undefined) — 화면은 0으로 읽는다.
-   */
-  returnDeductionFee?: AmountCount;
-  /** ± 운임 정산(1021 기-93) — 부호 있는 금액(− 소비자→브랜드 귀책 환급 · + 브랜드→소비자 귀책 회수). 배포 전 undefined */
-  freightAdjustment?: AmountCount;
+  /** + 반품 시 차감한 최초 배송비(1021 기-18) */
+  returnDeductionFee: AmountCount;
+  /** ± 운임 정산(1021 기-93) */
+  freightAdjustment: FreightAdjustment;
   payoutBeforeClawback: number;
   clawbackAmount: number;
   payoutAmount: number;
@@ -334,6 +369,11 @@ export interface Breakdown {
   brand: BrandAxis;
   creator: CreatorAxis;
   platformShareAmount: number;
+  /**
+   * 리워드율 표기(기-11 · 58 계획 5-18) — 계약 상품의 율이 하나면 「10%」, 여럿이면 「상품별」 · 없으면 null.
+   * 판매 리워드 칩 「확정 거래액 × 리워드율 10%」에 그대로 붙인다.
+   */
+  rewardRateLabel: string | null;
 }
 
 export interface AppliedClawback {
@@ -441,6 +481,21 @@ export interface TaxDocument {
   rejectReasonLabel: string | null;
   fileName: string | null;
   actions: { canVerify: boolean; canRegister: boolean };
+  /**
+   * 공급받는자(M4 · 58 계획 5-19) — 운영사 사업자 정보(서버 `company.*`).
+   * 서버는 **브랜드 세금계산서 행에만** 채우고 인플루언서 세금계산서 · 영수증은 null이다.
+   */
+  recipient: TaxRecipient | null;
+}
+
+/** AdminSettlementTaxRecipient — 운영사 사업자 정보 · 빈 값은 null */
+export interface TaxRecipient {
+  name: string | null;
+  representative: string | null;
+  registrationNumber: string | null;
+  address: string | null;
+  /** 세금계산서 수신 이메일 — 미설정이면 null */
+  taxEmail: string | null;
 }
 
 export interface FixedFee {
@@ -593,25 +648,4 @@ export interface BrandInvoicePayload {
   approvalNumber: string;
   /** YYYY-MM-DD */
   issuedDate: string;
-}
-
-// ── 운영자 사업자 정보(기-35) ────────────────────────
-
-/**
- * `GET /v1/common/company-info`(CompanyInfoResponse · 1021 설계서 10-1) — M4 「공급받는자」가 읽는다.
- * 빈 값은 서버가 null로 내린다. 정산 화면은 상호 · 대표자 · 사업자등록번호만 쓴다.
- */
-export interface CompanyInfo {
-  name: string | null;
-  representative: string | null;
-  registrationNumber: string | null;
-  address: string | null;
-  mailOrderReportNumber: string | null;
-  privacyOfficer: { name: string | null; phone: string | null };
-  customerService: {
-    phone: string | null;
-    email: string | null;
-    hours: string | null;
-  };
-  copyright: string | null;
 }

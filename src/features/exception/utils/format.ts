@@ -1,3 +1,4 @@
+import { parseServerDateTime } from "@/common/utils/formatDate";
 import {
   CLAIM_LIST_PATH,
   ORDER_LIST_PATH,
@@ -5,19 +6,14 @@ import {
 import type { ExceptionLink } from "@/features/exception/types";
 
 /**
- * 서버 LocalDateTime(「2026-10-07T23:59:59」 · 한국 시각 · 시간대 없음)에서 바로 자른다 —
- * `new Date()`로 읽으면 브라우저 시간대로 해석돼 한국 밖에서 날짜가 밀린다.
+ * 기한 열 — 시안 표기 「09.16 23:59」(연도 없음).
+ * 서버는 기한을 UTC 순간(`…Z` · 09.16 23:59 KST = `2026-09-16T14:59:59Z`)으로 내린다 —
+ * 문자열을 그대로 자르면 9시간 이르게 보이므로 KST로 고정해 읽는다.
  */
-const LOCAL_DATE_TIME = /^\d{4}-(\d{2})-(\d{2})T(\d{2}):(\d{2})/;
-
-/** 기한 열 — 시안 표기 「09.16 23:59」(연도 없음) */
 export function formatMonthDayTime(value: string | null) {
-  const match = value ? LOCAL_DATE_TIME.exec(value) : null;
-  if (!match) {
-    return "—";
-  }
-  const [, month, day, hour, minute] = match;
-  return `${month}.${day} ${hour}:${minute}`;
+  return value
+    ? parseServerDateTime(value).utcOffset(9).format("MM.DD HH:mm")
+    : "—";
 }
 
 /**

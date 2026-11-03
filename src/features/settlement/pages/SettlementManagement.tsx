@@ -1,5 +1,9 @@
 import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper";
 import Pagination from "@/common/components/Pagination/Pagination";
+import {
+  policyDaysText,
+  usePolicyValues,
+} from "@/common/hooks/usePolicyValues";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
 import type { PageInfo } from "@/common/types/page";
@@ -16,7 +20,6 @@ import {
   ALL_SORT_OPTIONS,
   FIXED_SORT_LABEL,
   PAGE_SIZES,
-  REVIEW_PERIOD_LABEL,
   SETTLEMENT_INITIAL_PARAMS,
   SETTLEMENT_LIST_PATH,
   SETTLEMENT_NO_PREFIX,
@@ -53,14 +56,17 @@ const INPUT_CLASS =
 const SELECT_SM_CLASS =
   "h-7 cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
 
-const EMPTY_TEXT: Record<SettlementTab, { title: string; desc: string }> = {
+/** 빈 상태 문구 — 확인 기간 영업일은 서버 정책값(`settlementReviewBusinessDays` · 없으면 「N영업일」) */
+const emptyText = (
+  reviewDays: string
+): Record<SettlementTab, { title: string; desc: string }> => ({
   ALL: {
     title: "정산이 없습니다",
     desc: "정산은 공구의 주문이 모두 종결되면 생성됩니다.",
   },
   REVIEWING: {
     title: "정산 확인 중인 회차가 없습니다",
-    desc: `주문이 모두 종결되면 금액이 공개되고 ${REVIEW_PERIOD_LABEL} 확인 기간이 시작됩니다.`,
+    desc: `주문이 모두 종결되면 금액이 공개되고 ${reviewDays} 확인 기간이 시작됩니다.`,
   },
   ADJUSTING: {
     title: "조정 협의 중인 회차가 없습니다",
@@ -78,7 +84,7 @@ const EMPTY_TEXT: Record<SettlementTab, { title: string; desc: string }> = {
     title: "차감 건이 없습니다",
     desc: "정산이 끝난 뒤 환불된 건이 생기면 이 탭에 모입니다.",
   },
-};
+});
 
 const b = (value: ReactNode, className?: string) => (
   <b className={cn("font-semibold text-sz-n-900", className)}>{value}</b>
@@ -91,8 +97,10 @@ function toolbarLine(input: {
   toolbar: SettlementToolbar | null | undefined;
   summary: SettlementSummary | undefined;
   hasKeyword: boolean;
+  /** 브랜드 상세에서 `?marketId=`로 들어왔을 때 그 브랜드명(행에서 읽는다) */
+  brandFilterName: string | null;
 }): ReactNode {
-  const { tab, total, toolbar, summary, hasKeyword } = input;
+  const { tab, total, toolbar, summary, hasKeyword, brandFilterName } = input;
   if (total === undefined) return null;
   switch (tab) {
     case "EVIDENCE":
@@ -159,13 +167,15 @@ function toolbarLine(input: {
       );
     }
     default: {
-      // 탭 숫자는 검색과 무관한 전체 기준이라 검색 중에는 총 건수만 보인다
-      const adjusting = hasKeyword ? 0 : (summary?.tabCounts.ADJUSTING ?? 0);
-      const failed = hasKeyword ? 0 : (summary?.tabCounts.PAYOUT_FAILED ?? 0);
+      // 탭 숫자는 검색 · 브랜드 필터와 무관한 전체 기준이라 걸러 볼 때는 총 건수만 보인다
+      const filtered = hasKeyword || brandFilterName !== null;
+      const adjusting = filtered ? 0 : (summary?.tabCounts.ADJUSTING ?? 0);
+      const failed = filtered ? 0 : (summary?.tabCounts.PAYOUT_FAILED ?? 0);
       return (
         <>
           총 {b(total)}건{adjusting > 0 && <> · 조정 협의 {b(adjusting)}건</>}
           {failed > 0 && <> · 분배 실패 {b(failed)}건</>}
+          {brandFilterName && <TSub> · 브랜드 {brandFilterName}</TSub>}
         </>
       );
     }
@@ -192,6 +202,10 @@ export default function SettlementManagement() {
   // 주소에서 읽은 값(문자열 · 예전 탭 이름)을 서버가 받는 값으로 고른다
   const params = useMemo(() => normalizeListParams(rawParams), [rawParams]);
   const [reportOpen, setReportOpen] = useState(false);
+  const { data: policy } = usePolicyValues();
+  const EMPTY_TEXT = emptyText(
+    policyDaysText(policy, "settlementReviewBusinessDays")
+  );
 
   const tab = params.tab;
   const isSettlementRowTab = SETTLEMENT_ROW_TABS.includes(tab);
@@ -317,6 +331,11 @@ export default function SettlementManagement() {
               toolbar: active.data?.toolbar,
               summary,
               hasKeyword: keyword !== "",
+              // 정산 탭만 브랜드로 걸러진다(증빙 · 차감 탭은 서버가 전체를 준다)
+              brandFilterName:
+                isSettlementRowTab && params.marketId
+                  ? (settlementQuery.data?.content[0]?.brandName ?? null)
+                  : null,
             })}
           </span>
           <div className="flex items-center gap-2">

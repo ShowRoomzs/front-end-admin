@@ -348,7 +348,8 @@ export default function CreatorApplicationDetail() {
 
             {/*
               B3 반려 사유(기-36) — 위 줄은 신청자에게 통지된 정형 사유, 아래 줄은 내부 기록 전용 상세 사유다.
-              시안의 「신청자 통지됨」 배지는 서버가 발송 결과를 내려 주지 않아 아직 그리지 않는다(백엔드 요청 noticeSent).
+              통지 메일 결과(서버 noticeSent · 58 5-24): true → 시안 「신청자 통지됨」 배지 · false → 「통지 실패」
+              (서버가 재발송하지 않는다 — 신청자에게 따로 연락) · null(기록 없음 · 이 기능 이전 반려)은 배지 없음.
             */}
             {isRejected && detail.rejectReasonType && (
               <div className="mt-2.5 rounded-[6px] bg-sz-danger-bg px-[13px] py-[11px]">
@@ -356,7 +357,23 @@ export default function CreatorApplicationDetail() {
                   반려 사유 ·{" "}
                   {CREATOR_REJECTION_REASON_LABELS[detail.rejectReasonType] ??
                     detail.rejectReasonType}
+                  {detail.noticeSent === true && (
+                    <span className="ml-1 inline-flex rounded-[10px] bg-sz-neutral-bg px-1.5 text-[10px] font-medium text-sz-neutral-text">
+                      신청자 통지됨
+                    </span>
+                  )}
+                  {detail.noticeSent === false && (
+                    <span className="ml-1 inline-flex rounded-[10px] bg-sz-warning-bg px-1.5 text-[10px] font-medium text-sz-warning-text">
+                      통지 실패
+                    </span>
+                  )}
                 </div>
+                {detail.noticeSent === false && (
+                  <div className="mb-1 text-[11px] leading-[1.6] text-sz-n-700">
+                    반려 통지 메일 발송에 실패했습니다. 다시 보내지 않으니
+                    신청자에게 따로 연락해 주세요.
+                  </div>
+                )}
                 {detail.rejectReasonDetail && (
                   <div className="text-[11px] leading-[1.6] text-sz-n-700">
                     <span className="mr-1.5 inline-flex rounded-[10px] bg-sz-neutral-bg px-1.5 text-[10px] font-medium text-sz-neutral-text">

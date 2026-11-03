@@ -1,5 +1,4 @@
 import { usePageSubtitle } from "@/common/components/MainLayout/usePageSubtitle";
-import NotReady from "@/common/components/NotReady/NotReady";
 import RecordNav from "@/common/components/RecordNav/RecordNav";
 import {
   AccountCard,
@@ -36,7 +35,6 @@ import {
   useConsumerMemos,
 } from "@/features/consumer/hooks/useConsumerDetail";
 import { useUnmaskSession } from "@/features/consumer/hooks/useUnmaskSession";
-import { ConsumerDetailOutdatedError } from "@/features/consumer/services/consumerDetailService";
 import type {
   ConsumerMemo,
   UserPrivacyAccessReason,
@@ -68,7 +66,7 @@ export default function ConsumerDetail() {
   const { userId: userIdParam } = useRouteParams<{ userId: string }>();
   const userId = Number(userIdParam);
 
-  const { data: detail, isLoading, error } = useConsumerDetail(userId);
+  const { data: detail, isLoading } = useConsumerDetail(userId);
   const mutations = useConsumerDetailMutations(userId);
 
   // 상세는 메모 최신 3건 · 이력 최신 5건만 싣는다 — 넘칠 때만 전체를 부른다
@@ -106,16 +104,6 @@ export default function ConsumerDetail() {
     },
     [session]
   );
-
-  if (error instanceof ConsumerDetailOutdatedError) {
-    return (
-      <div className="rounded-[8px] border border-sz-n-200 bg-white">
-        <NotReady title="소비자 상세는 준비 중입니다.">
-          서버 업데이트가 배포되면 이 화면에서 상세 정보를 확인할 수 있습니다.
-        </NotReady>
-      </div>
-    );
-  }
 
   if (isLoading || !detail) {
     return (

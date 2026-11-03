@@ -1,12 +1,9 @@
-import {
-  LEGACY_RESIDENT_NUMBER_MISSING,
-  PAYOUT_DAYS_FALLBACK,
-} from "@/features/settlement/constants/params";
+import { LEGACY_RESIDENT_NUMBER_MISSING } from "@/features/settlement/constants/params";
 import type {
-  CompanyInfo,
   SettlementDetail,
   SettlementStatus,
   TaxDocument,
+  TaxRecipient,
 } from "@/features/settlement/types";
 
 /** 확정 전(정산 확인 중 · 조정 협의) — 3자 분배 · 증빙이 비어 있다 */
@@ -81,38 +78,31 @@ export function activeBlockReasons(
 }
 
 /**
- * 지급 예정일 영업일 수 — 서버 확정 이력 문장(「자동 확정 10.06 + 3영업일 · …」)에서 읽는다.
- * 서버가 숫자를 따로 내리지 않아([정책값 미정] · 백엔드 요청) 문장이 없으면 「N영업일」.
+ * M4 공급받는자 — 운영사 사업자 정보(서버 `taxDocuments[].recipient` · 58 계획 5-19).
+ * 서버는 브랜드 세금계산서 행에만 채우므로(인플루언서 세금계산서는 null) 대조하는 문서에 없으면
+ * 같은 정산의 브랜드 세금계산서 값을 쓴다 — 출처는 둘 다 `company.*` 한 곳이다.
  */
-export function payoutBusinessDaysText(detail: SettlementDetail): string {
-  const matched = detail.rail.payoutBasis?.match(/\+\s*(\d+)영업일/);
-  return matched ? `${matched[1]}영업일` : PAYOUT_DAYS_FALLBACK;
+export function taxRecipientOf(
+  detail: SettlementDetail,
+  document: TaxDocument
+): TaxRecipient | null {
+  return (
+    document.recipient ??
+    detail.taxDocuments.find((doc) => doc.recipient?.name)?.recipient ??
+    null
+  );
 }
 
 /** M4 공급받는자 「쇼룸즈 · 대표 소병서 · 791-12-03353」 — 상호가 없으면 null(호출부가 대체값을 쓴다) */
-export function companyRecipientText(
-  company: CompanyInfo | undefined
-): string | null {
-  if (!company?.name) return null;
+export function recipientText(recipient: TaxRecipient | null): string | null {
+  if (!recipient?.name) return null;
   return [
-    company.name,
-    company.representative && `대표 ${company.representative}`,
-    company.registrationNumber,
+    recipient.name,
+    recipient.representative && `대표 ${recipient.representative}`,
+    recipient.registrationNumber,
   ]
     .filter(Boolean)
     .join(" · ");
-}
-
-/** 브랜드 축의 1021 신규 줄 — 배포 전 서버는 내리지 않아 0으로 읽는다 */
-export function brandExtraLines(detail: SettlementDetail): {
-  returnDeductionFee: { amount: number; count: number };
-  freightAdjustment: { amount: number; count: number };
-} {
-  const { brand } = detail.breakdown;
-  return {
-    returnDeductionFee: brand.returnDeductionFee ?? { amount: 0, count: 0 },
-    freightAdjustment: brand.freightAdjustment ?? { amount: 0, count: 0 },
-  };
 }
 
 /** 고정 지급비가 계약에 있는가 — 없으면 카드를 그리지 않는다 */

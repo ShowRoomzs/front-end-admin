@@ -49,7 +49,7 @@ export interface AdminReasonOption {
 
 /**
  * 정지 모달(M1) 미리보기 — 「이의 신청 기한 · 통지 후 N영업일 이상 · YYYY.MM.DD까지」 · 「소명 검토 · 접수 후 N영업일」.
- * `appealDeadlineAt`은 KST 벽시계(영업일 기한 23:59:59)다.
+ * `appealDeadlineAt`은 영업일 기한 23:59:59 KST를 UTC로 바꾼 값(`…T14:59:59Z`)이다.
  */
 export interface SuspensionTermPreview {
   appealBusinessDays: number;
@@ -59,8 +59,8 @@ export interface SuspensionTermPreview {
 }
 
 /**
- * 정지 기간 · 자동 해제 · 이의 신청 기한(1021 기-02 【잠정】). 날짜는 전부 KST 벽시계다 —
- * `endsOn`은 운영자가 고른 날짜, `autoReleaseAt`은 그다음 날 00:00, `appealDeadlineAt`은 영업일 기한 23:59:59.
+ * 정지 기간 · 자동 해제 · 이의 신청 기한(1021 기-02 【잠정】). `endsOn`은 운영자가 고른 KST 날짜(LocalDate),
+ * `autoReleaseAt`은 그다음 날 00:00 KST, `appealDeadlineAt`은 영업일 기한 23:59:59 KST — 둘 다 UTC 순간(`…Z`)으로 온다.
  */
 export interface SanctionTerm {
   /** 정지 종료일(포함) — 기간 없는 정지면 null */
@@ -70,6 +70,8 @@ export interface SanctionTerm {
   periodDays: number | null;
   appealDeadlineAt: string | null;
   appealReviewBusinessDays: number | null;
+  /** 이의 신청 기한 영업일 수 — 「통지 후 N영업일 이내」(백엔드 58 6-1 · member.sanction.appeal-business-days) */
+  appealBusinessDays: number;
 }
 
 /** 관리자 메모 — 누적 기입 · 300자 · 작성자 본인 24시간 내 수정 · 삭제 */
@@ -80,7 +82,10 @@ export interface MemberMemo {
   createdAt: string;
   /** 값이 있으면 「수정됨」 */
   modifiedAt: string | null;
+  /** 작성자 본인 · 24시간 이내 · 탈퇴 계정 아님 — 수정 · 삭제 버튼 */
   editable: boolean;
+  /** 내가 쓴 메모(작성자 = 요청 운영자 · 백엔드 58 5-27) — editable과 별개. 잠긴 이유 문구를 고른다 */
+  mine: boolean;
 }
 
 /** 레일 · 전체 이력 모달이 그리는 한 줄 — 브랜드 · 인플루언서 이력을 이 모양으로 맞춘다 */

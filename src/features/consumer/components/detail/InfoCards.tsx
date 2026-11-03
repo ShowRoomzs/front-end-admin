@@ -2,9 +2,7 @@ import DetailCard, {
   FieldRow,
   PurgedValue,
 } from "@/common/components/DetailCard/DetailCard";
-import NotReady from "@/common/components/NotReady/NotReady";
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
-import { ApiNotReadyError } from "@/common/utils/devMock";
 import { formatDateOnly, formatDateTimeShort } from "@/common/utils/formatDate";
 import JoinChannel from "@/features/consumer/components/JoinChannel/JoinChannel";
 import { DEVICE_LABELS } from "@/features/consumer/constants/detail";
@@ -415,16 +413,16 @@ export function AddressCard(props: { detail: ConsumerDetail }) {
 // ── 약관 동의 내역 ───────────────────────────────────────────────
 
 /**
- * 약관 동의 내역 — **서버에 없다**(약관 버전 테이블 보류 · 55 계획서 4-3-4 D16).
- * DEV는 목업, 배포본은 「준비 중」. 동의 기록은 탈퇴해도 파기 대상이 아니다.
+ * 약관 동의 내역 — `GET /{userId}/consents`(58 5-29) · 3행 고정(이용 약관 · 개인정보 · 마케팅).
+ * 버전은 동의 시각에 시행 중이던 버전을 서버가 파생한다(못 찾으면 null → 버전 칸을 비운다).
+ * 마케팅을 철회했거나 동의한 적 없으면(agreed=false) 시각 앞에 「미동의」를 붙인다.
+ * 동의 기록은 탈퇴해도 파기 대상이 아니다.
  */
 export function TermsCard(props: { userId: number }) {
-  const { data, isLoading, error } = useConsumerTerms(props.userId);
+  const { data, isLoading } = useConsumerTerms(props.userId);
 
   let body: ReactNode;
-  if (error instanceof ApiNotReadyError) {
-    body = <NotReady title="약관 동의 내역은 준비 중입니다." />;
-  } else if (isLoading || !data) {
+  if (isLoading || !data) {
     body = (
       <p className="py-2 text-[12px] text-sz-n-500">
         {isLoading ? "불러오는 중…" : "약관 동의 내역을 불러오지 못했습니다."}
@@ -435,18 +433,27 @@ export function TermsCard(props: { userId: number }) {
       <div className="pt-3">
         {data.map((term) => (
           <ActRow
-            key={term.title}
+            key={term.termsType}
             label={
               <>
-                {term.title}{" "}
-                <span className={`${T_SUB_CLASS} tabular-nums`}>
-                  {term.version}
-                </span>
+                {term.termsName}
+                {term.version && (
+                  <>
+                    {" "}
+                    <span className={`${T_SUB_CLASS} tabular-nums`}>
+                      {term.version}
+                    </span>
+                  </>
+                )}
               </>
             }
             value={
               <span className={`${T_SUB_CLASS} tabular-nums`}>
-                {formatDateTimeShort(term.agreedAt)}
+                {term.agreed
+                  ? formatDateTimeShort(term.agreedAt)
+                  : term.agreedAt
+                    ? `미동의 · ${formatDateTimeShort(term.agreedAt)}`
+                    : "미동의"}
               </span>
             }
           />

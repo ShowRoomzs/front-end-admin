@@ -1,5 +1,5 @@
 import type { StatusBadgeVariant } from "@/common/components/StatusBadge/StatusBadge";
-import { parseWallClock } from "@/common/utils/formatDate";
+import { parseServerDateTime } from "@/common/utils/formatDate";
 import type { Tone } from "@/features/settlement/types";
 import dayjs from "dayjs";
 
@@ -33,23 +33,27 @@ export function ymdhm(value: string | null | undefined): string {
 }
 
 /*
-  기한(정산 확인 마감 · 조정 합의 기한 · 증빙 기한)은 서버가 영업일에 23:59:59를 붙인 KST 벽시계다.
-  위 함수들은 서버가 붙인 'Z'를 믿어 9시간 밀리므로(10.30 23:59 → 10.31 08:59) 기한은 아래 함수로 읽는다.
+  기한(정산 확인 마감 · 조정 합의 기한)은 서버가 영업일 23:59:59 KST를 UTC로 바꾼 값이다
+  (10.30 23:59 KST = `2026-10-30T14:59:59Z`). 증빙 기한(`dueAt`)은 LocalDate(KST 날짜)다.
+  둘 다 KST로 고정해 읽는다 — 날짜만 있는 값도 UTC 0시 = KST 9시라 같은 날로 보인다.
 */
+function kst(value: string) {
+  return parseServerDateTime(value).utcOffset(9);
+}
 
 /** 기한 · 08.31 */
 export function mdDue(value: string | null | undefined): string {
-  return value ? parseWallClock(value).format("MM.DD") : "—";
+  return value ? kst(value).format("MM.DD") : "—";
 }
 
 /** 기한 · 08.31 23:59 */
 export function mdhmDue(value: string | null | undefined): string {
-  return value ? parseWallClock(value).format("MM.DD HH:mm") : "—";
+  return value ? kst(value).format("MM.DD HH:mm") : "—";
 }
 
 /** 기한 · 2026.08.31 23:59 */
 export function ymdhmDue(value: string | null | undefined): string {
-  return value ? parseWallClock(value).format("YYYY.MM.DD HH:mm") : "—";
+  return value ? kst(value).format("YYYY.MM.DD HH:mm") : "—";
 }
 
 /** 요율 0.033 → 「3.3%」(서버 BigDecimal 요율) */

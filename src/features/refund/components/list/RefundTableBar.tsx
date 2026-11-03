@@ -5,6 +5,7 @@ import {
 } from "@/features/refund/constants/params";
 import type {
   RefundSort,
+  RefundSummary,
   RefundTab,
   RefundTabStat,
 } from "@/features/refund/types";
@@ -23,6 +24,8 @@ interface RefundTableBarProps {
   tab: RefundTab;
   /** 요약 API의 그 탭 통계 — 탭 전체 기준이다(검색 · 경로 조건과 무관) */
   stat: RefundTabStat | undefined;
+  /** 집행 대기 탭의 「(PG 취소 N · 계좌 송금 N)」 — 요약 API의 수단별 금액 */
+  summary: RefundSummary | undefined;
   sort: RefundSort;
   size: number;
   onSortChange: (sort: RefundSort) => void;
@@ -31,12 +34,17 @@ interface RefundTableBarProps {
 
 /**
  * 시안 `.tbar` — 왼쪽 요약 줄은 탭마다 다르다.
- *   집행 대기  「집행 대기 1건 · 27,200원」
+ *   집행 대기  「집행 대기 2건 · 30,200원 (PG 취소 27,200 · 계좌 송금 3,000)」 — 송금 대기가 없으면 괄호를 뺀다
  *   실패       「실패 1건 · 27,200원 · 소비자 대기 2일」
  *   완료       「완료 38건 · 최근 1개월 · PG 자동 36 · 운영자 사유 2」
  */
 export default function RefundTableBar(props: RefundTableBarProps) {
-  const { tab, stat, sort, size, onSortChange, onSizeChange } = props;
+  const { tab, stat, summary, sort, size, onSortChange, onSizeChange } = props;
+  // 송금 대기가 있을 때만 수단별로 나눈다 — 전부 PG 취소면 합계와 같아 괄호가 군더더기다
+  const split =
+    tab === "PENDING" && summary && summary.bankTransferAmount > 0
+      ? summary
+      : null;
 
   return (
     <div className="flex shrink-0 items-center justify-between border-b border-sz-n-200 px-4 py-2.5">
@@ -62,6 +70,11 @@ export default function RefundTableBar(props: RefundTableBarProps) {
                   {formatAmount(stat.amount)}
                 </b>
                 원
+                {split && (
+                  <span className="text-[11px] text-sz-n-500">
+                    {` (PG 취소 ${formatAmount(split.pgCancelAmount)} · 계좌 송금 ${formatAmount(split.bankTransferAmount)})`}
+                  </span>
+                )}
                 {tab === "FAILED" && stat.oldestWaitingDays !== null && (
                   <>
                     {" · 소비자 대기 "}

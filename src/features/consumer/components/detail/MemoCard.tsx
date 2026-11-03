@@ -43,8 +43,6 @@ export default function MemoCard(props: MemoCardProps) {
   const [editDraft, setEditDraft] = useState("");
   // 24시간 경과 문구를 고르는 기준 시각 — 렌더 중에 시계를 읽지 않으려고 처음 그릴 때 한 번 잡는다
   const [now] = useState(() => Date.now());
-  // editable은 작성자 본인일 때만 참 — 그 작성자를 「나」로 본다(memoLockText 설명)
-  const myName = memos.find((memo) => memo.editable)?.authorName ?? null;
 
   const editing = editingId !== null;
   const trimmed = draft.trim();
@@ -199,7 +197,7 @@ export default function MemoCard(props: MemoCardProps) {
                       )
                     ) : (
                       <div className="mt-[5px] text-[11px] text-sz-n-400">
-                        {memoLockText(memo, withdrawn, myName, now)}
+                        {memoLockText(memo, withdrawn, now)}
                       </div>
                     )}
                   </>

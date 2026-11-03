@@ -1,6 +1,6 @@
 import type { HistoryDotTone } from "@/common/components/HistoryList/HistoryList";
 import type { StatusBadgeVariant } from "@/common/components/StatusBadge/StatusBadge";
-import { parseServerDateTime, parseWallClock } from "@/common/utils/formatDate";
+import { parseServerDateTime } from "@/common/utils/formatDate";
 import {
   MEMO_EDIT_WINDOW_HOURS,
   PENDING_TARGET_PATHS,
@@ -13,9 +13,14 @@ import type {
   ServerTone,
 } from "@/features/consumer/types/consumerDetail";
 
-/** KST 벽시계 값(정지 종료일 · 기한)은 시간대 변환 없이 그대로 읽는다 */
+/**
+ * 정지 종료일(LocalDate · KST 날짜) · 기한(UTC 순간 `…Z`)을 KST 달력 날짜로.
+ * 이의 신청 기한 10.22 23:59 KST는 `2026-10-22T14:59:59Z`로 온다 — KST로 바꿔 읽는다.
+ */
 export function formatKstDate(value: string | null): string {
-  return value ? parseWallClock(value).format("YYYY.MM.DD") : "—";
+  return value
+    ? parseServerDateTime(value).utcOffset(9).format("YYYY.MM.DD")
+    : "—";
 }
 
 /** UTC 이벤트 시각의 시:분만(해제 칩 「해제됨 · 김운영 · 14:22」) */
@@ -111,21 +116,17 @@ export function pendingLinkHref(link: ConsumerPendingChipLink): string {
 /**
  * 수정 · 삭제할 수 없는 메모의 이유 문구(시안 A1 · B1 · C1).
  * 서버 `editable`이 판정이고, 여기서는 어느 문구를 보일지만 고른다.
- *
- * 「24시간 경과」는 **내가 쓴** 메모에만 맞는 말이다. 응답에 「내 메모」 표시가 없어
- * `editable = true`인 메모의 작성자를 나로 본다(editable은 작성자 본인일 때만 참).
- * 나를 알 수 없으면 언제나 참인 「작성자 본인만 …」을 쓴다.
+ * 「24시간 경과」는 **내가 쓴** 메모(서버 `mine` · 58 5-27)에만 맞는 말이다 — 아니면 언제나 참인 「작성자 본인만 …」.
  */
 export function memoLockText(
   memo: ConsumerMemo,
   withdrawn: boolean,
-  myName: string | null,
   now: number
 ): string {
   if (withdrawn) return "탈퇴 계정 · 조회 전용";
   const created = parseServerDateTime(memo.createdAt).valueOf();
   const expired = now - created > MEMO_EDIT_WINDOW_HOURS * 60 * 60 * 1000;
-  if (myName !== null && memo.authorName === myName && expired) {
+  if (memo.mine && expired) {
     return "작성 후 24시간 경과 · 수정·삭제 불가";
   }
   return "작성자 본인만 24시간 내 수정·삭제";

@@ -1,4 +1,5 @@
 import { ModalShell } from "@/common/components/ModalShell/ModalShell";
+import { usePolicyValues } from "@/common/hooks/usePolicyValues";
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import {
   FieldLabel,
@@ -55,6 +56,14 @@ export function SuspendModal(props: SuspendModalProps) {
   const [reason, setReason] = useState("");
   const [detail, setDetail] = useState("");
   const [endsOn, setEndsOn] = useState("");
+  // 영업일 수는 사유 목록 API의 미리보기(term)가 우선 — 없으면 공용 정책값(58 6-1), 그것도 없으면 「N」
+  const { data: policy } = usePolicyValues();
+  const appealDays =
+    term?.appealBusinessDays ?? policy?.sanctionAppealBusinessDays ?? null;
+  const reviewDays =
+    term?.appealReviewBusinessDays ??
+    policy?.sanctionAppealReviewBusinessDays ??
+    null;
 
   const selected = useMemo(
     () => reasons.find((option) => option.code === reason),
@@ -153,7 +162,7 @@ export function SuspendModal(props: SuspendModalProps) {
               이의 신청 기한
             </span>
             <span>
-              통지 후 <b>{term?.appealBusinessDays ?? "N"}영업일 이상</b>
+              통지 후 <b>{appealDays ?? "N"}영업일 이상</b>
               {term && (
                 <>
                   {" · "}
@@ -169,8 +178,8 @@ export function SuspendModal(props: SuspendModalProps) {
             <span className="w-[84px] shrink-0 text-sz-n-600">소명 검토</span>
             <span>
               접수 후{" "}
-              {typeof term?.appealReviewBusinessDays === "number" ? (
-                <b>{term.appealReviewBusinessDays}영업일</b>
+              {reviewDays !== null ? (
+                <b>{reviewDays}영업일</b>
               ) : (
                 <>
                   <b>N영업일</b>{" "}

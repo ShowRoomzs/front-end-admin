@@ -1,7 +1,7 @@
 /*
   어드민 인플루언서 회원 — 백엔드 `api/admin/creator/dto/AdminCreatorDto.java`(origin/main 295bb879)와 1:1.
-  시각 필드는 이벤트(UTC 벽시계)다. KST 벽시계는 정지 `term` · 조정 협의 `deadlineAt` · 정산 `payoutDueDate` ·
-  탈퇴 심사 `dueDate`(LocalDate)뿐이다.
+  시각 필드는 UTC 순간(`…Z`)이다 — 정지 `term`의 기한 · 조정 협의 `deadlineAt`도 KST로 계산해 UTC로 내린다.
+  KST 날짜(LocalDate)는 정지 `term.endsOn` · 정산 `payoutDueDate` · 탈퇴 심사 `dueDate`뿐이다.
 */
 import type { PageInfo } from "@/common/types/page";
 import type {
@@ -173,7 +173,7 @@ export interface AdminCreatorOpenAdjustment {
   adjustmentId: number;
   settlementId: number;
   settlementNumber: string;
-  /** 합의 기한(KST 벽시계 23:59:59) */
+  /** 합의 기한(23:59:59 KST → UTC `…T14:59:59Z`) */
   deadlineAt: string | null;
   threadId: number | null;
 }
@@ -248,13 +248,17 @@ export interface AdminCreatorOverview {
   activity: {
     groupBuyPostCount: number;
     reviewRejectCount: number;
-    /** 노출 중지 횟수(기-08 — 옛 이름 hiddenCount) */
-    hiddenCount: number;
+    /**
+     * 【호환 · 1릴리스 뒤 제거】 exposureSuspendedCount와 같은 값(서버 deprecated) — 새 필드가 없는 옛 응답일 때만 읽는다
+     */
+    hiddenCount?: number;
     generalPostCount: number;
     /** 앱 내 쇼룸 팔로우 수(인스타 팔로워 아님) */
     followerCount: number;
     threadCount: number;
     openThreadCount: number;
+    /** 노출 중지 횟수 — 공구 게시물 + 일반 게시물(1021 기-08 · 백엔드 58 5-30) */
+    exposureSuspendedCount: number;
   };
 }
 

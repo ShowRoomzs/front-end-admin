@@ -1,3 +1,5 @@
+import { usePolicyValues } from "@/common/hooks/usePolicyValues";
+import type { PolicyValues } from "@/common/services/policyValuesService";
 import OperatorRefundForm from "@/features/claim/components/detail/OperatorRefundForm";
 import {
   ClaimBadge,
@@ -41,7 +43,10 @@ interface StatusRow {
 const BEFORE_JUDGE = new Set(["COLLECT_WAIT", "COLLECTING", "INSPECTION"]);
 
 /** 「현재 상태」 카드 줄 — 단계마다 운영자가 확인할 값만(시안 B1~B4) */
-function statusRows(detail: ClaimDetail): Array<StatusRow> {
+function statusRows(
+  detail: ClaimDetail,
+  policy: PolicyValues | undefined
+): Array<StatusRow> {
   const { claim } = detail;
   const row = claim.summary;
   const rows: Array<StatusRow> = [];
@@ -74,14 +79,9 @@ function statusRows(detail: ClaimDetail): Array<StatusRow> {
   if (row.stage === "INSPECTION") {
     rows.push({
       label: "자동 입고",
-      value: claim.inspection?.autoReceived ? (
-        AUTO_RECEIVE_TEXT.done
-      ) : (
-        <>
-          {AUTO_RECEIVE_TEXT.rule}{" "}
-          <span className="text-sz-n-400">{AUTO_RECEIVE_TEXT.unset}</span>
-        </>
-      ),
+      value: claim.inspection?.autoReceived
+        ? AUTO_RECEIVE_TEXT.done(policy)
+        : AUTO_RECEIVE_TEXT.rule(policy),
     });
   }
   // 귀책(B4) — 브랜드 귀책 건은 「착불 · 차감 없음」, 판정 전이면 뒤집힐 때의 운임 정산을 미리 적는다
@@ -114,11 +114,12 @@ function statusRows(detail: ClaimDetail): Array<StatusRow> {
       }`,
     });
   }
-  // B2 「운임 정산 · 인용 시 + N 소비자 환급」 — 인용 전 예정액은 서버에 없다(DEV 목업만 · 백엔드 요청)
-  if (detail.canAcceptDispute && detail.disputeFreightRefund) {
+  // B2 「운임 정산 · 인용 시 + N 소비자 환급」 — 서버 인용 전 예정액(`disputePreview.total` · 58 계획 5-13).
+  // 0원(이미 브랜드 귀책)이면 붙는 운임이 없어 줄을 두지 않는다
+  if (detail.canAcceptDispute && detail.disputePreview?.total) {
     rows.push({
       label: "운임 정산",
-      value: `인용 시 + ${won(detail.disputeFreightRefund)} 소비자 환급`,
+      value: `인용 시 + ${won(detail.disputePreview.total)} 소비자 환급`,
     });
   }
   // 판정 뒤 — 운임 정산 행(브랜드 정산 「± 운임 정산」) 합
@@ -173,7 +174,7 @@ function DisputeFreightNote(props: { detail: ClaimDetail }) {
   if (detail.feeBearer !== "CONSUMER") {
     return <>인용하면 차감 없이 환불합니다 — 차감했던 재발송비는 환원합니다.</>;
   }
-  const freight = detail.disputeFreightRefund;
+  const preview = detail.disputePreview;
   return (
     <>
       인용하면 귀책이 <b>브랜드</b>로 바뀌어 최초 배송비 차감이 취소되고,
@@ -181,9 +182,21 @@ function DisputeFreightNote(props: { detail: ClaimDetail }) {
       <span className="mt-1.5 block rounded-[4px] border border-sz-n-200 bg-white px-2 py-1.5 text-sz-n-700">
         <b className="block text-sz-n-900">운임 정산 · 소비자 → 브랜드 귀책</b>
         최초 배송비 차감 취소 — 무료배송 주문이면 상품 금액 전액 환불
+        {preview && preview.initialFeeRestored > 0 && (
+          <>
+            {" "}
+            · 차감했던{" "}
+            <b className="tabular-nums">
+              {won(preview.initialFeeRestored)}
+            </b>{" "}
+            환원
+          </>
+        )}
         <br />
         선불 반품 운임{" "}
-        {freight ? <b className="tabular-nums">{won(freight)}</b> : null}{" "}
+        {preview && preview.prepaidFreightRefund > 0 ? (
+          <b className="tabular-nums">{won(preview.prepaidFreightRefund)}</b>
+        ) : null}{" "}
         환급(기본 배송비 편도 정액) — 원래 결제액 초과분은 운영자 계좌 송금 ·
         브랜드 부담 · 다음 정산 「− 운임 정산」
       </span>
@@ -200,7 +213,8 @@ export default function ClaimRail(props: ClaimRailProps) {
   const { detail, isPending, onAction, onOpenOrder, onOpenInquiry } = props;
   const row = detail.claim.summary;
   const badge = stageBadge(row);
-  const rows = statusRows(detail);
+  const { data: policy } = usePolicyValues();
+  const rows = statusRows(detail, policy);
   const dispute = detail.dispute;
 
   const links = (

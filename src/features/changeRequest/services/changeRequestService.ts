@@ -1,45 +1,12 @@
 import { apiInstance } from "@/common/lib/apiInstance";
 import type { BaseParams, PageInfo } from "@/common/types";
-import {
-  DEV_MOCK_ENABLED,
-  mockDelay,
-  mockScenario,
-} from "@/common/utils/devMock";
 
 /*
   어드민 변경 요청 API — 백엔드 `AdminChangeRequestController` · `AdminChangeRequestDto`(origin/main)와 1:1.
-  배포본은 항상 실호출한다.
-
-  엔드포인트 6개는 개발 서버(api.showroomz.shop)에 이미 있다. 다만 개발 서버는 옛 응답(브랜드 2종 ·
-  `brandName` · `marketId`)만 주고, origin/main에서 붙은 것 — 요청자(`requester`) · 인플루언서 유형 3종
-  (TO_BUSINESS · TO_INDIVIDUAL · CREATOR_ACCOUNT) · `compareItems` · `approvalImpact` · `source` 등 — 은
-  아직 배포되지 않았다. 그래서 새 필드는 전부 optional로 받고(`utils/requester.ts`가 옛 응답을 메운다),
-  로컬 화면 확인용으로 **개발 서버(`pnpm dev`)에서만** 목업 어댑터(`mocks/changeRequestMock.ts`)를 쓴다.
-
-  ⚠ 백엔드 배포 후 삭제: `changeRequestMock()` 분기와 `mocks/changeRequestMock.ts`.
-
-  DEV 목업 시나리오(`?mock=<값>`):
-  - (없음) · `cr`          C1 목록(브랜드 4 · 인플루언서 3 · 검토 대기 5) — 행마다 상세가 다르다
-                           ○○코스메틱 C3 · 예린 뷰티 C3a · 다은 데스크 C3b · 하린_뷰티랩 C4b · 글로우랩 C4(예금주 불일치 · C6)
-                           네이처핏(승인) · 수분케어랩(반려) — 처리 완료 상세
-  - `cr-empty`             C2 검토 대기 0건(빈 상태)
-  - `cr-holder-mismatch`   C4b 인플루언서 계좌의 요청 예금주가 본인 실명과 다르다(불일치 경고)
-  - `cr-no-account-change` C3b 「승인하면」 계좌 변경 필요 없음(서버 현재 값 — §55 B-9 전에는 항상 false)
-  - `live`                 목업을 끄고 개발 서버를 실호출한다
-  승인 · 반려는 목업 안의 상태를 바꿔 다음 상태로 넘어간다(새로고침하면 처음으로).
+  요청자(`requester`) · 인플루언서 유형 3종 · `compareItems` · `approvalImpact` · `source`까지 개발 서버에 배포돼
+  DEV에서도 실호출만 한다(58 반영 · 목업 어댑터 삭제). 새 필드를 optional로 받는 타입과 `utils/requester.ts`의
+  옛 응답 보정은 아직 남아 있다(옛 모양 행이 와도 깨지지 않게).
 */
-function changeRequestMock(): string | null {
-  if (!DEV_MOCK_ENABLED) return null;
-  const scenario = mockScenario();
-  if (scenario === "live") return null;
-  return scenario?.startsWith("cr") ? scenario : "cr";
-}
-
-async function loadMock() {
-  // 배포 빌드에서 목업 모듈이 청크로 남지 않게 상수 조건으로 막는다(번들러가 이 분기를 지운다)
-  if (!import.meta.env.DEV) throw new Error("mock disabled");
-  return import("../mocks/changeRequestMock");
-}
 
 /**
  * 요청 유형 — 백엔드 ChangeRequestType enum과 1:1.
@@ -212,7 +179,7 @@ export interface ChangeRequestCompareItem {
   label: string;
   /** 개업일 · 폐업일처럼 서버가 모르는 값은 null(서류로 확인) */
   value: string | null;
-  /** 서류의 날짜가 이 시각보다 앞서야 한다 — 요청 시각(now() 이벤트 → UTC 벽시계) */
+  /** 서류의 날짜가 이 시각보다 앞서야 한다 — 요청 시각(now() 이벤트 → UTC 순간 `…Z`) */
   mustBeBefore: string | null;
   serverCheck: "MATCH" | "MISMATCH" | string | null;
 }
@@ -242,7 +209,7 @@ export type ChangeRequestHistoryEvent =
 
 export interface ChangeRequestHistoryItem {
   event: ChangeRequestHistoryEvent;
-  /** now() 이벤트 시각 — UTC 벽시계(formatDateTimeShort가 parseServerDateTime으로 바꾼다) */
+  /** now() 이벤트 시각 — UTC 순간 `…Z`(formatDateTimeShort가 parseServerDateTime으로 바꾼다) */
   occurredAt: string;
   /** 「브랜드 파트너센터」 · 「쇼룸 스튜디오」 · 운영자 이름 */
   actorLabel: string;
@@ -308,11 +275,6 @@ export interface ChangeRequestProcessResponse {
 export const changeRequestService = {
   /** GET /v1/admin/change-requests */
   getChangeRequestList: async (params: ChangeRequestParams) => {
-    const scenario = changeRequestMock();
-    if (scenario) {
-      const { mockChangeRequestList } = await loadMock();
-      return mockDelay(mockChangeRequestList(scenario, params));
-    }
     const { data: response } = await apiInstance.get<ChangeRequestListResponse>(
       "/admin/change-requests",
       {
@@ -330,11 +292,6 @@ export const changeRequestService = {
   },
   /** GET /v1/admin/change-requests/summary — 사이드바 뱃지 전용(검색어·탭에 영향받지 않는 전체 검토 대기 건수) */
   getChangeRequestSummary: async () => {
-    const scenario = changeRequestMock();
-    if (scenario) {
-      const { mockChangeRequestSummary } = await loadMock();
-      return mockDelay(mockChangeRequestSummary(scenario));
-    }
     const { data: response } = await apiInstance.get<ChangeRequestSummary>(
       "/admin/change-requests/summary"
     );
@@ -343,11 +300,6 @@ export const changeRequestService = {
   },
   /** GET /v1/admin/change-requests/reject-reasons?type= */
   getChangeRequestRejectReasons: async (type: ChangeRequestType) => {
-    const scenario = changeRequestMock();
-    if (scenario) {
-      const { mockChangeRequestRejectReasons } = await loadMock();
-      return mockDelay(mockChangeRequestRejectReasons(type));
-    }
     const { data: response } = await apiInstance.get<
       Array<ChangeRequestRejectReasonOption>
     >("/admin/change-requests/reject-reasons", {
@@ -365,11 +317,6 @@ export const changeRequestService = {
     requestId: number,
     status: ChangeRequestStatusFilter
   ) => {
-    const scenario = changeRequestMock();
-    if (scenario) {
-      const { mockChangeRequestDetail } = await loadMock();
-      return mockDelay(mockChangeRequestDetail(scenario, requestId, status));
-    }
     const { data: response } = await apiInstance.get<ChangeRequestDetailInfo>(
       `/admin/change-requests/${requestId}`,
       {
@@ -381,11 +328,6 @@ export const changeRequestService = {
   },
   /** POST /v1/admin/change-requests/{requestId}/approve */
   approveChangeRequest: async (requestId: number) => {
-    const scenario = changeRequestMock();
-    if (scenario) {
-      const { mockApproveChangeRequest } = await loadMock();
-      return mockDelay(mockApproveChangeRequest(requestId));
-    }
     const { data: response } =
       await apiInstance.post<ChangeRequestProcessResponse>(
         `/admin/change-requests/${requestId}/approve`
@@ -398,11 +340,6 @@ export const changeRequestService = {
     requestId: number,
     data: RejectChangeRequestData
   ) => {
-    const scenario = changeRequestMock();
-    if (scenario) {
-      const { mockRejectChangeRequest } = await loadMock();
-      return mockDelay(mockRejectChangeRequest(requestId, data));
-    }
     const { data: response } =
       await apiInstance.post<ChangeRequestProcessResponse>(
         `/admin/change-requests/${requestId}/reject`,

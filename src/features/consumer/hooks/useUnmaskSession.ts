@@ -1,4 +1,3 @@
-import { mockScenario } from "@/common/utils/devMock";
 import { UNMASK_SESSION_FALLBACK_SECONDS } from "@/features/consumer/constants/detail";
 import { useConsumerDetailMutations } from "@/features/consumer/hooks/useConsumerDetail";
 import { consumerDetailService } from "@/features/consumer/services/consumerDetailService";
@@ -7,12 +6,6 @@ import type {
   UserPrivacyAccessReason,
 } from "@/features/consumer/types/consumerDetail";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-/** DEV 목업에서 해제 상태로 시작하는 시나리오(A2 · A3) — 진입 즉시 잠그지 않는다 */
-function isDevUnmaskPreset() {
-  const scenario = mockScenario();
-  return scenario === "unmasked" || scenario === "expiring";
-}
 
 /**
  * 마스킹 해제 세션(시안 「재마스킹 트리거 4종」) — 서버 세션은 이 소비자 1건 · 이 운영자 · 10분 고정 만료다.
@@ -58,7 +51,7 @@ export function useUnmaskSession(
     if (!unmasked) return;
 
     // ② 이 화면에서 열지 않은 세션 — 새로고침 · 재진입이라 다시 잠근다
-    if (!openedHereRef.current && !isDevUnmaskPreset()) {
+    if (!openedHereRef.current) {
       lockMutate();
       return;
     }
