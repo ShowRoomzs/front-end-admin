@@ -1,3 +1,5 @@
+import { policyDaysText } from "@/common/hooks/usePolicyValues";
+import type { PolicyValues } from "@/common/services/policyValuesService";
 import type { ClaimDetail } from "@/features/claim/types";
 
 /*
@@ -12,13 +14,13 @@ const NONE = "조치할 것이 없습니다 — ";
 
 /**
  * 【잠정】 기-17 자동 입고 — 택배 도착 후 N영업일이 지나면 시스템이 입고 처리한다(06b rev.5 B1 레일).
- * N은 서버 설정(`order.claim.auto-receive-business-days`)인데 응답에 값이 없어(백엔드 요청) 시안 그대로
- * 「N영업일 [정책값 미정]」으로 둔다 — 숫자를 하드코딩하지 않는다.
+ * N은 서버 정책값(`GET /v1/common/policy-values` `claimAutoReceiveBusinessDays`) — 값이 없으면 「N영업일」.
  */
 export const AUTO_RECEIVE_TEXT = {
-  rule: "택배 도착 후 N영업일",
-  unset: "[정책값 미정]",
-  done: "자동 입고됨 · 택배 도착 후 N영업일 경과",
+  rule: (values: PolicyValues | undefined) =>
+    `택배 도착 후 ${policyDaysText(values, "claimAutoReceiveBusinessDays")}`,
+  done: (values: PolicyValues | undefined) =>
+    `자동 입고됨 · 택배 도착 후 ${policyDaysText(values, "claimAutoReceiveBusinessDays")} 경과`,
 } as const;
 
 export function operatorGuide(detail: ClaimDetail): string {

@@ -1,5 +1,6 @@
 import { apiInstance } from "@/common/lib/apiInstance";
 import { ModalShell } from "@/common/components/ModalShell/ModalShell";
+import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { INPUT_CLASS } from "@/features/contract/components/shared/styles";
 import {
@@ -10,14 +11,20 @@ import {
   Sub,
 } from "@/features/refund/components/modals/DialogParts";
 import Btn from "@/features/refund/components/shared/Btn";
+import { STATUS_VARIANT } from "@/features/refund/constants/columns";
 import { SELECT_CHEVRON_STYLE } from "@/features/refund/constants/params";
 import { REFUND_QUERY_KEYS } from "@/features/refund/constants/queryKeys";
 import { useGetRefundDetail } from "@/features/refund/hooks/useAdminRefund";
 import type {
+  RefundDetail,
   RefundItem,
   RefundTransferCompleteRequest,
 } from "@/features/refund/types";
-import { formatMonthDayTime, formatWon } from "@/features/refund/utils/format";
+import {
+  formatMonthDay,
+  formatMonthDayTime,
+  formatWon,
+} from "@/features/refund/utils/format";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -49,6 +56,26 @@ function useBanks() {
 
 const FIELD_CLASS = cn(INPUT_CLASS, "h-8 px-2.5 text-[12px]");
 
+/**
+ * 시안 M3 「PG 취소 27,200원 [완료 09.18]」 — 같은 환급을 나눈 PG 취소 짝 행(`pairedRefundTaskId` · 58 계획 5-14).
+ * 금액 · 상태는 짝 행 상세의 서버 값이다. 완료면 집행일을 붙이고, 아니면 서버 상태 문구를 그대로 쓴다.
+ */
+function PairedPgRow(props: { paired: RefundDetail }) {
+  const { paired } = props;
+  return (
+    <DialogRow label="PG 취소">
+      {paired.target && (
+        <span className="tabular-nums">{formatWon(paired.target.amount)}</span>
+      )}{" "}
+      <StatusBadge variant={STATUS_VARIANT[paired.status]} hideDot>
+        {paired.status === "DONE" && paired.execution
+          ? `완료 ${formatMonthDay(paired.execution.executedAt)}`
+          : paired.statusLabel}
+      </StatusBadge>
+    </DialogRow>
+  );
+}
+
 /** 시안 `.mlabel` + 필수 표시 */
 function Label(props: { children: string }) {
   return (
@@ -64,7 +91,6 @@ function Label(props: { children: string }) {
  * 운영자가 은행에서 **직접 송금한 뒤** 송금 완료 체크로 기록만 남긴다 — 시스템은 송금하지 않는다.
  * 소비자 계좌는 1:1 문의로 받은 값을 넣고, 서버가 소비자가 저장해 둔 환불 계좌(`suggestedAccount`)를
  * 주면 기본값으로 채운다. 처리자 · 일시는 서버가 저장 때 남긴다. 체크 전에는 버튼이 비활성이다.
- * `POST /transfer-complete`는 main에만 있다(개발 서버 미배포 — 송금 행도 배포 뒤에야 생긴다).
  */
 export default function TransferModal(props: TransferModalProps) {
   const { record, isPending, onClose, onConfirm } = props;
@@ -74,6 +100,9 @@ export default function TransferModal(props: TransferModalProps) {
     isError,
   } = useGetRefundDetail(record.refundTaskId);
   const { data: banks } = useBanks();
+  const { data: paired } = useGetRefundDetail(
+    detail?.pairedRefundTaskId ?? null
+  );
   const transfer = detail?.transfer ?? null;
   const suggested = transfer?.suggestedAccount ?? null;
 
@@ -158,6 +187,7 @@ export default function TransferModal(props: TransferModalProps) {
             <b className="tabular-nums">{formatWon(record.amount)}</b>{" "}
             <Sub>· 기본 배송비 편도 정액 · 원래 결제액 초과분</Sub>
           </DialogRow>
+          {paired && <PairedPgRow paired={paired} />}
 
           {done ? (
             <>

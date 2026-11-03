@@ -2,8 +2,8 @@
   DEV 전용 목업 — 배포 번들에 들어가지 않게 서비스가 `DEV_MOCK_ENABLED` 가드 뒤에서 동적 import 한다.
   값은 시안 ui-admin-06a-orders rev.5 A3(배송 이상 탭) · 백엔드 `AdminOrderDto`(origin/main) 모양 그대로다.
   - 목록 `stallChoice`는 서버에 아직 없다(백엔드 요청) — 시안 보조줄 「소비자 선택 개방까지 N일」을 보기 위한 값.
-  - 상세 `stallChoice`는 main에 있지만 개발 서버에 미배포 — 백엔드 배포 후 삭제.
-  시각은 서버처럼 UTC 벽시계(이벤트) · KST 벽시계(영업일 기한 23:59:59)를 섞어 둔다.
+  - 상세는 목업 목록 행의 짝이다(목업 주문 id는 서버에 없다). 목록 `stallChoice`가 서버에 생기면 이 파일을 지운다.
+  시각은 서버처럼 UTC 순간(`…Z`)이다 — 영업일 기한(23:59:59 KST)도 `…T14:59:59Z`로 둔다.
 */
 import type { PageResponse } from "@/common/types/page";
 import type {
@@ -14,41 +14,19 @@ import type {
   AdminOrderSummary,
 } from "@/features/order/types";
 
-const WAITING_UNSET: AdminOrderStallChoice = {
-  state: "WAITING",
-  opensAt: null,
-  // 시안은 「N일 [정책값 미정]」 — 값이 없을 때의 표기를 보인다
-  daysUntilOpen: null,
-  daysStalled: 8,
-  choice: null,
-  choiceLabel: null,
-  chosenAt: null,
-};
-
-function stallChoiceOf(scenario: string): AdminOrderStallChoice {
-  if (scenario === "stall-open") {
-    return {
-      ...WAITING_UNSET,
-      state: "OPEN",
-      opensAt: "2026-09-17T01:00:00",
-      daysUntilOpen: 0,
-    };
-  }
-  if (scenario === "stall-chosen") {
-    return {
-      ...WAITING_UNSET,
-      state: "CHOSEN",
-      opensAt: "2026-09-17T01:00:00",
-      daysUntilOpen: 0,
-      choice: "RESHIP",
-      choiceLabel: "재발송",
-      chosenAt: "2026-09-18T02:10:00",
-    };
-  }
+/** 추적 정지 · 개방 전 — 서버(`OrderStallChoiceService.view`)는 개방 전이면 남은 일수를 늘 채운다 */
+function waiting(
+  daysUntilOpen: number,
+  daysStalled: number
+): AdminOrderStallChoice {
   return {
-    ...WAITING_UNSET,
-    opensAt: "2026-09-20T01:00:00",
-    daysUntilOpen: 3,
+    state: "WAITING",
+    opensAt: "2026-09-20T01:00:00Z",
+    daysUntilOpen,
+    daysStalled,
+    choice: null,
+    choiceLabel: null,
+    chosenAt: null,
   };
 }
 
@@ -64,7 +42,7 @@ function group(
     statusTone: "INFO",
     trackingAlert: null,
     trackingAlertLabel: null,
-    shipDueAt: "2026-09-12T23:59:59",
+    shipDueAt: "2026-09-12T14:59:59Z",
     shipOverdue: false,
     cancelRequested: false,
     itemSummary: "하이드라 앰플 30ml",
@@ -106,21 +84,21 @@ export function mockOrderList(): PageResponse<AdminOrderListItem> {
     row(
       24151,
       "20260909-000151",
-      "2026-09-09T01:20:00",
+      "2026-09-09T01:20:00Z",
       "조**",
       group({
         deliveryGroupId: 2415101,
         trackingAlert: "STALLED",
         trackingAlertLabel: "추적 정지",
-        issueSince: "2026-09-10T03:00:00",
+        issueSince: "2026-09-10T03:00:00Z",
         issueElapsedLabel: "8일 무갱신",
-        stallChoice: WAITING_UNSET,
+        stallChoice: waiting(3, 8),
       })
     ),
     row(
       24166,
       "20260911-000166",
-      "2026-09-11T07:40:00",
+      "2026-09-11T07:40:00Z",
       "서**",
       group({
         deliveryGroupId: 2416601,
@@ -131,15 +109,15 @@ export function mockOrderList(): PageResponse<AdminOrderListItem> {
         groupBuyTitle: "클렌징 밤 공구",
         trackingAlert: "STALLED",
         trackingAlertLabel: "추적 정지",
-        issueSince: "2026-09-11T03:00:00",
+        issueSince: "2026-09-11T03:00:00Z",
         issueElapsedLabel: "7일 무갱신",
-        stallChoice: WAITING_UNSET,
+        stallChoice: waiting(4, 7),
       })
     ),
     row(
       24198,
       "20260916-000198",
-      "2026-09-16T02:05:00",
+      "2026-09-16T02:05:00Z",
       "이**",
       group({
         deliveryGroupId: 2419801,
@@ -150,14 +128,14 @@ export function mockOrderList(): PageResponse<AdminOrderListItem> {
         itemSummary: "데일리 선크림 50ml",
         amount: 32000,
         groupBuyTitle: "데일리 선크림 공구",
-        issueSince: "2026-09-12T05:00:00",
+        issueSince: "2026-09-12T05:00:00Z",
         issueElapsedLabel: "감지 09.12",
       })
     ),
     row(
       24195,
       "20260915-000195",
-      "2026-09-15T11:31:00",
+      "2026-09-15T11:31:00Z",
       "박**",
       group({
         deliveryGroupId: 2419501,
@@ -168,7 +146,7 @@ export function mockOrderList(): PageResponse<AdminOrderListItem> {
         groupBuyTitle: "데일리 선크림 공구",
         trackingAlert: "PICKUP_UNCONFIRMED",
         trackingAlertLabel: "집화 확인 필요",
-        issueSince: "2026-09-17T23:00:00",
+        issueSince: "2026-09-17T23:00:00Z",
         issueElapsedLabel: "등록 후 26시간",
       })
     ),
@@ -201,16 +179,13 @@ export function mockOrderSummary(): AdminOrderSummary {
   };
 }
 
-/** 추적 정지 하위주문 1건 — 배송 블록 「소비자 선택」 줄(WAITING · OPEN · CHOSEN) */
-export function mockOrderDetail(
-  orderId: number,
-  scenario: string
-): AdminOrderDetail {
+/** 추적 정지 하위주문 1건 — 배송 블록 「소비자 선택」 줄(개방 전) */
+export function mockOrderDetail(orderId: number): AdminOrderDetail {
   return {
     orderId,
     orderNumber: "20260909-000151",
     orderStatus: "PAID",
-    paidAt: "2026-09-09T01:20:00",
+    paidAt: "2026-09-09T01:20:00Z",
     consumer: { userId: 501, name: "조하늘", email: "sky@example.com" },
     recipient: {
       name: "조하늘",
@@ -226,7 +201,7 @@ export function mockOrderDetail(
       methodLabel: "신한카드",
       amount: 36000,
       cancelledAmount: 0,
-      paidAt: "2026-09-09T01:20:00",
+      paidAt: "2026-09-09T01:20:00Z",
       operatorRefundableAmount: 36000,
     },
     inquiryCount: 0,
@@ -247,13 +222,13 @@ export function mockOrderDetail(
         statusLabel: "배송중",
         statusTone: "INFO",
         shipping: {
-          shipDueAt: "2026-09-12T23:59:59",
+          shipDueAt: "2026-09-12T14:59:59Z",
           shipDueBusinessDays: 3,
           shipOverdue: false,
           overdueNoticeCount: 0,
           lastOverdueNoticeAt: null,
-          prepareStartedAt: "2026-09-09T05:00:00",
-          shippedAt: "2026-09-10T02:00:00",
+          prepareStartedAt: "2026-09-09T05:00:00Z",
+          shippedAt: "2026-09-10T02:00:00Z",
           carrier: "CJ",
           carrierLabel: "CJ대한통운",
           trackingNumber: "651200000151",
@@ -261,7 +236,7 @@ export function mockOrderDetail(
           invoiceSourceLabel: "브랜드 등록",
           trackingAlert: "STALLED",
           trackingAlertLabel: "추적 정지",
-          lastTrackingAt: "2026-09-10T03:00:00",
+          lastTrackingAt: "2026-09-10T03:00:00Z",
           lastTrackingLabel: "간선 상차",
           returnDetectedAt: null,
           returnCompletedAt: null,
@@ -291,14 +266,14 @@ export function mockOrderDetail(
             label: "송장 등록",
             actorType: "SELLER",
             detail: "CJ대한통운 651200000151",
-            occurredAt: "2026-09-10T02:00:00",
+            occurredAt: "2026-09-10T02:00:00Z",
           },
           {
             eventType: "TRACKING_STALLED",
             label: "추적 정지 판정",
             actorType: "SYSTEM",
             detail: null,
-            occurredAt: "2026-09-17T03:00:00",
+            occurredAt: "2026-09-17T03:00:00Z",
           },
         ],
         settlement: null,
@@ -311,7 +286,7 @@ export function mockOrderDetail(
           canMarkLost: false,
           canMarkDelivered: false,
         },
-        stallChoice: stallChoiceOf(scenario),
+        stallChoice: waiting(3, 8),
       },
     ],
   };

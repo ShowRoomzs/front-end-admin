@@ -225,7 +225,7 @@ export interface ChannelProgress {
 
 /**
  * 정보 바의 정지 사유 · 일시 — 열린 정지 행 그대로(`AdminThreadDto.OpenSanction`).
- * `suspendedAt`은 처리 시각(UTC 벽시계) · `endsOn` · `appealDeadlineAt`은 KST 벽시계.
+ * `suspendedAt`은 처리 시각 · `appealDeadlineAt`은 KST로 계산한 기한 — 둘 다 UTC 순간(`…Z`). `endsOn`은 KST 날짜.
  */
 export interface OpenSanction {
   reasonCode: string;
@@ -356,15 +356,20 @@ export interface AdjustmentDetail {
   responderName?: string;
   respondedAt?: string;
   finalRewardAmount?: number;
+  /** [합의] 동의한 쪽 — [철회] 카드는 1릴리스 동안 철회한 쪽도 여기에 담긴다(withdrawnByType을 먼저 읽는다) */
   agreedByType?: SettlementParty;
   agreedByName?: string;
+  /** [합의 · 만료 · 철회] 종결 시각 */
   closedAt?: string;
+  /** [철회] 요청을 철회한 쪽(백엔드 58 5-10) */
+  withdrawnByType?: SettlementParty;
+  withdrawnByName?: string;
 }
 
 /**
  * 계정 이용 정지 · 해제 카드의 사실(`MessageCardResponse.SanctionDetail`) — 1017 이후 카드에만.
  * 기간 넷(`endsOn` · `autoReleaseAt` · `periodDays` · `appealDeadlineAt`)은 1021 이후 정지 카드에만 있다.
- * `endsOn` · `autoReleaseAt` · `appealDeadlineAt`은 KST 벽시계(입력 · 기한).
+ * `endsOn`은 KST 날짜(입력), `autoReleaseAt` · `appealDeadlineAt`은 KST로 계산한 기한을 UTC로 바꾼 값(`…Z`).
  */
 export interface SanctionDetail {
   /** BRAND · CREATOR */
@@ -389,7 +394,7 @@ export type NoticeKind = "CANCEL" | "TERMINATE" | "ADMIN_SUSPENSION";
 /**
  * 계약 취소 · 해지 동의 확인 · 해지 결과 · 직권 중단 사전 통지 카드의 사실(`MessageCardResponse.NoticeDetail` · 1021).
  * 버튼이 없다 — 동의 · 소명은 답글로 받고 결정은 각 관리 화면에서 한다.
- * `executeScheduledAt` · `appealDeadlineAt`은 운영자가 M6에서 넣은 값이라 KST 벽시계다.
+ * `executeScheduledAt` · `appealDeadlineAt`은 운영자가 M6에서 넣은 값이다 — 다른 시각과 같이 UTC 순간(`…Z`)으로 온다.
  */
 export interface NoticeDetail {
   /** 모르는 값이 와도 깨지지 않게 문자열로 받는다 */

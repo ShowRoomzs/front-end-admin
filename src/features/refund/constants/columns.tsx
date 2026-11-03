@@ -18,7 +18,7 @@ interface ColumnHandlers {
 }
 
 /** 상태 배지 색 — 문구는 서버 `statusLabel` */
-const STATUS_VARIANT: Record<RefundTaskStatus, StatusBadgeVariant> = {
+export const STATUS_VARIANT: Record<RefundTaskStatus, StatusBadgeVariant> = {
   PENDING: "warning",
   // 집행 대기 탭의 「환불 처리 중」 — PG 응답을 기다리는 중
   EXECUTING: "info",

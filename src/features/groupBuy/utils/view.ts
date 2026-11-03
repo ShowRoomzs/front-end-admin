@@ -6,8 +6,8 @@ import {
   formatDateOnly,
   formatDateTimeShort,
   parseServerDateTime,
-  parseWallClock,
 } from "@/common/utils/formatDate";
+import { SETTLEMENT_STAGE_TONE } from "@/features/groupBuy/constants/params";
 import type {
   AdminGroupBuyDetail,
   FulfillmentTarget,
@@ -320,6 +320,10 @@ export function settlementTransferred(detail: Detail): boolean {
     return true;
   }
   const settlement = detail.afterEnd?.settlement;
+  // 정산 행이 생겼으면 이관된 것이다(정산은 주문이 모두 종결된 뒤에만 생긴다 · 58 계획 5-23)
+  if (settlement?.settlementId != null) {
+    return true;
+  }
   const closure = detail.afterEnd?.orderClosure;
   if (!settlement || !closure) {
     return false;
@@ -329,6 +333,11 @@ export function settlementTransferred(detail: Detail): boolean {
     !settlement.blockers.includes("UNCLOSED_ORDERS") &&
     !settlement.blockers.includes("CLOSURE_UNKNOWN")
   );
+}
+
+/** B5a 정산 단계 배지 색 — 서버 라벨로 고른다(모르는 라벨 · 「정산 대기」는 중립) */
+export function settlementStageTone(label: string): GroupBuyTone {
+  return SETTLEMENT_STAGE_TONE[label] ?? "NEUTRAL";
 }
 
 // ── 처리 이력 ─────────────────────────────────────────
@@ -498,6 +507,6 @@ export function toHistoryItems(history: Detail["history"]): Array<HistoryItem> {
   });
 }
 
-/** 서버가 계산한 영업일 기한(오픈 승인 기한 · 23:59:59 KST 벽시계) — 2026.10.19 */
+/** 서버가 계산한 영업일 기한(오픈 승인 기한 · 23:59:59 KST를 UTC로 바꾼 `…T14:59:59Z`) — 2026.10.19 */
 export const dueD = (value: string | null | undefined) =>
-  value ? parseWallClock(value).format("YYYY.MM.DD") : "—";
+  value ? parseServerDateTime(value).format("YYYY.MM.DD") : "—";

@@ -18,6 +18,7 @@ import type {
 import {
   formatMonthDayTime,
   formatWon,
+  refundNoOf,
   reshipText,
 } from "@/features/refund/utils/format";
 
@@ -85,7 +86,7 @@ function clawbackSides(
 /**
  * 운임 정산 행(06c rev.7~8 M1 · 기-93) — 소비자 → 브랜드 귀책: 최초 배송비 차감 취소(PG 환불액에 포함) +
  * 선불 반품 운임 별도 환급(원래 결제액 초과분이면 운영자 계좌 송금 · 이 버튼 금액에 넣지 않는다).
- * 서버 상세에 이 값이 없어(백엔드 요청) DEV 목업만 그린다.
+ * 서버 `freightAdjustment`(58 계획 5-14) — 금액 · 방향 · 계좌 송금 행 id는 서버 값이다.
  */
 function FreightLine(props: { freight: RefundFreightAdjustment }) {
   const { freight } = props;
@@ -104,9 +105,9 @@ function FreightLine(props: { freight: RefundFreightAdjustment }) {
       <Sub> (전액 환불에 포함)</Sub> · 선불 반품 운임{" "}
       <b className="tabular-nums">{formatWon(freight.amount)}</b> = 기본 배송비
       편도 정액
-      {freight.transferRefundNo && (
+      {freight.bankTransferRefundTaskId !== null && (
         <Sub>
-          {` — 원래 결제액 초과분이라 운영자 계좌 송금(${freight.transferRefundNo}) · 이 버튼에 포함되지 않음`}
+          {` — 원래 결제액 초과분이라 운영자 계좌 송금(${refundNoOf(freight.bankTransferRefundTaskId)}) · 이 버튼에 포함되지 않음`}
         </Sub>
       )}
     </>

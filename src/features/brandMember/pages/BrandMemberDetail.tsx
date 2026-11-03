@@ -190,14 +190,13 @@ export default function BrandMemberDetail() {
       case "THREAD":
         if (chip.threadId !== null) openThread(chip.threadId);
         return;
+      // 주문 · 상품 문의 · 정산 · 클레임 목록은 브랜드 id로 거른다(상품 문의 · 정산은 백엔드 58 5-31)
       case "ORDERS":
-        navigate(`${BRAND_CHIP_PATHS.ORDERS}?marketId=${detail.marketId}`);
-        return;
-      case "CLAIMS":
       case "PRODUCT_INQUIRIES":
       case "SETTLEMENTS":
+      case "CLAIMS":
         navigate(
-          `${BRAND_CHIP_PATHS[chip.target]}?keyword=${encodeURIComponent(detail.brandName)}`
+          `${BRAND_CHIP_PATHS[chip.target]}?marketId=${detail.marketId}`
         );
         return;
     }

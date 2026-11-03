@@ -7,7 +7,8 @@ import type { AdminBadges } from "@/features/home/types";
 
   - 그룹 빨간 배지(`badge`) = 할 일 건수. 0이면 숨긴다(undefined).
   - 하위 회색 숫자(`count`) = 시안 사이드바: 입점 하위는 대기 건수, 회원 하위는 회원 수(탈퇴 제외 · 0이어도 남는다),
-    CS 1:1 문의 = 답변 대기, 상품 문의 = 삭제 요청(cs.total − inquiries), 일반 게시물 = 신고 · 이의 대기,
+    CS 1:1 문의 = 답변 대기, 상품 문의 = 삭제 요청(cs.productInquiryDeleteRequests — 할 일 · 그룹 배지 밖),
+    일반 게시물 = 신고 · 이의 대기,
     소통 스레드 = 안 읽은 메시지(할 일이 아니라 그룹 배지에는 더하지 않는다 — 서버 posts.total 규칙).
   - 거래 관리 하위(반품·교환 · 환불 · 예외)는 서버가 나눠 주지 않는다 — 호출부가 기존 요약 값을 그대로 둔다.
 */
@@ -42,7 +43,8 @@ function patchesOf(badges: AdminBadges): Record<string, Patch> {
       badge: badgeOf(badges.cs.total),
       counts: {
         "cs-inquiry": badgeOf(badges.cs.inquiries),
-        "cs-product-inquiry": badgeOf(badges.cs.total - badges.cs.inquiries),
+        // 할 일이 아니라 하위 숫자로만 — 그룹 배지(cs.total)에 들지 않는다(rev.8 ②)
+        "cs-product-inquiry": badgeOf(badges.cs.productInquiryDeleteRequests),
       },
     },
     monitoring: {

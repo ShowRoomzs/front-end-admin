@@ -3,14 +3,13 @@ import type {
   AdminContractQueue,
   AdminContractSort,
   AdminContractTab,
-  ContractStatus,
 } from "@/features/contract/types";
 
 export const CONTRACT_LIST_PATH = "/contract";
 
 /**
  * 탭 6종 — 작성중·검토 반려는 운영자 조치 대상이 아니라 탭이 없다.
- * rev.9 기-05: 「체결 처리 대기」→「공구 생성 대기」, 「체결완료」→「계약 성립」(서버 라벨과 다르다 — `STATUS_LABEL_OVERRIDE`).
+ * rev.9 기-05: 「체결 처리 대기」→「공구 생성 대기」, 「체결완료」→「계약 성립」 — 서버 상태 라벨도 같다(백엔드 58 계획 6-8).
  * 해지(TERMINATED)는 서버가 종료 탭에 센다.
  */
 export const CONTRACT_TABS: Array<{ value: AdminContractTab; label: string }> =
@@ -55,10 +54,6 @@ export const CONTRACT_QUEUES: Array<{
     description: "계약 성립 후 공구 오픈 전 · 상대방 동의 확인",
   },
 ];
-
-/** 화면 · GNB 배지가 합산하는 큐 — `RESEND`는 서버가 세도 빼고 센다 */
-export const CONTRACT_BADGE_QUEUES: Array<AdminContractQueue> =
-  CONTRACT_QUEUES.map((queue) => queue.value);
 
 export const CONTRACT_SORT_OPTIONS: Array<{
   value: AdminContractSort;
@@ -106,16 +101,6 @@ export const GROUP_BUY_STATUS_LABEL: Record<string, string> = {
   ENDED: "종료",
   SETTLED: "정산완료",
   SUSPENDED: "중단",
-  TERMINATED: "해지",
-};
-
-/**
- * 계약 상태 표시 라벨 덮어쓰기(rev.9 기-05) — 서버 라벨 대신 시안 문구를 쓴다.
- * 개발 서버(10-21)는 `CONCLUSION_PENDING`을 아직 「체결 처리 대기」로, main도 `CONCLUDED`를 「체결완료」로 내린다.
- */
-export const STATUS_LABEL_OVERRIDE: Partial<Record<ContractStatus, string>> = {
-  CONCLUSION_PENDING: "공구 생성 대기",
-  CONCLUDED: "계약 성립",
   TERMINATED: "해지",
 };
 

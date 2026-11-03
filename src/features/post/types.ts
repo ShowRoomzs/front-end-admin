@@ -6,7 +6,7 @@ import type { BaseParams } from "@/common/types/page";
 
   날짜 필드는 전부 서버 `now()`로 찍은 이벤트 시각이거나 그 시각에서 더한 기한이다
   (게시 · 수정 · 신고 · 조치 · 이의 신청 · 삭제 · 기한 = 조치 + N일 · 접수 + N영업일 · 삭제 + N개월).
-  UTC 벽시계라 표시는 `parseServerDateTime`을 거친다.
+  UTC 순간(`…Z`)이라 표시는 `parseServerDateTime`을 거친다.
 */
 
 /** 어드민 모니터링 상태 — 저장하지 않는 파생값(`PostMonitoringStatus`) */

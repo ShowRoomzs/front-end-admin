@@ -9,6 +9,7 @@
 export type GroupBuyTone =
   "NEUTRAL" | "INFO" | "WARNING" | "SUCCESS" | "DANGER";
 
+/** GroupBuyStatus — 서버 상태 8종(TERMINATED 해지 포함 · 58 계획 6-5) */
 export type GroupBuyStatus =
   | "PREPARING"
   | "READY"
@@ -391,6 +392,15 @@ export interface AdminGroupBuyDetail {
         rewardRates: Array<number>;
         rewardAmount: number | null;
       };
+      /** 정산 상세로 가는 키(58 계획 5-23) — 정산이 아직 없으면 null */
+      settlementId: number | null;
+      /** STL-2609-006 — 정산이 아직 없으면 null */
+      settlementNumber: string | null;
+      /**
+       * 정산이 있으면 정산 상태 라벨(정산 확인 중 · 조정 협의 · 지급 예정 · 지급 완료 · 분배 실패),
+       * 없으면 「정산 대기」
+       */
+      stageLabel: string;
     } | null;
     orderClosure: {
       totalCount: number;

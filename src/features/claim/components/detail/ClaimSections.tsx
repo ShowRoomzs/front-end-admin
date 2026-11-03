@@ -1,3 +1,4 @@
+import { usePolicyValues } from "@/common/hooks/usePolicyValues";
 import { AUTO_RECEIVE_TEXT } from "@/features/claim/constants/guides";
 import type {
   ClaimDetail,
@@ -67,23 +68,21 @@ function Photos(props: { urls: Array<string> }) {
 /**
  * 최초 배송비 차감 보조줄(06b rev.6 기-18) — 시안 B1 「무료배송 주문 · 소비자 귀책 · 전량 반품이라 남은 금액
  * 0원(기준 미달) · 브랜드 정산에 남음」 · B3 「브랜드 귀책 · 착불 · 차감 없음」.
- * 차감이 있으면 무료배송 · 소비자 귀책은 규칙상 확정이라 그대로 적고, 무료배송 기준 판정(가운데 마디)은
- * 서버 값(`deductionReason` — 서버 없음 · DEV 목업만)이 있을 때만 붙인다.
+ * 무료배송 기준 판정은 서버 문장(`deductionReason` · 58 계획 5-13 — 「무료배송 기준 50,000원 미만이 되어
+ * 최초 배송비 3,000원 차감(소비자 귀책 반품)」)을 그대로 쓴다. 그 문장에 무료배송 · 소비자 귀책이 이미 들어
+ * 있어 앞 마디를 겹쳐 붙이지 않는다. 문장이 없으면 규칙상 확정인 마디만 적는다.
  */
 function deductionNote(detail: ClaimDetail) {
   if (detail.feeBearer === "SELLER") {
     return "브랜드 귀책 · 착불 · 차감 없음";
   }
+  if (detail.deductionReason) {
+    return `${detail.deductionReason} · 브랜드 정산에 남음`;
+  }
   const deducted = (detail.claim.refund?.requestDeduction ?? 0) > 0;
-  const parts = deducted
-    ? [
-        "무료배송 주문",
-        "소비자 귀책",
-        detail.deductionReason,
-        "브랜드 정산에 남음",
-      ]
-    : ["소비자 귀책", detail.deductionReason];
-  return parts.filter(Boolean).join(" · ");
+  return deducted
+    ? "무료배송 주문 · 소비자 귀책 · 브랜드 정산에 남음"
+    : "소비자 귀책";
 }
 
 /** 운임 정산 방향 — 브랜드 정산 「± 운임 정산」의 부호와 같다(07b) */
@@ -113,6 +112,7 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
   const { claim } = detail;
   const row = claim.summary;
   const isHold = row.stage === "REJECT_HOLD";
+  const { data: policy } = usePolicyValues();
 
   const blocks: Array<{
     key: string;
@@ -536,8 +536,8 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
     });
   }
 
-  // 검수 판정 · 운임 정산(06b rev.5 기-17 · rev.7 기-93) — main 서버가 판정 · 운임 행 · 자동 입고가 있을 때만
-  // `claim.inspection`을 내린다(개발 서버 미배포 — 그 전에는 블록이 없다)
+  // 검수 판정 · 운임 정산(06b rev.5 기-17 · rev.7 기-93) — 서버가 판정 · 운임 행 · 자동 입고가 있을 때만
+  // `claim.inspection`을 내린다
   const inspection = claim.inspection;
   if (inspection) {
     blocks.push({
@@ -565,7 +565,7 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
           {inspection.autoReceived && (
             <ItRow>
               <Sub>입고</Sub>
-              <span>{AUTO_RECEIVE_TEXT.done}</span>
+              <span>{AUTO_RECEIVE_TEXT.done(policy)}</span>
             </ItRow>
           )}
           {inspection.overturnFee !== null && (

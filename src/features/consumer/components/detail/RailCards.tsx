@@ -82,7 +82,7 @@ export function StatusCard(props: StatusCardProps) {
                   {formatDateTimeShort(sanction.suspendedAt)}
                 </span>
               </MetaRow>
-              {/* 기-02 【잠정】 — 정지 기간 · 이의 신청 기한(KST 벽시계 그대로) */}
+              {/* 기-02 【잠정】 — 정지 기간 · 이의 신청 기한(KST 날짜로) */}
               {term && (
                 <MetaRow label="정지 기간">
                   <span className="tabular-nums">

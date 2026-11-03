@@ -75,6 +75,7 @@ export const CLAIM_INITIAL_PARAMS: ClaimListParams = {
   sort: "",
   userId: "",
   openOnly: "",
+  marketId: "",
   page: 1,
   size: 20,
 };

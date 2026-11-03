@@ -1,6 +1,7 @@
 /*
   어드민 브랜드 회원 — 백엔드 `api/admin/brand/dto/AdminBrandDto.java`(origin/main 295bb879)와 1:1.
-  시각 필드는 이벤트(UTC 벽시계)다 — 가입 · 승인 · 접속 · 정지 · 신청 · 이력 · 메모. `term` 안의 날짜만 KST 벽시계.
+  시각 필드는 UTC 순간(`…Z`)이다 — 가입 · 승인 · 접속 · 정지 · 신청 · 이력 · 메모 · `term`의 기한(KST로 계산해 UTC로).
+  `term.endsOn`만 LocalDate(KST 날짜).
 */
 import type { PageInfo } from "@/common/types/page";
 import type {

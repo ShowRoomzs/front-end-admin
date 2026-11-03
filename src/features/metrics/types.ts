@@ -1,7 +1,8 @@
 /*
   어드민 운영 지표 — 백엔드 `AdminMetricsDto`(origin/main · 1017 설계서 7절)와 1:1.
-  시각 필드: `asOf`는 now() 기반(UTC 벽시계) → parseServerDateTime. `period` · `compare`의 from/to와
-  `chart.points[].bucket`은 서버가 날짜 경계(00:00)로 자른 값이라 벽시계 그대로 읽는다(TODAY의 `period.to`만 now()).
+  시각 필드는 전부 UTC 순간(`…Z`) → parseServerDateTime. `asOf`는 now() 기반. `period` · `compare`의 from/to와
+  `chart.points[].bucket`은 서버가 KST 날짜 경계(00:00)로 자른 뒤 UTC로 바꾼 값이다(10.01 00:00 KST =
+  `2026-09-30T15:00:00Z` · TODAY의 `period.to`만 now()) — 날짜로 쓸 때 KST로 고정한다.
 */
 
 export type MetricsPreset = "TODAY" | "D7" | "M1" | "M6" | "CUSTOM";
@@ -42,6 +43,11 @@ export interface MetricsChart {
   /** 비교 기간 합계 대비 증감(절대값) */
   delta: number;
   points: Array<MetricsPoint>;
+  /**
+   * 비교 기간의 같은 지표(백엔드 58 5-32) — 같은 단위 버킷 · 현재 버킷 수만큼 · i번째가 `points[i]`와 짝.
+   * 비교 기간이 짧으면 개수가 적을 수 있다(모자란 칸은 회색 막대를 비운다).
+   */
+  comparePoints: Array<MetricsPoint>;
 }
 
 export interface MetricsRow {

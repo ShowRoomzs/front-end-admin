@@ -13,6 +13,8 @@ export const PRODUCT_INQUIRY_INITIAL_PARAMS: ProductInquiryListParams = {
   type: null,
   keyword: "",
   userId: "",
+  /** 브랜드 상세(15) 진행 중 칩에서 넘어온 진입 — 화면 필터에는 없다("" = 전체 · 백엔드 58 5-31) */
+  marketId: "",
 };
 
 export const PRODUCT_INQUIRY_EMPTY_COUNTS: ProductInquiryStatusCounts = {

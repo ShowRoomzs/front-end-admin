@@ -1,6 +1,6 @@
 /*
   환불 관리(06c) — 백엔드 `AdminTransactionDto` 06c 절과 1:1.
-  enum은 `domain/order/type/*`의 실제 상수다. LocalDateTime은 시간대 없는 ISO 문자열로 온다.
+  enum은 `domain/order/type/*`의 실제 상수다. LocalDateTime은 UTC 순간(`…Z`) ISO 문자열로 온다.
 */
 import type { PageParams } from "@/common/types/page";
 
@@ -16,7 +16,7 @@ export type RefundRoute =
   | "RETURN_SHIPMENT"
   | "EXCHANGE"
   | "OPERATOR"
-  /** 귀책 변경 운임 환급(1021 기-93 · main — 개발 서버 미배포) */
+  /** 귀책 변경 운임 환급(1021 기-93) */
   | "FREIGHT";
 /** 빈 문자열 = 경로 전체(쿼리에서 빠진다) */
 export type RefundRouteFilter = "" | RefundRoute;
@@ -33,12 +33,12 @@ export type RefundTaskSource =
   | "USER_CANCEL_BEFORE_PREPARE"
   | "CLAIM_PAYMENT_CANCELLED"
   | "LOST_IN_TRANSIT"
-  /** 귀책 변경 운임 환급(main) */
+  /** 귀책 변경 운임 환급(1021 기-93) */
   | "FREIGHT_REFUND"
-  /** 추적 정지 · 소비자 환불 선택(main) */
+  /** 추적 정지 · 소비자 환불 선택(1021 기-15) */
   | "STALL_REFUND_CHOSEN";
 
-/** `RefundMethod` — PG 취소 · 원래 결제액 초과분의 운영자 계좌 송금(기록만 · main) */
+/** `RefundMethod` — PG 취소 · 원래 결제액 초과분의 운영자 계좌 송금(기록만) */
 export type RefundMethod = "PG_CANCEL" | "BANK_TRANSFER";
 
 /** 출처 — `RefundTaskOrigin` (PG 자동 · 운영자 사유) */
@@ -75,7 +75,7 @@ export interface RefundListParams extends PageParams {
   /** 환불번호 · 주문번호 · PG 거래번호 — 서버가 셋 다 본다 */
   keyword: string;
   sort: RefundSort;
-  /** 소비자 상세(13)의 칩에서 넘어온 진입 — 그 소비자의 환불만(main · 56 C1). 화면 필터에는 없다 */
+  /** 소비자 상세(13)의 칩에서 넘어온 진입 — 그 소비자의 환불만(56 C1). 화면 필터에는 없다 */
   userId: string;
 }
 
@@ -122,13 +122,10 @@ export interface RefundItem {
   voidable: boolean;
   /** [수동 완료 기록] 가능 — 대기 · 실패(계좌 송금 행 제외) */
   manuallyCompletable: boolean;
-  /**
-   * 환불 수단(main · 개발 서버 미배포) — BANK_TRANSFER면 결제 열 「계좌 송금」 · [송금 처리].
-   * 배포된 서버는 내리지 않는다(없으면 PG 취소로 본다).
-   */
-  method?: RefundMethod;
-  /** [송금 완료 기록] 가능 — 송금 대기(BANK_TRANSFER ∧ PENDING) · main */
-  transferable?: boolean;
+  /** 환불 수단 — BANK_TRANSFER면 결제 열 「계좌 송금」 · [송금 처리] */
+  method: RefundMethod;
+  /** [송금 완료 기록] 가능 — 송금 대기(BANK_TRANSFER ∧ PENDING) */
+  transferable: boolean;
 }
 
 // ------------------------------------------------------------------ 요약
@@ -152,8 +149,12 @@ export interface RefundSummary {
   tabs: Partial<Record<RefundTab, RefundTabStat>>;
   /** 사이드바 배지 = 집행 대기 + 실패 */
   badge: number;
-  /** 송금 대기 건수 — 집행 대기 탭에 함께 있다(main) */
-  transferPending?: number;
+  /** 송금 대기 건수 — 집행 대기 탭에 함께 있다 */
+  transferPending: number;
+  /** 집행 대기 중 PG 취소 금액 = 집행 대기 합계 − 송금 대기 금액(58 계획 5-14) */
+  pgCancelAmount: number;
+  /** 송금 대기 금액(`transferPending` 건의 합) */
+  bankTransferAmount: number;
 }
 
 // ------------------------------------------------------------------ 상세
@@ -317,25 +318,29 @@ export interface RefundDetail {
   voidable: boolean;
   manuallyCompletable: boolean;
   history: Array<RefundHistory>;
-  /** 환불 수단(main) — BANK_TRANSFER면 `transfer`가 있다 */
-  method?: RefundMethod;
-  /** M3 계좌 송금(main) — 원래 결제액 초과 운임 환급 행만 · 그 밖은 null */
-  transfer?: RefundTransfer | null;
+  /** 환불 수단 — BANK_TRANSFER면 `transfer`가 있다 */
+  method: RefundMethod;
+  /** M3 계좌 송금 — 원래 결제액 초과 운임 환급 행만 · 그 밖은 null */
+  transfer: RefundTransfer | null;
+  /** M1 운임 정산 요약 — 이 환불의 클레임 박스에 운임 정산 행이 있을 때만(58 계획 5-14) · 그 밖은 null */
+  freightAdjustment: RefundFreightAdjustment | null;
   /**
-   * 【서버 없음】 M1 「운임 정산」 줄 — 이 환불에 붙은 귀책 변경 운임(방향 · 금액 · 계좌 송금 행 번호).
-   * 서버 운임 정산 행(`order_claim_freight_adjustment`)은 06b 상세에만 나온다 — 백엔드 요청. DEV 목업만.
+   * M3 짝 행 — 같은 환급을 나눈 다른 수단의 환불 행(계좌 송금 행이면 PG 취소 행 · PG 취소 행이면 계좌 송금 행).
+   * 나뉘지 않았으면 null
    */
-  freightAdjustment?: RefundFreightAdjustment | null;
+  pairedRefundTaskId: number | null;
 }
 
-/** 【서버 없음】 M1 운임 정산 요약 */
+/** `AdminRefundFreightAdjustment` — M1 운임 정산 요약(브랜드 정산 「± 운임 정산」과 같은 행) */
 export interface RefundFreightAdjustment {
-  /** CHARGE_CONSUMER(착불 운임 소비자 청구) · REFUND_CONSUMER(선불 운임 환급) */
+  /** REFUND_CONSUMER(소비자 환급) · CHARGE_CONSUMER(소비자 부담 · 환불액에서 차감) */
   direction: "CHARGE_CONSUMER" | "REFUND_CONSUMER";
-  /** 운임(정액 · 기본 배송비 편도) */
+  /** 「소비자 환급」 · 「소비자 부담」 */
+  directionLabel: string;
+  /** 금액 — 환급은 선불 운임 + (이의 인용이면) 최초 배송비 환원 · 부담은 착불 운임 */
   amount: number;
-  /** 원래 결제액 초과분 계좌 송금 행 — 「RFD-0918-T」 */
-  transferRefundNo: string | null;
+  /** 원래 결제액을 넘어 계좌 송금으로 간 환불 행 id — 없으면 null */
+  bankTransferRefundTaskId: number | null;
 }
 
 /** `AdminRefundTransferAccount` — 폼 기본값(소비자가 저장해 둔 환불 계좌 · 원문) */
@@ -385,7 +390,7 @@ export interface RefundVoidRequest {
 
 /**
  * `AdminRefundTransferCompleteRequest` — M3 송금 완료 기록
- * (`POST /v1/admin/refunds/{refundTaskId}/transfer-complete` · main · 개발 서버 미배포)
+ * (`POST /v1/admin/refunds/{refundTaskId}/transfer-complete`)
  */
 export interface RefundTransferCompleteRequest {
   /** 은행 코드(최대 10) */

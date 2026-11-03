@@ -9,6 +9,7 @@ import {
   BTN_PRIMARY,
   ST_HINT_CLASS,
 } from "@/features/memberShared/constants/styles";
+import { usePolicyValues } from "@/common/hooks/usePolicyValues";
 import type { SanctionTerm } from "@/features/memberShared/types";
 import { eventDateTime, wallDate } from "@/features/memberShared/utils/format";
 import type { ReactNode } from "react";
@@ -38,11 +39,17 @@ interface SanctionTermRowsProps {
 
 /**
  * 기-02 【잠정】 정지 기간 · 자동 해제 · 이의 신청 기한 — 「목록 정지 행의 상세에서 종료일을 본다」(시안 14 rev.7).
- * 날짜는 모두 KST 벽시계라 보정하지 않는다. 기간 없이 정지된 옛 건은 종료일 줄이 없다.
+ * 날짜는 모두 KST 달력으로 읽는다(기한은 UTC 순간 → KST). 기간 없이 정지된 옛 건은 종료일 줄이 없다.
  */
 export function SanctionTermRows(props: SanctionTermRowsProps) {
   const { term } = props;
+  // 소명 검토 일수는 정지 응답(term) 값이 우선 — 없으면 공용 정책값, 그것도 없으면 「N영업일」
+  const { data: policy } = usePolicyValues();
   if (!term) return null;
+  const reviewDays =
+    term.appealReviewBusinessDays ??
+    policy?.sanctionAppealReviewBusinessDays ??
+    null;
 
   return (
     <>
@@ -63,10 +70,7 @@ export function SanctionTermRows(props: SanctionTermRowsProps) {
         </MetaRow>
       )}
       <MetaRow label="소명 검토">
-        접수 후{" "}
-        {term.appealReviewBusinessDays === null
-          ? "N영업일"
-          : `${term.appealReviewBusinessDays}영업일`}
+        접수 후 {reviewDays === null ? "N영업일" : `${reviewDays}영업일`}
       </MetaRow>
     </>
   );

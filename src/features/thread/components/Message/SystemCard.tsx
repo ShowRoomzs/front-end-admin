@@ -1,5 +1,9 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import {
+  policyDaysText,
+  usePolicyValues,
+} from "@/common/hooks/usePolicyValues";
+import {
   CARD_COPY,
   CONTRACT_DETAIL_PATH,
   GROUP_BUY_DETAIL_PATH,
@@ -263,7 +267,8 @@ function ConsentRequestCard(props: { card: MessageCard }) {
     .join(" — ");
 
   return (
-    <SysCard title={kind ? CARD_COPY.consentTitle[kind] : card.title}>
+    // 제목은 서버가 kind로 나눠 준다(「계약 취소 동의 확인」 · 「계약 해지 동의 확인」 · 58 5-22) — 비었을 때만 FE 문구
+    <SysCard title={card.title || (kind ? CARD_COPY.consentTitle[kind] : "")}>
       {card.groupBuyTitle && <b>{card.groupBuyTitle}</b>}
       {card.contractNumber && (
         <span className="tabular-nums">({card.contractNumber})</span>
@@ -385,7 +390,7 @@ function suspendedMemberType(
 /**
  * 계정 이용 정지(20a A7 · 기-01 · 02) — 정지 순간 자동 등록되고, 그 아래 답글이 곧 소명이다.
  * 해제 버튼은 두지 않는다(해제는 회원 상세에서만). 옛 카드는 사유 한 문장(`reasonLabel`)만 있다.
- * 정지 기간 시작은 처리 시각(UTC 이벤트), 자동 해제 · 이의 신청 기한은 KST 벽시계다.
+ * 정지 기간 시작은 처리 시각(이벤트), 자동 해제 · 이의 신청 기한은 KST로 계산한 기한 — 둘 다 UTC 순간(`…Z`)이다.
  */
 function SuspendedCard(props: {
   card: MessageCard;
@@ -483,6 +488,8 @@ function ProposalCard(props: {
   context: SystemCardContext;
 }) {
   const { message, card, context } = props;
+  // 합의 기한 영업일 — 공용 정책값(58 6-1 · 하드코딩하지 않는다)
+  const { data: policy } = usePolicyValues();
   const adjustment = card.detail?.adjustment ?? {};
   const action = card.action;
   const proposerName = adjustment.proposerName ?? message.senderName;
@@ -530,12 +537,14 @@ function ProposalCard(props: {
         )}
         {adjustment.deadlineAt && (
           <ProposalRow label="합의 기한">
-            {/* 합의 기한은 KST 23:59:59 벽시계 — UTC로 바꾸면 다음 날 08:59로 밀린다 */}
+            {/* 합의 기한은 23:59:59 KST를 UTC로 바꾼 값(`…T14:59:59Z`) — KST로 고정해 읽는다 */}
             <span className="tabular-nums">
               {formatKstDateTime(adjustment.deadlineAt)}
             </span>{" "}
             <span className="text-[11px] text-sz-n-500">
-              · 개설 + 10영업일 · 기한까지 합의가 없으면 원래 금액으로 정산
+              · 개설 +{" "}
+              {policyDaysText(policy, "adjustmentDeadlineBusinessDays")} ·
+              기한까지 합의가 없으면 원래 금액으로 정산
             </span>
           </ProposalRow>
         )}
@@ -677,13 +686,21 @@ export default function SystemCard(props: {
       );
     }
     case "SETTLEMENT_ADJUSTMENT_WITHDRAWN": {
-      // 철회는 요청한 쪽만 할 수 있다(1021 설계서 6-4) — 패널의 요청자가 곧 철회한 쪽
+      // 철회한 쪽 — 서버 withdrawnBy*(58 5-10) → 1릴리스 병행 agreedBy* → 패널 요청자(철회는 요청한 쪽만 · 6-4)
       const amount =
         adjustment.finalRewardAmount ??
         context.issue?.settlement.originalRewardAmount;
-      const requester = context.issue
-        ? partyName(context.issue, context.issue.requesterType)
-        : null;
+      const withdrawnByType =
+        adjustment.withdrawnByType ?? adjustment.agreedByType;
+      const requester =
+        adjustment.withdrawnByName ??
+        adjustment.agreedByName ??
+        (context.issue
+          ? partyName(
+              context.issue,
+              withdrawnByType ?? context.issue.requesterType
+            )
+          : null);
       return (
         <SysCard title={card.title}>
           {requester ? `${withSubjectParticle(requester)} ` : ""}요청을 철회해{" "}

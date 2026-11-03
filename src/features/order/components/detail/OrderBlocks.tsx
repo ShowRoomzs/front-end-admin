@@ -1,3 +1,7 @@
+import {
+  policyDaysText,
+  usePolicyValues,
+} from "@/common/hooks/usePolicyValues";
 import OrderBadge from "@/features/order/components/shared/OrderBadge";
 import {
   Block,
@@ -354,7 +358,7 @@ function ShipRow(props: {
 
 /**
  * 추적 정지 · 소비자 선택(기-15 【잠정】) — 시안은 목록 보조줄(A3)에만 그렸고 상세 자리는 없다.
- * 서버가 상세에 `stallChoice`를 내리므로(목록에는 아직 없다) 배송 블록 「추적」 아래 한 줄로 둔다.
+ * 서버가 상세에 `stallChoice`를 내리므로(목록 행에는 아직 없다) 배송 블록 「추적」 아래 한 줄로 둔다.
  */
 function StallChoiceRow(props: { choice: AdminOrderStallChoice }) {
   const { choice } = props;
@@ -658,6 +662,8 @@ export function SettlementBlock(props: BlockProps) {
 export function CancelRequestBlock(props: BlockProps) {
   const { index, detail } = props;
   const groups = detail.groups.filter((group) => group.cancelRequest);
+  // 시안 「응답 마감 2026.09.16 14:30 · 1영업일」 — 영업일 수는 서버 정책값(없으면 「N영업일」)
+  const { data: policy } = usePolicyValues();
   return (
     <Block index={index} title="취소 요청">
       {groups.map((group) => {
@@ -687,7 +693,10 @@ export function CancelRequestBlock(props: BlockProps) {
               )}
             </FRow>
             <FRow label="응답 마감">
-              <b className={TNUM}>{formatDueFull(request.respondDueAt)}</b>
+              <b className={TNUM}>{formatDueFull(request.respondDueAt)}</b>{" "}
+              <span className={SUB}>
+                · {policyDaysText(policy, "cancelRequestRespondBusinessDays")}
+              </span>
             </FRow>
             <FRow label="미응답 시">
               <b>자동 승인</b> · PG 즉시 환불
@@ -696,8 +705,8 @@ export function CancelRequestBlock(props: BlockProps) {
           </Grid2>
         );
       })}
-      {/* 기-33 — 「주문 제작·맞춤 상품」은 거부 사유에서 빠졌다(06a rev.5 B7). 서버는 옛 저장 행 표시용으로
-          `MADE_TO_ORDER`를 선택 불가로 남겨 두었고, 이 블록은 응답 대기 중 요청만 그려 거부 사유가 오지 않는다 */}
+      {/* 기-33 — 「주문 제작·맞춤 상품」은 거부 사유에서 빠졌다(06a rev.5 B7). 서버는 `MADE_TO_ORDER`를 지우고
+          옛 저장 행을 「기타」로 옮겼다(V221). 이 블록은 응답 대기 중 요청만 그려 거부 사유가 오지 않는다 */}
       <Hint>
         브랜드 거부 사유는 3종(이미 포장·출고 완료 / 택배사 집화 완료 / 기타 —
         상세 필수)이고 <b>소비자에게 그대로 전달</b>

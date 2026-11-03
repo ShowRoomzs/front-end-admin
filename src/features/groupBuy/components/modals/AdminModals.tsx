@@ -1,3 +1,7 @@
+import {
+  policyDaysText,
+  usePolicyValues,
+} from "@/common/hooks/usePolicyValues";
 import Btn from "@/features/contract/components/shared/Btn";
 import { INPUT_CLASS } from "@/features/contract/components/shared/styles";
 import {
@@ -16,8 +20,6 @@ import {
   HIDE_REASON_OPTIONS,
   ISSUE_TYPE_OPTIONS,
   REJECT_REASON_OPTIONS,
-  SETTLEMENT_PAYOUT_PERIOD_TEXT,
-  SETTLEMENT_REVIEW_PERIOD_TEXT,
   WITHDRAW_OPTIONS,
 } from "@/features/groupBuy/constants/params";
 import {
@@ -366,6 +368,7 @@ export function NoticeModal(
     detail.groupBuy.groupBuyId,
     true
   );
+  const { data: policy } = usePolicyValues();
   const [clause, setClause] = useState<SuspensionReasonClause | "">("");
   const [executeDate, setExecuteDate] = useState<string | null>(null);
   const [executeTime, setExecuteTime] = useState("10:00");
@@ -602,9 +605,13 @@ export function NoticeModal(
         />
       )}
       <MHint>
-        기본값은 <B>통지 수신일 +3영업일</B>입니다(제17조④) ·{" "}
-        <B>양측 같은 기한</B>. 소명·의견은 <B>운영팀 채널</B>로 받고, 기한 내
-        미제출 시 기존 자료를 기준으로 최종 판정합니다.
+        기본값은{" "}
+        <B>
+          통지 수신일 +
+          {policyDaysText(policy, "groupBuySuspensionAppealBusinessDays")}
+        </B>
+        입니다(제17조④) · <B>양측 같은 기한</B>. 소명·의견은 <B>운영팀 채널</B>
+        로 받고, 기한 내 미제출 시 기존 자료를 기준으로 최종 판정합니다.
       </MHint>
       <MLabel required>통지 본문</MLabel>
       <MTextarea
@@ -1062,6 +1069,7 @@ export function ConfirmSettlementModal(
   props: ModalBase & { onConfirm: () => void }
 ) {
   const { detail, isPending, onClose, onConfirm } = props;
+  const { data: policy } = usePolicyValues();
   return (
     <GbModal
       title="정산을 확인할까요?"
@@ -1084,9 +1092,11 @@ export function ConfirmSettlementModal(
       <B>{detail.groupBuy.title}</B>의 정산을 <B>운영자 확인</B> 단계로
       넘깁니다. 주문이 모두 종결된 건입니다.
       <MWarn info>
-        정산 확인 기간 <B>{SETTLEMENT_REVIEW_PERIOD_TEXT}</B>이 지나 확정되면{" "}
-        <B>확정일 + {SETTLEMENT_PAYOUT_PERIOD_TEXT}</B>에 지급되고, 지급이
-        끝나면 공구가 <B>정산완료</B>가 됩니다.
+        정산 확인 기간{" "}
+        <B>{policyDaysText(policy, "settlementReviewBusinessDays")}</B>이 지나
+        확정되면{" "}
+        <B>확정일 + {policyDaysText(policy, "settlementPayoutBusinessDays")}</B>
+        에 지급되고, 지급이 끝나면 공구가 <B>정산완료</B>가 됩니다.
       </MWarn>
     </GbModal>
   );

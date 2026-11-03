@@ -4,6 +4,7 @@ import type {
   AdminGroupBuySort,
   AdminGroupBuyTab,
   EmergencySuspensionReason,
+  GroupBuyTone,
   PostHideReason,
   PostRejectReason,
   SuspensionReasonClause,
@@ -19,14 +20,25 @@ export const THREAD_PATH = "/monitoring/threads";
 export const SETTLEMENT_PATH = "/settlement/group-buy";
 
 /*
-  07 정산 흐름 표기(시안 rev.7 B5 · 1021 기-10) — 숫자를 화면 곳곳에 박지 않고 여기 한 곳에 둔다.
-  서버 설정 `settlement.review-business-days`(3) · `settlement.payout-business-days`(3 · [정책값 미정])는
-  공구 상세 응답으로 내려오지 않는다(AdminGroupBuyDetailResponse.Settlement에 없음) — 내려오면 이 상수를 걷어 낸다.
-  - 정산 확인 기간: 시안 · 07 정산 화면이 같은 「3영업일」로 확정 표기한다.
-  - 지급: 기-10 「확정일 + N영업일」 [정책값 미정] — 값이 없으므로 「N영업일」 그대로.
+  07 정산 흐름 · 직권 중단 소명 기한의 영업일(시안 rev.7 B5 · 1021 기-10 · 기-21)은 서버 정책값
+  `GET /v1/common/policy-values`(`usePolicyValues` · 58 계획 6-1)로 그린다 — 화면에 숫자를 박지 않는다.
+  - 정산 확인 기간 `settlementReviewBusinessDays` · 지급 `settlementPayoutBusinessDays`
+  - 직권 중단 소명 기한 「수신일 +N영업일」 `groupBuySuspensionAppealBusinessDays`
+  - 「집행 3영업일 전 통지」(제17조② · 서버 `group-buy.suspension.notice-business-days`)는 정책값 API에
+    없어 시안 문구 그대로 둔다(백엔드 요청).
 */
-export const SETTLEMENT_REVIEW_PERIOD_TEXT = "3영업일";
-export const SETTLEMENT_PAYOUT_PERIOD_TEXT = "N영업일";
+
+/**
+ * B5a 정산 단계 배지 색 — 서버는 라벨(`settlement.stageLabel`)만 내린다. 라벨 · 톤은 백엔드
+ * SettlementStatus 표 그대로이고, 모르는 라벨(「정산 대기」 포함)은 중립색.
+ */
+export const SETTLEMENT_STAGE_TONE: Record<string, GroupBuyTone> = {
+  "정산 확인 중": "INFO",
+  "조정 협의": "WARNING",
+  "지급 예정": "NEUTRAL",
+  "지급 완료": "SUCCESS",
+  "분배 실패": "DANGER",
+};
 
 export const GROUP_BUY_QUERY_KEYS = {
   LIST: "adminGroupBuyList",

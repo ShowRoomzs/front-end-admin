@@ -8,7 +8,7 @@ import type { BaseParams } from "@/common/types";
 
 /**
  * 상태 10종 — 3서피스 공통. 어드민에는 작성중이 도착하지 않는다.
- * `TERMINATED`(해지 · 1021 기-05)는 origin/main에 생겼고 개발 서버에는 아직 없다.
+ * `TERMINATED`(해지 · 1021 기-05)는 성립 뒤 공구 오픈 전에 해지된 계약이다.
  */
 export type ContractStatus =
   | "DRAFT"
@@ -152,11 +152,8 @@ export interface AdminContractListItem {
   status: ContractStatus;
   statusLabel: string;
   statusTone: ContractStatusTone;
-  /**
-   * 정지 보류(1017 설계서 8-4) — origin/main 필드. 개발 서버(10-21)는 아직 내리지 않아
-   * 선택 필드로 둔다(배포 후 `?` 제거).
-   */
-  sanctionHold?: SanctionHoldView | null;
+  /** 정지 보류(1017 설계서 8-4) — 당사자 정지면 검토 · 체결을 진행하지 않는다 */
+  sanctionHold: SanctionHoldView | null;
 }
 
 /** 검색과 무관한 큐·탭 카운트 */
@@ -164,8 +161,8 @@ export interface AdminContractSummary {
   queues: Partial<Record<AdminContractQueue, number>>;
   tabCounts: Partial<Record<AdminContractTab, number>>;
   /**
-   * 서버의 조치 큐 합계 — `RESEND`까지 더한 값이라 화면 · 배지에는 쓰지 않는다.
-   * 화면 기준 합계는 `utils/summary.ts`의 `contractActionRequiredCount`.
+   * 조치 큐 합계(재발송 요청 `RESEND` 제외 · rev.8 ② · 백엔드 58 계획 5-33) = GNB 「계약 관리」 배지.
+   * 화면은 `utils/summary.ts`의 `contractActionRequiredCount`로 읽는다.
    */
   actionRequiredCount: number;
 }
@@ -196,10 +193,10 @@ export interface AdminContractInfo {
   } | null;
   /** 연결·소통 스레드 — 없으면 null */
   threadId: number | null;
-  /** 정지 보류 — `party`가 정지 당사자(B3-s). origin/main 필드 · 개발 서버 미배포 */
-  sanctionHold?: SanctionHoldView | null;
-  /** 서명 기한이 멈춰 있는가(당사자 정지 보류 중). origin/main 필드 · 개발 서버 미배포 */
-  signatureDeadlinePaused?: boolean;
+  /** 정지 보류 — `party`가 정지 당사자(B3-s) */
+  sanctionHold: SanctionHoldView | null;
+  /** 서명 기한이 멈춰 있는가(당사자 정지 보류 중) */
+  signatureDeadlinePaused: boolean;
 }
 
 export interface AdminContractStepper {
@@ -210,8 +207,8 @@ export interface AdminContractStepper {
   /** 공구 생성 처리 시각(운영자) — 1021 이후 「체결」은 공구 생성을 뜻한다 */
   concludedAt: string | null;
   concludedActorName: string | null;
-  /** 계약 성립 = 양측 서명 완료 시각(기-05). origin/main 필드 · 개발 서버 미배포 */
-  establishedAt?: string | null;
+  /** 계약 성립 = 양측 서명 완료 시각(기-05) — 서명이 하나라도 비면 null */
+  establishedAt: string | null;
 }
 
 export interface AdminContractReview {
@@ -235,13 +232,12 @@ export interface AdminContractSignature {
   /** 기한 경과 일수 — 기한 전이면 0 */
   deadlinePassedDays: number;
   /**
-   * C1 서명 기한 제안값(기-07) — 검토 대기에서만. origin/main 필드 · 개발 서버 미배포.
-   * 서버가 UTC 벽시계로 저장된 공구 시작의 **날짜**로 계산해(23:55) 다른 시각 필드와 시간대가
-   * 어긋나므로 화면은 쓰지 않고 `utils/contractView.ts#suggestedDeadlineParts`로 계산한다(백엔드 요청).
+   * C1 서명 기한 제안값(기-07) — 검토 대기에서만. 「공구 시작 KST 날짜 − N일 23:55 KST」를 UTC로
+   * (백엔드 58 계획 1-7) · 공구 시작이 없거나 이미 지났으면 null. C1 기본값으로 그대로 쓴다.
    */
-  deadlineSuggestedAt?: string | null;
-  /** B3-s — 서명 진행중 ∧ 당사자 정지 보류 ∧ 기한 경과. origin/main 필드 · 개발 서버 미배포 */
-  deadlineOverdueWhileHeld?: boolean;
+  deadlineSuggestedAt: string | null;
+  /** B3-s — 서명 진행중 ∧ 당사자 정지 보류 ∧ 기한 경과 */
+  deadlineOverdueWhileHeld: boolean;
 }
 
 export interface ContractItem {
@@ -274,10 +270,10 @@ export interface ContractFixedFee {
   noticeAgreedAt: string | null;
   paidAt: string | null;
   obligationAlive: boolean;
-  /** 지급 시점 정의(툴팁 · 기-28). origin/main 필드 · 개발 서버 미배포 */
-  triggerDescription?: string | null;
-  /** 지급 시점 뒤 N영업일 — null이면 [정책값 미정]. origin/main 필드 · 개발 서버 미배포 */
-  paymentBusinessDays?: number | null;
+  /** 지급 시점 정의(툴팁 · 기-28) */
+  triggerDescription: string | null;
+  /** 지급 시점 뒤 N영업일 — null이면 [정책값 미정] */
+  paymentBusinessDays: number | null;
 }
 
 export interface ContractSettlement {
@@ -372,7 +368,7 @@ export interface AdminContractPermissions {
   canApprove: boolean;
   canReject: boolean;
   canUpdateSignature: boolean;
-  /** 폐지 예정 — `canCreateGroupBuy`와 같은 값. 배포 전 서버는 이것만 내린다 */
+  /** 폐지 예정 — `canCreateGroupBuy`와 같은 값(서버 deprecated · 화면은 `canCreateGroupBuy`를 쓴다) */
   canConclude: boolean;
   canExpire: boolean;
   /** rev.8 ②로 화면에서 쓰지 않는다 */
@@ -380,10 +376,10 @@ export interface AdminContractPermissions {
   canUploadDocument: boolean;
   /** 직권 취소 — 1021 이후 서명 진행중만(성립 뒤는 해지) */
   canCancel: boolean;
-  /** [공구 생성](C4) — origin/main 필드 · 개발 서버 미배포 */
-  canCreateGroupBuy?: boolean;
-  /** [해지 처리](C7) — 성립 뒤 ∧ 공구 오픈 전. origin/main 필드 · 개발 서버 미배포 */
-  canTerminate?: boolean;
+  /** [공구 생성](C4) — 공구 생성 대기 ∧ 양측 서명 ∧ 체결 문서 2종 */
+  canCreateGroupBuy: boolean;
+  /** [해지 처리](C7) — 성립 뒤 ∧ 공구 오픈 전 */
+  canTerminate: boolean;
 }
 
 export interface AdminContractHistory {
@@ -407,10 +403,10 @@ export interface AdminContractDetail {
   settlement: ContractSettlement;
   closure: ContractClosure;
   cancelRequest: AdminContractCancelRequestInfo | null;
-  /** 처리 대기 해지 요청 — origin/main 필드 · 개발 서버 미배포 */
-  terminationRequest?: AdminContractTerminationRequestInfo | null;
-  /** 해지 결과 — origin/main 필드 · 개발 서버 미배포 */
-  termination?: AdminContractTerminationInfo | null;
+  /** 처리 대기 해지 요청 — 없으면 null */
+  terminationRequest: AdminContractTerminationRequestInfo | null;
+  /** 해지 결과 — 해지된 계약만 */
+  termination: AdminContractTerminationInfo | null;
   documents: Array<AdminContractDocument>;
   resend: AdminContractResend;
   groupBuy: AdminContractGroupBuy;
@@ -450,8 +446,8 @@ export interface AdminContractCancelRequest {
   /** 요청자가 브랜드·인플루언서면 필수(현재 이전·계약 생성 이후), 직권이면 null */
   requestedAt: string | null;
   /**
-   * 상대방 동의를 운영팀 채널에서 확인함(C6 · 기-06) — 서버는 요청자가 브랜드·인플루언서일 때만
-   * 필수로 보지만 시안은 직권도 체크 2개를 모두 요구한다. 배포 전 서버는 이 필드를 무시한다.
+   * 상대방 동의를 운영팀 채널에서 확인함(C6 · 기-06) — 요청자와 무관하게 true 필수(직권 ADMIN 포함 ·
+   * 백엔드 58 계획 5-20). 아니면 400 CONTRACT_CHECKLIST_REQUIRED.
    */
   counterpartyConsentConfirmed: boolean;
 }

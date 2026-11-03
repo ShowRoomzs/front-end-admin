@@ -1,3 +1,7 @@
+import {
+  policyDaysText,
+  usePolicyValues,
+} from "@/common/hooks/usePolicyValues";
 import { formatFileSize } from "@/common/utils/formatFileSize";
 import Btn from "@/features/contract/components/shared/Btn";
 import {
@@ -35,10 +39,9 @@ import {
 } from "@/features/settlement/utils/format";
 import {
   accountText,
-  companyRecipientText,
-  payoutBusinessDaysText,
+  recipientText,
+  taxRecipientOf,
 } from "@/features/settlement/utils/view";
-import { useGetCompanyInfo } from "@/features/settlement/hooks/useAdminSettlement";
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
 import { useRef, useState, type ReactNode } from "react";
@@ -191,10 +194,11 @@ export function InvoiceVerifyModal(props: {
 }) {
   const { detail, document, isPending, onClose, onSubmit } = props;
   const [result, setResult] = useState<InvoiceVerifyResult>("MATCH");
-  const { data: company } = useGetCompanyInfo();
-  // 기-35 — 공급받는자는 서버 `company.*`(GET /common/company-info) 한 출처. 못 읽으면(배포 전 서버) 플랫폼 수취자 이름
+  const { data: policy } = usePolicyValues();
+  // 기-35 — 공급받는자는 서버 `recipient`(company.*). 비어 있으면(운영사 정보 미설정) 플랫폼 수취자 이름 —
+  // 서버가 같은 company.name으로 채운다(58 계획 5-19)
   const recipient =
-    companyRecipientText(company) ??
+    recipientText(taxRecipientOf(detail, document)) ??
     detail.payouts?.rows.find((row) => row.payee === "PLATFORM")?.payeeName ??
     "플랫폼";
   return (
@@ -254,7 +258,7 @@ export function InvoiceVerifyModal(props: {
         확인하면 <b className="font-semibold">지급 보류가 풀리고</b> 인플루언서
         지급 예정일이{" "}
         <b className="font-semibold">
-          확인일 + {payoutBusinessDaysText(detail)}
+          확인일 + {policyDaysText(policy, "settlementPayoutBusinessDays")}
         </b>
         로 정해집니다. 첨부 PDF가 있으면 스튜디오 [다운로드]도 열립니다.
       </MWarn>

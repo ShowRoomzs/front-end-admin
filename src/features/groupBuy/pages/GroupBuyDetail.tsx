@@ -174,6 +174,14 @@ export default function GroupBuyDetail() {
   const openProduct = (productId: number) =>
     window.open(`/product/list/${productId}`, "_blank");
   const goSales = () => navigate("/order/list");
+  // 시안 B5a [정산 상세 보기 ↗] — 정산 행이 생겼으면 그 상세로, 아직이면 정산 관리 목록으로
+  const settlementId = detail.afterEnd?.settlement?.settlementId ?? null;
+  const goSettlement = () =>
+    navigate(
+      settlementId !== null
+        ? `${SETTLEMENT_PATH}/${settlementId}`
+        : SETTLEMENT_PATH
+    );
   const openAttachment = async (attachmentId: number) => {
     const file = await adminGroupBuyService.getAppealAttachmentUrl(
       groupBuyId,
@@ -230,15 +238,12 @@ export default function GroupBuyDetail() {
           {view === "request" && <RequestCard detail={detail} />}
           {view === "ended" && (
             <>
-              <SettlementCard
-                detail={detail}
-                onGoSettlement={() => navigate(SETTLEMENT_PATH)}
-              />
+              <SettlementCard detail={detail} onGoSettlement={goSettlement} />
               <FulfillmentCard
                 detail={detail}
                 onOpenIssue={() => setModal("issue")}
                 onOpenThread={openThread}
-                onGoSettlement={() => navigate(SETTLEMENT_PATH)}
+                onGoSettlement={goSettlement}
               />
             </>
           )}

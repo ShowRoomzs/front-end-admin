@@ -10,7 +10,6 @@ import type {
   MetricsPeriod,
   MetricsRow,
 } from "@/features/metrics/types";
-import dayjs from "dayjs";
 
 /** 소수 한 자리까지 — 서버가 round1로 내리지만 증감 % 같은 FE 계산값도 같은 자리로 맞춘다 */
 function round1(value: number) {
@@ -146,14 +145,22 @@ export function niceMax(max: number) {
   return step * power;
 }
 
-/** 서버 기간 경계는 날짜(00:00) — 벽시계 그대로 읽는다. 끝은 「제외」라 하루 뺀 날이 마지막 날 */
+/**
+ * 서버 기간 경계는 KST 날짜 0시를 UTC로 바꾼 값이다(10.01 00:00 KST = `2026-09-30T15:00:00Z`) —
+ * KST로 고정해 읽는다. 문자열을 그대로 읽으면 하루 이르게 보인다.
+ */
+function kst(value: string) {
+  return parseServerDateTime(value).utcOffset(9);
+}
+
+/** 끝은 「제외」라 하루 뺀 날이 마지막 날 */
 function lastDay(period: MetricsPeriod) {
-  return dayjs(period.to).subtract(1, "day");
+  return kst(period.to).subtract(1, "day");
 }
 
 /** 표 열 제목 · 범례 — 「10.01 ~ 16」(같은 달) · 「09.28 ~ 10.04」 · 월별은 「2026.05 ~ 10」 */
 export function shortRange(period: MetricsPeriod, monthly: boolean) {
-  const from = dayjs(period.from);
+  const from = kst(period.from);
   const to = lastDay(period);
   if (monthly) {
     return from.isSame(to, "year")
@@ -175,7 +182,7 @@ export function periodDescription(metrics: AdminMetrics) {
   if (metrics.preset === "TODAY") {
     return `${asOf.format("YYYY.MM.DD")} 00:00 ~ ${asOf.format("HH:mm")} · 어제 같은 시간대 대비`;
   }
-  const from = dayjs(metrics.period.from);
+  const from = kst(metrics.period.from);
   const to = lastDay(metrics.period);
   const monthly = metrics.preset === "M6" || metrics.chart.unit === "MONTH";
   const range = monthly
@@ -186,7 +193,7 @@ export function periodDescription(metrics: AdminMetrics) {
     metrics.preset === "M1"
       ? `전월 같은 기간(${compareRange}) 대비`
       : `직전 같은 기간(${compareRange}) 대비`;
-  const base = dayjs(metrics.period.to).format("MM.DD HH:mm");
+  const base = kst(metrics.period.to).format("MM.DD HH:mm");
   return `${range} · ${compare} · ${base} 집계 기준`;
 }
 

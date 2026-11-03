@@ -1,7 +1,7 @@
 /*
   주문 조회(거래 관리 › 주문 조회 · 06a) 타입 — 백엔드 `AdminOrderDto`(api/admin/transaction/dto)와 1:1.
   열거값은 `domain/order/type/*` · `domain/payment/type/PaymentMethod`의 상수 이름을 그대로 옮겼다.
-  LocalDateTime은 시간대 표기 없는 ISO 문자열(`2026-10-03T10:12:00`)로 온다.
+  LocalDateTime은 UTC 순간 ISO 문자열(`2026-10-03T10:12:00Z`)로 온다 — 영업일 기한도 KST로 계산해 UTC로 바꾼 값이다.
   화면 전용 타입(URL 조건 · 표시 배지)은 맨 아래에 따로 둔다.
 */
 
@@ -73,9 +73,9 @@ export type RefundTaskSource =
   | "USER_CANCEL_BEFORE_PREPARE"
   | "CLAIM_PAYMENT_CANCELLED"
   | "LOST_IN_TRANSIT"
-  /** 귀책 변경 운임 환급(1021 기-93) — main에만 있다(개발 서버 미배포) */
+  /** 귀책 변경 운임 환급(1021 기-93) */
   | "FREIGHT_REFUND"
-  /** 추적 정지 뒤 소비자가 환불을 고름(1021 기-15) — main에만 있다 */
+  /** 추적 정지 뒤 소비자가 환불을 고름(1021 기-15) */
   | "STALL_REFUND_CHOSEN";
 
 /** `RefundTaskOrigin` */
@@ -110,7 +110,7 @@ export type ClaimType = "RETURN" | "EXCHANGE";
 
 /**
  * `ClaimChargeType` — 교환 선결제 · 반려 재발송비(둘 다 편도 재발송 배송비) · 교환 사유 번복
- * (재발송 배송비 + 착불 운임 · 1021 기-17 — main에만 있다)
+ * (재발송 배송비 + 착불 운임 · 1021 기-17)
  */
 export type ClaimChargeType =
   "EXCHANGE_RESHIP" | "REJECT_RESHIP" | "OVERTURN_RESHIP";
@@ -147,7 +147,7 @@ export interface AdminOrderListQuery extends BaseParams {
   marketId?: number;
   groupBuyId?: number;
   creatorId?: number;
-  /** 소비자 상세에서 넘어온 진입(main · 56 C1) — 그 소비자의 주문만 */
+  /** 소비자 상세에서 넘어온 진입(56 C1) — 그 소비자의 주문만 */
   userId?: number;
   paymentMethod?: PaymentMethod;
   trackingAlert?: TrackingAlert;
@@ -158,7 +158,7 @@ export interface AdminOrderListQuery extends BaseParams {
   from?: string;
   /** 결제일 끝(포함) — yyyy-MM-dd */
   to?: string;
-  /** 검토 중 취소 요청이 있는 하위주문만(main · 56 C1) — 요약은 무시한다 */
+  /** 검토 중 취소 요청이 있는 하위주문만(56 C1) — 요약은 무시한다 */
   cancelRequested?: boolean;
 }
 
@@ -174,7 +174,7 @@ export type AdminOrderSummaryQuery = Omit<
   | "cancelRequested"
 >;
 
-/** `AdminOrderClaimSummary` — 하위주문의 반품 · 교환 요약(가장 최근 신청 1건 + 건수 · main) */
+/** `AdminOrderClaimSummary` — 하위주문의 반품 · 교환 요약(가장 최근 신청 1건 + 건수) */
 export interface AdminOrderClaimSummary {
   claimId: number;
   claimNumber: string;
@@ -190,13 +190,13 @@ export interface AdminOrderClaimSummary {
   count: number;
 }
 
-/** `AdminOrderStallChoice` — 추적 정지 · 소비자 선택(1021 기-15 · main) */
+/** `AdminOrderStallChoice` — 추적 정지 · 소비자 선택(1021 기-15) */
 export interface AdminOrderStallChoice {
   /** WAITING · OPEN · CHOSEN */
   state: "WAITING" | "OPEN" | "CHOSEN";
   /** 선택 개방 시각 = 추적 정지 판정 + N일(이벤트 시각 · UTC) */
   opensAt: string | null;
-  /** 선택 개방까지 N일 */
+  /** 선택 개방까지 N일 — 개방 전(WAITING)이면 서버가 늘 채운다 */
   daysUntilOpen: number | null;
   daysStalled: number | null;
   choice: StallChoiceValue | null;
@@ -235,13 +235,10 @@ export interface AdminOrderGroupSummary {
   issueSince: string | null;
   /** 배송 이상 경과 문구 — 「등록 후 26시간」 · 「8일 무갱신」 · 「감지 09.12」 */
   issueElapsedLabel: string | null;
+  /** 반품 · 교환 요약 — 없으면 null */
+  claim: AdminOrderClaimSummary | null;
   /**
-   * 반품 · 교환 요약(main · 개발 서버 미배포) — 없으면 null. 배포된 서버는 이 필드를 내리지 않아
-   * `undefined`일 수 있다.
-   */
-  claim?: AdminOrderClaimSummary | null;
-  /**
-   * 【서버 없음】 추적 정지 소비자 선택 — main 목록 응답에도 아직 없다(상세 `stallChoice`만 있다).
+   * 【서버 없음】 추적 정지 소비자 선택 — origin/main 목록 응답에도 아직 없다(06a 상세 · 06d 행에는 있다).
    * 백엔드 요청: `AdminOrderGroupSummary.stallChoice`. 지금은 DEV 목업(`?mock=stall`)만 채운다.
    */
   stallChoice?: AdminOrderStallChoice | null;
@@ -509,11 +506,8 @@ export interface AdminOrderGroupDetail {
   history: Array<AdminOrderHistory>;
   settlement: AdminOrderSettlement | null;
   actions: AdminOrderActions;
-  /**
-   * 추적 정지 · 소비자 선택(main · 개발 서버 미배포) — 없으면 null. 배포된 서버는 내리지 않아
-   * `undefined`일 수 있다.
-   */
-  stallChoice?: AdminOrderStallChoice | null;
+  /** 추적 정지 · 소비자 선택 — 「선택 개방까지 N일」 · 소비자 선택. 없으면 null */
+  stallChoice: AdminOrderStallChoice | null;
 }
 
 /** `AdminOrderDetailResponse` */
@@ -586,11 +580,8 @@ export interface DefectClaimRequest {
   reasonCode: ClaimReason;
   detail: string;
   evidenceImageUrls: Array<string>;
-  /**
-   * 하자 인지일(yyyy-MM-dd) — 배송완료일 이후 · 오늘 이전. 「인지 + 30일」 기산점.
-   * 서버는 선택(nullable)이지만 시안 B6이 필수라 폼이 필수로 막는다(사용자 결정 · 백엔드 요청: 필수화).
-   */
-  defectNoticedOn?: string;
+  /** 하자 인지일(yyyy-MM-dd · 필수 — 58 계획 5-11) — 배송완료일 이후 · 오늘 이전. 「인지 + 30일」 기산점 */
+  defectNoticedOn: string;
 }
 
 /** `AdminDefectClaimResponse` */

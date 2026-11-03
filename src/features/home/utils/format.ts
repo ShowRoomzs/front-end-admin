@@ -10,18 +10,12 @@ export function asOfText(asOf: string) {
   return `${at.format("YYYY.MM.DD")} (${WEEKDAY[at.day()]}) ${at.format("HH:mm")} 기준`;
 }
 
-/** 「09:30」 — now() 기반 시각(UTC → 로컬) */
+/**
+ * 「09:30」 — 서버 시각(UTC 순간 `…Z` → 로컬). now() 기반 시각과 오늘 일정 시각(공구 시작 · 종료 ·
+ * 확인 마감 · 조정 기한 — 한국 시각으로 계산해 UTC로 바꾼 값) 모두 이 함수로 읽는다.
+ */
 export function serverClock(value: string) {
   return parseServerDateTime(value).format("HH:mm");
-}
-
-/**
- * 「10:00」 — 오늘 일정 시각은 공구 시작 · 종료 · 확인 마감 · 조정 기한 같은 입력 · 기한 시각(KST 벽시계)이라
- * 시간대 변환 없이 문자열의 시:분을 그대로 쓴다.
- */
-export function wallClock(value: string) {
-  const match = /T(\d{2}:\d{2})/.exec(value);
-  return match ? match[1] : value;
 }
 
 export function integrationLabel(integration: AdminHomeIntegration) {
