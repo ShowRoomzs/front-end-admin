@@ -66,6 +66,8 @@ export interface FieldItem {
 /**
  * `.card-b.two` — 필드가 많은 카드를 2열 그리드로 접는다. 값이 열 폭을 넘으면 잘리지 않고 두 줄로 흐른다.
  * 각 열의 마지막 행은 아래 선을 지운다(시안 `:nth-last-child(2):nth-child(odd)`와 같은 결과).
+ * 시안은 2열 고정이지만 이름 칸이 140px라 카드가 좁으면(창 약 1100px 이하) 값이 한 글자씩 세로로 선다 —
+ * 카드 폭 600px 미만에서는 1열로 편다.
  */
 export function FieldGrid(props: {
   items: Array<FieldItem | null | false>;
@@ -76,23 +78,31 @@ export function FieldGrid(props: {
   const items = props.items.filter((item): item is FieldItem => !!item);
 
   return (
-    <div className="grid grid-cols-2 gap-x-6">
-      {head && <div className="col-span-2">{head}</div>}
-      {items.map((item, index) => (
-        <div
-          key={item.label}
-          className={cn(
-            "flex items-start gap-3 py-[7px] text-[12px]",
-            index < 2 && "pt-0",
-            index + 2 < items.length && "border-b border-sz-n-100"
-          )}
-        >
-          <span className="w-[140px] shrink-0 text-sz-n-500">{item.label}</span>
-          <span className="min-w-0 flex-1 whitespace-normal break-keep leading-[1.5] text-sz-n-900 [overflow-wrap:anywhere]">
-            {item.value}
-          </span>
-        </div>
-      ))}
+    <div className="@container">
+      <div className="grid grid-cols-1 gap-x-6 @min-[600px]:grid-cols-2">
+        {head && <div className="col-span-full">{head}</div>}
+        {items.map((item, index) => (
+          <div
+            key={item.label}
+            className={cn(
+              "flex items-start gap-3 py-[7px] text-[12px]",
+              index === 0 && "pt-0",
+              index === 1 && "@min-[600px]:pt-0",
+              index + 2 < items.length && "border-b border-sz-n-100",
+              // 1열에서는 끝 칸만, 2열에서는 끝 두 칸이 열의 마지막이다
+              index + 2 === items.length &&
+                "border-b border-sz-n-100 @min-[600px]:border-b-0"
+            )}
+          >
+            <span className="w-[140px] shrink-0 text-sz-n-500">
+              {item.label}
+            </span>
+            <span className="min-w-0 flex-1 whitespace-normal break-keep leading-[1.5] text-sz-n-900 [overflow-wrap:anywhere]">
+              {item.value}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
