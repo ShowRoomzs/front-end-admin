@@ -23,6 +23,8 @@ export const adminMetricsService = {
   getMetrics: async (params: MetricsQueryParams) => {
     const { data } = await apiInstance.get<AdminMetrics>("/admin/metrics", {
       params: { ...periodQuery(params), tab: params.tab },
+      // 실패는 본문 자리가 그린다(METRICS_BUSY면 서버 문구 + [다시 시도])
+      suppressErrorToast: true,
     });
     return data;
   },
