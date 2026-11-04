@@ -26,6 +26,7 @@ import {
   columnLabels,
   periodDescription,
 } from "@/features/metrics/utils/format";
+import axios from "axios";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -73,6 +74,23 @@ function useMetricsSearchParams() {
 }
 
 /**
+ * 503 METRICS_BUSY — 다른 요청이 같은 기간을 계산 중이거나 계산 자리(2개)가 차서 30초를 넘겼다(백엔드 58 2-2).
+ * 서버 문구(「운영 지표를 계산하고 있습니다 …」)가 상황을 말하므로 그대로 쓴다.
+ */
+const FALLBACK_ERROR =
+  "지표를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.";
+
+function errorMessage(error: unknown) {
+  if (
+    axios.isAxiosError<{ code?: string; message?: string }>(error) &&
+    error.response?.data?.code === "METRICS_BUSY"
+  ) {
+    return error.response.data.message ?? FALLBACK_ERROR;
+  }
+  return FALLBACK_ERROR;
+}
+
+/**
  * 운영 지표(ui-admin-21-metrics rev.5) — SHOWROOMZ 구조(브랜드 × 인플루언서 연결 → 공구 판매 → 다시 열림)로 판단한다.
  * 탭 5(핵심 · 공급 · 공구 · 수요 · 운영) × 기간 5종. 기간 규칙 · 증감 판정 · 탭 배지는 서버가 확정한다.
  * 제목 줄 우측에 기간 세그먼트가 붙어 h1을 직접 그린다(MainLayout SELF_TITLED_PATHS에 "/metrics").
@@ -80,7 +98,14 @@ function useMetricsSearchParams() {
 export default function MetricsPage() {
   const { tab, period, update } = useMetricsSearchParams();
   const query = useMemo(() => ({ ...period, tab }), [period, tab]);
-  const { data: metrics, isLoading, isError } = useGetAdminMetrics(query);
+  const {
+    data: metrics,
+    isLoading,
+    isError,
+    isFetching,
+    error,
+    refetch,
+  } = useGetAdminMetrics(query);
   const { data: badges } = useGetAdminMetricsTabs(period);
   const customIncomplete =
     period.preset === "CUSTOM" && !(period.from && period.to);
@@ -120,9 +145,21 @@ export default function MetricsPage() {
             ? "시작일과 종료일을 고르면 지표를 불러옵니다."
             : isLoading
               ? "불러오는 중…"
-              : isError
-                ? "지표를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
-                : null}
+              : isError && (
+                  <>
+                    {errorMessage(error)}
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        disabled={isFetching}
+                        onClick={() => refetch()}
+                        className="inline-flex h-8 cursor-pointer items-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100 disabled:cursor-default disabled:text-sz-n-400"
+                      >
+                        {isFetching ? "불러오는 중…" : "다시 시도"}
+                      </button>
+                    </div>
+                  </>
+                )}
         </div>
       ) : (
         <>
