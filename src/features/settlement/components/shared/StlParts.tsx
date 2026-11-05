@@ -99,32 +99,39 @@ export function FRow(props: { label: ReactNode; children: ReactNode }) {
 /**
  * 시안 `.card-b.two` — 필드 행 2열(열 간격 24 · 행 7px). 첫 줄은 위 여백이 없고,
  * 마지막 칸과 홀수 개일 때의 끝에서 두 번째 칸은 아래 선을 지운다(시안 nth 규칙).
+ * 카드 폭 600px 미만에서는 1열로 편다 — 이름 칸 140px 고정이라 2열이면 값이 한 글자씩 세로로 선다.
  */
 export function FieldGrid(props: {
   rows: Array<{ label: string; value: ReactNode }>;
 }) {
   const { rows } = props;
   return (
-    <div className="grid grid-cols-2 gap-x-6 p-4">
-      {rows.map((row, index) => {
-        const isLast = index === rows.length - 1;
-        const isOddSecondLast = index === rows.length - 2 && index % 2 === 0;
-        return (
-          <div
-            key={row.label}
-            className={cn(
-              "flex items-start gap-3 border-b border-sz-n-100 py-[7px] text-[12px]",
-              index < 2 && "pt-0",
-              (isLast || isOddSecondLast) && "border-b-0"
-            )}
-          >
-            <div className="w-[140px] shrink-0 text-sz-n-500">{row.label}</div>
-            <div className="min-w-0 flex-1 break-keep leading-[1.5] text-sz-n-900 [overflow-wrap:anywhere]">
-              {row.value}
+    <div className="@container p-4">
+      <div className="grid grid-cols-1 gap-x-6 @min-[600px]:grid-cols-2">
+        {rows.map((row, index) => {
+          const isLast = index === rows.length - 1;
+          const isOddSecondLast = index === rows.length - 2 && index % 2 === 0;
+          return (
+            <div
+              key={row.label}
+              className={cn(
+                "flex items-start gap-3 border-b border-sz-n-100 py-[7px] text-[12px]",
+                index === 0 && "pt-0",
+                index === 1 && "@min-[600px]:pt-0",
+                isLast && "border-b-0",
+                isOddSecondLast && "@min-[600px]:border-b-0"
+              )}
+            >
+              <div className="w-[140px] shrink-0 text-sz-n-500">
+                {row.label}
+              </div>
+              <div className="min-w-0 flex-1 break-keep leading-[1.5] text-sz-n-900 [overflow-wrap:anywhere]">
+                {row.value}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

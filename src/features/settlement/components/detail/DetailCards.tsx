@@ -278,8 +278,9 @@ export function BreakdownCard(props: { detail: Detail }) {
       }
       flush
     >
-      <div className="grid grid-cols-2 items-start">
-        <div className="border-r border-sz-n-200">
+      {/* 카드 폭 640px 미만이면 두 축을 위아래로 쌓는다 — 나란히 두면 금액이 두 줄로 꺾인다 */}
+      <div className="@container flex flex-wrap items-start">
+        <div className="w-full border-b border-sz-n-200 @min-[640px]:w-1/2 @min-[640px]:border-r @min-[640px]:border-b-0">
           <Axis
             title="브랜드 축"
             sub="확정 거래액 기준 — 총 결제에서 취소·반품·배송 예외 차감"
@@ -417,7 +418,7 @@ export function BreakdownCard(props: { detail: Detail }) {
             </tbody>
           </table>
         </div>
-        <div>
+        <div className="w-full @min-[640px]:w-1/2">
           <Axis
             title="인플루언서 축"
             sub={
