@@ -1,4 +1,7 @@
-import type { CreatorRejectionReasonType } from "@/features/creator/services/creatorService";
+import type {
+  CreatorRejectionReasonType,
+  SnsType,
+} from "@/features/creator/services/creatorService";
 
 export const CREATOR_APPLICATION_STATUS = {
   PENDING: "심사 대기",
@@ -39,6 +42,17 @@ export const CREATOR_REJECTION_REASONS: Array<{
   // 직접 입력한 상세 사유는 신청자에게 가지 않으므로 「기타(직접 입력)」가 아니다
   { value: "OTHER", label: "기타", noticeLabel: "기타" },
 ];
+
+/**
+ * 활동 플랫폼 표시 라벨 — 서버 `SnsType` 4종.
+ * 스튜디오 신청서가 Instagram으로 고정해 보내므로 시안대로 「(고정)」을 붙인다(B1 「Instagram (고정)」).
+ */
+export const SNS_TYPE_LABELS: Record<SnsType, string> = {
+  INSTAGRAM: "Instagram (고정)",
+  TIKTOK: "TikTok",
+  X: "X",
+  YOUTUBE: "YouTube",
+};
 
 /** 반려일로부터 재신청이 열리기까지 — 서버 `REAPPLY_COOLDOWN_DAYS`(달력일) */
 export const CREATOR_REAPPLY_COOLDOWN_DAYS = 14;

@@ -63,17 +63,16 @@ export const CREATOR_APPLICATION_COLUMNS: Columns<CreatorApplicationInfo> = [
     label: "경과",
     align: "center",
     render: (_value, record) => {
-      // 대기 중인 건은 "지금까지", 처리가 끝난 건은 "심사에 걸린 시간"을 보여준다
-      const isProcessed = record.status !== "PENDING";
-      const elapsed = formatElapsed(
-        record.appliedAt,
-        isProcessed ? record.processedAt : null
-      );
+      // 처리가 끝난 건은 「—」 — 브랜드 목록과 같은 규칙(시안 A1 · T).
+      // 심사에 걸린 시간은 상세 우측 「경과」에서 본다.
+      if (record.status !== "PENDING") {
+        return "—";
+      }
+      const elapsed = formatElapsed(record.appliedAt);
       if (!elapsed) {
         return "—";
       }
-      // SLA 강조는 대기 건에만 — 이미 종료된 건은 운영자가 조치할 게 없다
-      return !isProcessed && isSlaExceeded(record.appliedAt) ? (
+      return isSlaExceeded(record.appliedAt) ? (
         <span className="font-semibold text-sz-warning-text">{elapsed}</span>
       ) : (
         elapsed

@@ -69,24 +69,31 @@ export const DEFECT_REASONS: Array<{ value: ClaimReason; label: string }> = [
   { value: "WRONG_OR_LATE_DELIVERY", label: "오배송 및 배송 지연" },
 ];
 
-/** 결제 상태(`PaymentStatus`) — 응답이 이름만 내린다 */
+/**
+ * 결제 상태(`PaymentStatus`) — 응답이 이름만 내린다. 표기는 시안(「결제완료」 · 「전체 취소」)을 따른다 —
+ * 주문 상세의 결제는 승인된 결제(`paidPaymentId`)라 CANCELLED는 전액 취소뿐이다(부분 취소는 PAID에 누적액만
+ * 오르고, 누적이 결제액에 닿거나 전체 취소를 확인해야 CANCELLED가 된다 — `PaymentRepository`).
+ */
 export const PAYMENT_STATUS_BADGE: Record<string, OrderBadgeData> = {
   READY: { label: "결제 대기", tone: "NEUTRAL" },
-  PAID: { label: "결제 완료", tone: "SUCCESS" },
+  PAID: { label: "결제완료", tone: "SUCCESS" },
   FAILED: { label: "결제 실패", tone: "DANGER" },
   EXPIRED: { label: "만료", tone: "NEUTRAL" },
   SUPERSEDED: { label: "대체됨", tone: "NEUTRAL" },
-  CANCELLED: { label: "취소", tone: "NEUTRAL" },
+  CANCELLED: { label: "전체 취소", tone: "NEUTRAL" },
   CANCEL_REQUESTED: { label: "취소 요청", tone: "WARNING" },
   CANCELLED_MISMATCH: { label: "불일치 자동 취소", tone: "NEUTRAL" },
   CANCEL_FAILED: { label: "취소 실패", tone: "DANGER" },
 };
 
-/** 항목 상태(`OrderProductStatus`) — 응답이 이름만 내린다 */
+/**
+ * 항목 상태(`OrderProductStatus`) — 응답이 이름만 내린다. PAID 항목은 ② 블록이 하위주문 진행 상태로
+ * 바꿔 그린다(`itemBadge`) — 여기 PAID는 그 밖의 자리에서 쓰는 기본값이다.
+ */
 export const ITEM_STATUS_BADGE: Record<string, OrderBadgeData> = {
   PENDING: { label: "결제 대기", tone: "NEUTRAL" },
-  PAID: { label: "결제 완료", tone: "INFO" },
-  PURCHASE_CONFIRMED: { label: "구매 확정", tone: "SUCCESS" },
+  PAID: { label: "결제완료", tone: "INFO" },
+  PURCHASE_CONFIRMED: { label: "구매확정", tone: "SUCCESS" },
   CANCELLED: { label: "취소", tone: "NEUTRAL" },
   RETURNED: { label: "반품", tone: "NEUTRAL" },
 };

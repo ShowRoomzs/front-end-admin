@@ -261,9 +261,13 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
   if (claim.rejection) {
     const rejection = claim.rejection;
     const partial = rejection.splitFromClaimNumber !== null;
+    // 시안 B3 일부 반려 「반려분 (6항목)」 — 사유 · 법적 근거 · 범위 · 귀책 · 증빙 · 메시지 중 그려지는 칸 수
+    const fieldCount = rejection.consumerMessage ? 6 : 5;
     blocks.push({
       key: "rejection",
-      title: (
+      title: partial ? (
+        `반려분 (${fieldCount}항목)`
+      ) : (
         <>
           검수 반려{" "}
           <Sub className="font-normal">· 브랜드 제출 = 소비자 C10-5</Sub>
@@ -497,9 +501,18 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
   if (claim.refund) {
     const refund = claim.refund;
     const settled = row.outcome !== null;
+    // 시안 B3 일부 반려 — 반려분 재발송비는 따로 결제받지 않고 통과분 환불(PG 자동 · CLAIM_RETURN_PASSED)에서 뺀다.
+    // 서버가 실제로 뺐으면 청구가 DEDUCTED(「환불액에서 차감」)다. 환불이 모자라면 빼지 않고 소비자가 결제한다
+    const partial = claim.rejection?.splitFromClaimNumber != null;
+    const deductedFee =
+      partial && row.reshipFee?.status === "DEDUCTED" ? row.reshipFee : null;
     blocks.push({
       key: "amount",
-      title: settled ? "환불 계산" : "금액 (예정)",
+      title: settled
+        ? partial
+          ? "환불 계산 (PG 자동)"
+          : "환불 계산"
+        : "금액 (예정)",
       body: (
         <Sc>
           <ItRow>
@@ -520,10 +533,19 @@ export default function ClaimSections(props: { detail: ClaimDetail }) {
               {deductionNote(detail)}
             </RowEnd>
           </ItRow>
+          {deductedFee && (
+            <ItRow>
+              <Sub>반려분 재발송비</Sub>
+              <Num>{minusWon(deductedFee.amount)}</Num>
+              <RowEnd className="text-[11px] text-sz-n-500">
+                일부 반려 → 통과분 환불에서 차감
+              </RowEnd>
+            </ItRow>
+          )}
           <ItRow>
             <Sub>
               <b className="text-sz-n-900">
-                {settled ? "환불액" : "통과 시 환불"}
+                {settled ? (partial ? "환불" : "환불액") : "통과 시 환불"}
               </b>
             </Sub>
             <b className="tabular-nums">{won(refund.requestExpectedAmount)}</b>

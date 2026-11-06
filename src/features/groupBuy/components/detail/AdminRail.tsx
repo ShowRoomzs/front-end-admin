@@ -3,6 +3,7 @@ import Btn from "@/features/contract/components/shared/Btn";
 import { formatPercent } from "@/features/contract/utils/format";
 import {
   B,
+  FLINK,
   GbBadge,
   GbCard,
   PostStatusBadge,
@@ -38,6 +39,8 @@ export interface AdminRailActions {
   onApproveRequest: () => void;
   onRejectRequest: () => void;
   onConfirmSettlement: () => void;
+  /** 정산 상세(정산이 아직 없으면 정산 관리 목록)로 — 왼쪽 「정산 진행」 카드와 같은 경로 */
+  onGoSettlement: () => void;
 }
 
 function MRow(props: { label: string; value: ReactNode }) {
@@ -469,9 +472,23 @@ export function CurrentStateCard(props: {
           label: "미종결",
           value: orderClosure ? `${num(orderClosure.unclosedCount)}건` : "—",
         });
+        // 시안 B5a 「정산 STL-… ↗」 — 왼쪽 「정산 진행」 카드와 같은 서버 정산번호(58 계획 5-23)
         rows.push({
           label: "정산",
-          value: transferred ? "정산 관리로 이관" : "주문 종결 후 시작",
+          value:
+            transferred && settlement?.settlementNumber ? (
+              <button
+                type="button"
+                className={`${FLINK} tabular-nums`}
+                onClick={actions.onGoSettlement}
+              >
+                {settlement.settlementNumber} ↗
+              </button>
+            ) : transferred ? (
+              "정산 관리로 이관"
+            ) : (
+              "주문 종결 후 시작"
+            ),
         });
       }
       // 정산 확인은 정산 관리 소관 — 서버가 열어 줄 때만(지금은 항상 false) 남겨 둔다

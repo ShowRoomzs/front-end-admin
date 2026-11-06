@@ -16,6 +16,37 @@ import { useEffect, useRef, useState } from "react";
 const VIEWER_BTN =
   "inline-flex h-7 items-center gap-[5px] rounded-[6px] border-none bg-white/10 px-2.5 text-[11px] font-medium text-white/85 hover:bg-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-40";
 
+/** 확대 · 축소(시안 「− 100% +」) — 박스에 맞춘 크기를 100%로 본다 */
+const ZOOM_DEFAULT = 100;
+const ZOOM_MIN = 50;
+const ZOOM_MAX = 300;
+const ZOOM_STEP = 25;
+
+/**
+ * [내려받기] — 증빙은 공개 S3 URL이고 다른 오리진이라 `download` 속성이 무시된다.
+ * 파일을 받아 blob URL로 저장해야 서버 파일명(`fileName`)이 붙는다. S3 CORS로 못 받으면
+ * 새 탭으로 연다(브라우저가 저장 여부를 정한다).
+ */
+async function downloadEvidence(url: string, fileName: string) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(String(response.status));
+    }
+    const objectUrl = URL.createObjectURL(await response.blob());
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    // 클릭 직후 바로 풀면 일부 브라우저가 저장을 놓친다
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
 interface EvidencePreviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,6 +85,7 @@ export default function EvidencePreviewModal(props: EvidencePreviewModalProps) {
   } = props;
 
   const [rotation, setRotation] = useState(0);
+  const [zoom, setZoom] = useState(ZOOM_DEFAULT);
   const [hasImageError, setHasImageError] = useState(false);
   const [naturalSize, setNaturalSize] = useState<{
     width: number;
@@ -62,11 +94,27 @@ export default function EvidencePreviewModal(props: EvidencePreviewModalProps) {
   const imageBoxRef = useRef<HTMLDivElement>(null);
   const [imageBoxSize, setImageBoxSize] = useState({ width: 0, height: 0 });
 
-  // 90°/270° 회전이면 이미지의 실제 가로·세로가 서로 바뀌므로, 그 상태에서
-  // 원래 박스에 맞추려면 max-width/max-height도 서로 바꿔줘야 잘리지 않는다.
+  // 100%는 "박스에 맞춘 크기"(원본보다 키우지는 않는다)이고 확대·축소는 그 배율이다.
+  // 90°/270° 회전이면 가로·세로가 서로 바뀌므로 맞춤 배율도 바뀐 치수로 잰다.
   const isSideways = ((rotation % 180) + 180) % 180 === 90;
-  const imageMaxWidth = isSideways ? imageBoxSize.height : imageBoxSize.width;
-  const imageMaxHeight = isSideways ? imageBoxSize.width : imageBoxSize.height;
+  const naturalWidth = naturalSize?.width ?? 0;
+  const naturalHeight = naturalSize?.height ?? 0;
+  const visualWidth = isSideways ? naturalHeight : naturalWidth;
+  const visualHeight = isSideways ? naturalWidth : naturalHeight;
+  const fitScale =
+    visualWidth && visualHeight && imageBoxSize.width && imageBoxSize.height
+      ? Math.min(
+          imageBoxSize.width / visualWidth,
+          imageBoxSize.height / visualHeight,
+          1
+        )
+      : 1;
+  const scale = fitScale * (zoom / 100);
+  const imageWidth = naturalWidth * scale;
+  const imageHeight = naturalHeight * scale;
+  // 회전은 레이아웃 크기를 바꾸지 않으므로, 스크롤 영역은 회전된 치수로 직접 잡는다
+  const frameWidth = isSideways ? imageHeight : imageWidth;
+  const frameHeight = isSideways ? imageWidth : imageHeight;
 
   useEffect(() => {
     const el = imageBoxRef.current;
@@ -81,10 +129,11 @@ export default function EvidencePreviewModal(props: EvidencePreviewModalProps) {
     return () => observer.disconnect();
   }, [open]);
 
-  // 모달을 닫았다 열면 회전·로드 실패 상태가 남지 않도록 초기화한다
+  // 모달을 닫았다 열면 회전·확대·로드 실패 상태가 남지 않도록 초기화한다
   useEffect(() => {
     if (!open) {
       setRotation(0);
+      setZoom(ZOOM_DEFAULT);
       setHasImageError(false);
     }
   }, [open]);
@@ -148,30 +197,38 @@ export default function EvidencePreviewModal(props: EvidencePreviewModalProps) {
             {/* 이미지 영역을 absolute로 부모 크기에 고정한다. 내용물 크기에 따라 박스가
                 커지면 ResizeObserver가 커진 값을 max-width로 돌려줘 무한 확대가 된다. */}
             <div className="relative min-h-0 flex-1">
-              <div
-                ref={imageBoxRef}
-                className="absolute inset-5 flex items-center justify-center overflow-hidden"
-              >
+              {/* 확대하면 박스보다 커지므로 스크롤로 훑어본다 */}
+              <div ref={imageBoxRef} className="absolute inset-5 overflow-auto">
                 {isPreviewable ? (
-                  <img
-                    src={evidence.fileUrl}
-                    alt={evidence.documentLabel}
-                    onError={() => setHasImageError(true)}
-                    onLoad={(event) =>
-                      setNaturalSize({
-                        width: event.currentTarget.naturalWidth,
-                        height: event.currentTarget.naturalHeight,
-                      })
-                    }
+                  <div
+                    className="relative"
                     style={{
-                      transform: `rotate(${rotation}deg)`,
-                      maxWidth: imageMaxWidth || "100%",
-                      maxHeight: imageMaxHeight || "100%",
+                      width: Math.max(frameWidth, imageBoxSize.width),
+                      height: Math.max(frameHeight, imageBoxSize.height),
                     }}
-                    className="object-contain shadow-[0_4px_18px_rgba(0,0,0,.4)] transition-transform"
-                  />
+                  >
+                    <img
+                      src={evidence.fileUrl}
+                      alt={evidence.documentLabel}
+                      onError={() => setHasImageError(true)}
+                      onLoad={(event) =>
+                        setNaturalSize({
+                          width: event.currentTarget.naturalWidth,
+                          height: event.currentTarget.naturalHeight,
+                        })
+                      }
+                      style={{
+                        width: imageWidth || undefined,
+                        height: imageHeight || undefined,
+                        transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+                        // 원본 크기를 알기 전에는 맞춤 크기를 못 잡으니 감춰 둔다
+                        visibility: naturalSize ? "visible" : "hidden",
+                      }}
+                      className="absolute left-1/2 top-1/2 max-w-none shadow-[0_4px_18px_rgba(0,0,0,.4)] transition-transform"
+                    />
+                  </div>
                 ) : (
-                  <div className="text-center">
+                  <div className="flex h-full flex-col items-center justify-center text-center">
                     <div className="mb-1.5 text-[22px] leading-none text-white/30">
                       ⚠
                     </div>
@@ -188,18 +245,18 @@ export default function EvidencePreviewModal(props: EvidencePreviewModalProps) {
               </div>
             </div>
 
-            <div className="flex h-12 items-center justify-between border-t border-white/10 bg-white/5 px-3.5">
-              <div className="flex items-center gap-1.5">
-                {/* 회전은 이미지일 때만 의미가 있다 */}
-                {isPreviewable && (
-                  <>
-                    <button
-                      type="button"
-                      className={VIEWER_BTN}
-                      onClick={() => setRotation((prev) => prev + 90)}
-                    >
-                      ↻ 90°
-                    </button>
+            <div className="flex h-12 items-center justify-between gap-3 border-t border-white/10 bg-white/5 px-3.5">
+              <span
+                className="min-w-0 flex-1 truncate text-[11px] text-white/60"
+                title={evidence.fileName}
+              >
+                {evidence.fileName}
+              </span>
+
+              {/* 회전 · 확대는 이미지일 때만 의미가 있다 */}
+              {isPreviewable && (
+                <>
+                  <div className="flex shrink-0 items-center gap-1.5">
                     <button
                       type="button"
                       className={VIEWER_BTN}
@@ -207,18 +264,65 @@ export default function EvidencePreviewModal(props: EvidencePreviewModalProps) {
                     >
                       ↺ 90°
                     </button>
-                  </>
+                    <button
+                      type="button"
+                      className={VIEWER_BTN}
+                      onClick={() => setRotation((prev) => prev + 90)}
+                    >
+                      ↻ 90°
+                    </button>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      className={VIEWER_BTN}
+                      aria-label="축소"
+                      disabled={zoom <= ZOOM_MIN}
+                      onClick={() =>
+                        setZoom((prev) => Math.max(ZOOM_MIN, prev - ZOOM_STEP))
+                      }
+                    >
+                      −
+                    </button>
+                    <span className="min-w-[38px] px-1.5 text-center text-[11px] text-white/60">
+                      {zoom}%
+                    </span>
+                    <button
+                      type="button"
+                      className={VIEWER_BTN}
+                      aria-label="확대"
+                      disabled={zoom >= ZOOM_MAX}
+                      onClick={() =>
+                        setZoom((prev) => Math.min(ZOOM_MAX, prev + ZOOM_STEP))
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                </>
+              )}
+
+              <div className="flex shrink-0 items-center gap-1.5">
+                <a
+                  href={evidence.fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={VIEWER_BTN}
+                >
+                  원본 열기 ↗
+                </a>
+                {evidence.fileUrl && (
+                  <button
+                    type="button"
+                    className={VIEWER_BTN}
+                    onClick={() =>
+                      void downloadEvidence(evidence.fileUrl, evidence.fileName)
+                    }
+                  >
+                    내려받기
+                  </button>
                 )}
               </div>
-
-              <a
-                href={evidence.fileUrl}
-                target="_blank"
-                rel="noreferrer"
-                className={VIEWER_BTN}
-              >
-                원본 열기 ↗
-              </a>
             </div>
           </div>
 

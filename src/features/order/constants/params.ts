@@ -30,19 +30,20 @@ export const ORDER_TABS: Array<{ value: AdminOrderTab; label: string }> = [
 
 /**
  * 상태 셀렉트(전체 탭) — `FulfillmentStatus`에서 PENDING(목록 밖)을 뺀 7종.
- * 셀렉트 옵션에는 서버 라벨이 없어 enum 라벨을 옮겼다. 옆 숫자는 요약 `statusCounts`.
+ * 셀렉트 옵션에는 서버 라벨이 없어 시안 표기(결제완료 · 상품준비중 · 배송중 · 배송완료 · 구매확정 · 취소·환불)를
+ * 쓴다 — NEW(준비 시작 전)가 시안의 「결제완료」다. 반송중은 시안에 없지만 서버 상태라 남긴다. 옆 숫자는 요약 `statusCounts`.
  */
 export const ORDER_STATUS_OPTIONS: Array<{
   value: Exclude<FulfillmentStatus, "PENDING">;
   label: string;
 }> = [
-  { value: "NEW", label: "신규(준비 대기)" },
+  { value: "NEW", label: "결제완료" },
   { value: "PREPARING", label: "상품준비중" },
   { value: "SHIPPING", label: "배송중" },
   { value: "RETURNING", label: "반송중" },
   { value: "DELIVERED", label: "배송완료" },
   { value: "CONFIRMED", label: "구매확정" },
-  { value: "CANCELLED", label: "취소" },
+  { value: "CANCELLED", label: "취소·환불" },
 ];
 
 /**

@@ -75,17 +75,18 @@ const ACCOUNT_SOURCE_OPTIONS: Array<{
 }> = [
   {
     value: "CURRENT_PROFILE",
-    label: "회원 정보의 현재 계좌로 다시 지급 — 수취자가 계좌를 고친 뒤",
+    label: "회원 정보의 갱신된 계좌 사용",
   },
   {
     value: "PREVIOUS",
-    label: "지난 지시 계좌 그대로 재시도 — PG 일시 장애 등 계좌와 무관한 실패",
+    label: "기존 계좌로 재시도",
   },
 ];
 
 /**
  * 금액을 재계산하지 않는다 — 확정 금액을 그대로 PG에 재지시한다(`POST …/payouts/{payoutId}/redistribute`).
- * 운영자는 계좌를 입력하지 않고 계좌 출처(회원 정보 현재 계좌 · 지난 지시 계좌)만 고른다.
+ * 운영자는 계좌를 입력하지 않고 계좌 출처(회원 정보의 갱신된 계좌 · 기존 계좌)만 고른다.
+ * 갱신된 계좌 번호는 응답에 없어 선택지에 붙이지 않는다.
  */
 export function RedistributeModal(props: {
   detail: SettlementDetail;
@@ -145,7 +146,7 @@ export function RedistributeModal(props: {
           </>
         )}
         <br />
-        지난 계좌 <span className="tabular-nums">{account ?? "—"}</span>
+        기존 계좌 <span className="tabular-nums">{account ?? "—"}</span>
         <br />
         확정 금액 <b className="tabular-nums">{won(failed.amount)}원</b>{" "}
         <TDim>— 재계산 없이 그대로 지급</TDim>
@@ -173,9 +174,16 @@ export function RedistributeModal(props: {
       <MWarn>
         재분배는 <b className="font-semibold">PG에 재지시</b>하는 것이며
         플랫폼이 대금을 보관하지 않으므로{" "}
-        <b className="font-semibold">즉시 입금되지 않습니다</b>. 재분배는 최대{" "}
-        {failed.retryLimit}회(남은 횟수{" "}
-        <b className="font-semibold">{remaining}회</b>)이고, 넘으면{" "}
+        <b className="font-semibold">즉시 입금되지 않습니다</b>.{" "}
+        {/* 서버는 사유와 무관하게 재분배 횟수로만 막는다(attempt ≥ payoutRetryLimit) */}
+        {remaining > 0 ? (
+          <>
+            <b className="font-semibold tabular-nums">{remaining}회</b> 더
+            실패하면 PG 재시도가 차단되고{" "}
+          </>
+        ) : (
+          <>재분배 상한에 닿아 </>
+        )}
         <b className="font-semibold">수동 이체 절차</b>로 넘어갑니다.
       </MWarn>
     </GbModal>

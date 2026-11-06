@@ -1,6 +1,7 @@
 import OrderBtn from "@/features/order/components/shared/OrderBtn";
 import {
   FORM_INPUT_CLASS,
+  FORM_SELECT_CLASS,
   FORM_TEXTAREA_CLASS,
 } from "@/features/order/components/shared/styles";
 import {
@@ -12,6 +13,7 @@ import {
   TargetGroupField,
 } from "@/features/order/components/detail/forms/FormParts";
 import { RailCard, RailText } from "@/features/order/components/detail/parts";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/features/order/constants/params";
 import { useCorrectDeliveredAt } from "@/features/order/hooks/useOrderMutations";
 import type {
   AdminOrderDetail,
@@ -30,12 +32,15 @@ import toast from "react-hot-toast";
 
 /**
  * 시안 B3 — 배송완료일 정정(배송완료 상태만 · `actions.canCorrectDeliveredAt`). 소비자 수령일 이의를
- * 받아들일 때만 쓴다. 정정 사유 필수(300자) · 정정하면 구매확정 예정일과 반품·교환 가능 기간이
+ * 받아들일 때만 쓴다. 근거 필수(300자) · 정정하면 구매확정 예정일과 반품·교환 가능 기간이
  * 함께 움직인다는 사실을 버튼 바로 위에 적는다.
  * 서버는 수령 「일시」를 받는다 — 날짜만 고치고 시각은 원래 값을 그대로 쓰되, 지금보다 뒤가 되면 지금으로 맞춘다
  * (발송 이후 · 지금 이전이 아니면 400).
- * 시안의 「근거」 셀렉트(1:1 문의 · 스레드 · 증빙 사진)는 받을 필드가 없어 사유 입력 하나로 합쳤다.
+ * 시안의 근거 경로 셀렉트(이 주문의 1:1 문의 #N · 연결·소통 스레드)는 받을 필드가 따로 없어, 고른 경로를
+ * 사유 앞에 붙여 보낸다(「1:1 문의 #4518 · …」 — 서버가 사유를 그대로 이력에 남긴다).
  */
+const THREAD_SOURCE = "연결·소통 스레드";
+const REASON_MAX = 300;
 export default function CorrectDeliveredAtForm(props: {
   detail: AdminOrderDetail;
   groups: Array<AdminOrderGroupDetail>;
@@ -48,7 +53,13 @@ export default function CorrectDeliveredAtForm(props: {
   const [dateText, setDateText] = useState(
     currentAt ? toDotDate(currentAt) : ""
   );
+  const sources = [
+    ...detail.inquiries.map((inquiry) => `1:1 문의 #${inquiry.inquiryId}`),
+    THREAD_SOURCE,
+  ];
+  const [source, setSource] = useState(sources[0]);
   const [reason, setReason] = useState("");
+  const prefix = `${source} · `;
   const { mutateAsync, isPending } = useCorrectDeliveredAt();
 
   // 배송완료 · 확정 예정은 이벤트 시각(UTC) — 운영자 시각으로 바꿔 날짜를 비교하고, 보낼 때 다시 UTC로
@@ -85,7 +96,10 @@ export default function CorrectDeliveredAtForm(props: {
       await mutateAsync({
         orderId: detail.orderId,
         deliveryGroupId: groupId,
-        body: { deliveredAt: toLocalDateTime(target), reason: reason.trim() },
+        body: {
+          deliveredAt: toLocalDateTime(target),
+          reason: `${prefix}${reason.trim()}`.slice(0, REASON_MAX),
+        },
       });
       toast.success("배송완료일을 정정했습니다");
       onClose();
@@ -124,14 +138,28 @@ export default function CorrectDeliveredAtForm(props: {
             }}
           />
         )}
-        <FormLabel required htmlFor="correct-reason">
-          정정 사유
+        <FormLabel required htmlFor="correct-source">
+          근거
         </FormLabel>
+        <select
+          id="correct-source"
+          className={FORM_SELECT_CLASS}
+          style={MODAL_SELECT_CHEVRON_STYLE}
+          value={source}
+          onChange={(event) => setSource(event.target.value)}
+        >
+          {sources.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
         <textarea
           id="correct-reason"
-          maxLength={300}
-          className={FORM_TEXTAREA_CLASS}
-          placeholder="이의 경로(1:1 문의 번호 등)와 확인한 근거를 적습니다"
+          aria-label="근거 내용"
+          maxLength={REASON_MAX - prefix.length}
+          className={cn(FORM_TEXTAREA_CLASS, "mt-1.5")}
+          placeholder="확인한 증빙(보관 문자 · 수령 사진 등)을 적습니다"
           value={reason}
           onChange={(event) => setReason(event.target.value)}
         />

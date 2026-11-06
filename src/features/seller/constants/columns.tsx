@@ -1,13 +1,13 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import { PurgedValue } from "@/common/components/DetailCard/DetailCard";
 import type { Columns } from "@/common/components/Table/types";
-import { formatDate, formatDateOnly } from "@/common/utils/formatDate";
+import { formatDateOnly } from "@/common/utils/formatDate";
 import { maskPhoneNumber } from "@/common/utils/maskPhoneNumber";
-import type {
-  SellerRegistrationInfo,
-  SellerUserInfo,
-} from "@/features/seller/services/sellerService";
-import { formatElapsed, isSlaExceeded } from "@/features/seller/utils/elapsedTime";
+import type { SellerRegistrationInfo } from "@/features/seller/services/sellerService";
+import {
+  formatElapsed,
+  isSlaExceeded,
+} from "@/features/seller/utils/elapsedTime";
 import { getApplicationStatusBadge } from "@/features/seller/utils/statusBadge";
 
 export const SELLER_REGISTRATION_COLUMNS: Columns<SellerRegistrationInfo> = [
@@ -88,42 +88,5 @@ export const SELLER_REGISTRATION_COLUMNS: Columns<SellerRegistrationInfo> = [
       );
       return <StatusBadge variant={variant}>{label}</StatusBadge>;
     },
-  },
-];
-
-export const SELLER_USER_COLUMNS: Columns<SellerUserInfo> = [
-  {
-    key: "marketName",
-    label: "마켓명",
-    width: 300,
-  },
-  {
-    key: "mainCategory",
-    label: "대표 카테고리",
-    align: "center",
-    width: 200,
-  },
-  {
-    key: "sellerName",
-    label: "판매 담당자 이름",
-    width: 200,
-  },
-  {
-    key: "phoneNumber",
-    label: "판매 담당자 연락처",
-    width: 200,
-  },
-  {
-    key: "createdAt",
-    label: "가입일",
-    render: (value) => formatDate(value as string),
-    width: 200,
-  },
-  {
-    key: "productCount",
-    label: "등록 상품 수",
-    align: "center",
-    width: 100,
-    render: (value) => `${(Number(value) || 0).toLocaleString()} ea`,
   },
 ];

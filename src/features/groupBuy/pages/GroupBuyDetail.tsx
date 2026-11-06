@@ -285,6 +285,7 @@ export default function GroupBuyDetail() {
               onApproveRequest: () => setModal("approveRequest"),
               onRejectRequest: () => setModal("rejectRequest"),
               onConfirmSettlement: () => setModal("settlement"),
+              onGoSettlement: goSettlement,
             }}
           />
           {view === "request" && <DecisionBasisCard detail={detail} />}

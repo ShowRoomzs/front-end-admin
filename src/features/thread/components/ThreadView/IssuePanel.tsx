@@ -1,6 +1,8 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import {
+  BRAND_MEMBER_DETAIL_PATH,
   CONTRACT_DETAIL_PATH,
+  INFLUENCER_MEMBER_DETAIL_PATH,
   GROUP_BUY_DETAIL_PATH,
   ISSUE_TYPE_CODE,
   ISSUE_TYPE_LABEL,
@@ -263,11 +265,18 @@ export default function IssuePanel(props: IssuePanelProps) {
                 브랜드–인플루언서 1:1 스레드 열람 ↗
               </button>
             )}
-            {/* 브랜드 · 인플루언서 회원 상세 라우트가 아직 없다 — 링크 없이 글자로 둔다 */}
-            <span className="text-sz-n-400">{issue.brand.name} 회원 상세</span>
-            <span className="text-sz-n-400">
-              {issue.influencer.name} 회원 상세
-            </span>
+            <Link
+              to={`${BRAND_MEMBER_DETAIL_PATH}/${issue.brand.marketId}`}
+              className={cn(FLINK_CLASS, "w-fit")}
+            >
+              {issue.brand.name} 회원 상세 ↗
+            </Link>
+            <Link
+              to={`${INFLUENCER_MEMBER_DETAIL_PATH}/${issue.influencer.creatorId}`}
+              className={cn(FLINK_CLASS, "w-fit")}
+            >
+              {issue.influencer.name} 회원 상세 ↗
+            </Link>
           </div>
         </Section>
       </div>

@@ -90,6 +90,16 @@ const b = (value: ReactNode, className?: string) => (
   <b className={cn("font-semibold text-sz-n-900", className)}>{value}</b>
 );
 
+/**
+ * 실패 수취자가 한 종류뿐이면 그 이름 — 서버 `failedPayeeLabel`은 「인플루언서 2 · 브랜드 1」처럼
+ * 「{수취자} {건수}」를 「 · 」로 잇는다. 한 종류면 시안 L4처럼 「인플루언서 몫만 반환」으로 쓴다.
+ */
+function singleFailedPayee(label: string | undefined): string | null {
+  if (!label || label.includes(" · ")) return null;
+  const match = /^(.+) \d+$/.exec(label.trim());
+  return match ? match[1] : null;
+}
+
 /** 툴바 요약 한 줄 — 서버 toolbar · 탭 숫자로 그린다(07a) */
 function toolbarLine(input: {
   tab: SettlementTab;
@@ -147,6 +157,7 @@ function toolbarLine(input: {
       );
     case "PAYOUT_FAILED": {
       const days = toolbar?.elapsedDays;
+      const onlyPayee = singleFailedPayee(toolbar?.failedPayeeLabel);
       return (
         <>
           분배 실패 {b(total)}건
@@ -156,8 +167,10 @@ function toolbarLine(input: {
               · 미전달 {b(won(toolbar?.undeliveredAmount ?? 0), "tabular-nums")}
               원{" "}
               <TSub>
-                {toolbar?.failedPayeeLabel &&
-                  `· 실패 수취자 ${toolbar.failedPayeeLabel} `}
+                {onlyPayee
+                  ? `· ${onlyPayee} 몫만 반환 `
+                  : toolbar?.failedPayeeLabel &&
+                    `· 실패 수취자 ${toolbar.failedPayeeLabel} `}
                 {days !== undefined &&
                   (total > 1 ? `· 최장 ${days}일 경과` : `· ${days}일 경과`)}
               </TSub>
@@ -436,7 +449,7 @@ export default function SettlementManagement() {
               <div className="mt-[5px] text-[12px] text-sz-n-500">
                 {tab === "CLAWBACK"
                   ? "차감번호 · 원 정산번호 · 주문번호 · 브랜드명 · 쇼룸명 중 하나로 검색됩니다."
-                  : "정산번호(STL-로 시작하면 번호 앞부분) · 공구명 · 브랜드명 · 쇼룸명 중 하나로 검색됩니다."}{" "}
+                  : "정산번호 · 공구명 · 브랜드명 · 쇼룸명 중 하나로 검색됩니다."}{" "}
                 철자를 확인해 주세요.
               </div>
               <div className="mt-4">

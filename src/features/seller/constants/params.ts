@@ -16,7 +16,7 @@ export const SELLER_REJECTION_REASONS: Array<{
 }> = [
   { value: "BUSINESS_REG_NUMBER_MISMATCH", label: "사업자등록번호 불일치" },
   { value: "MAIL_ORDER_REPORT_INCOMPLETE", label: "통신판매업 신고 미완료" },
-  { value: "INSUFFICIENT_DOCUMENTS", label: "첨부 서류 부실·누락" },
+  { value: "INSUFFICIENT_DOCUMENTS", label: "첨부 서류 불량·누락" },
   { value: "OTHER", label: "기타(직접 입력)" },
 ];
 
@@ -28,7 +28,7 @@ export const SELLER_REJECTION_REASONS: Array<{
 export const SELLER_REJECTION_REASON_LABELS: Record<string, string> = {
   BUSINESS_REG_NUMBER_MISMATCH: "사업자등록번호 불일치",
   MAIL_ORDER_REPORT_INCOMPLETE: "통신판매업 신고 미완료",
-  INSUFFICIENT_DOCUMENTS: "첨부 서류 부실·누락",
+  INSUFFICIENT_DOCUMENTS: "첨부 서류 불량·누락",
   BANK_ACCOUNT_ERROR: "계좌 정보 오류",
   DUPLICATE_APPLICATION: "중복 신청",
   OTHER: "기타",

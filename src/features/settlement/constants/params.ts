@@ -16,6 +16,9 @@ import type {
 /** 정산 관리는 하위 메뉴 없이 공구 정산 하나다(07a GNB · 「고정 지급비 정산」 메뉴 삭제) */
 export const SETTLEMENT_LIST_PATH = "/settlement/group-buy";
 
+/** 브랜드 회원 상세(마켓 상세) — D8 「브랜드 상세 보기 ↗」 */
+export const BRAND_DETAIL_PATH = "/market/list";
+
 export const SETTLEMENT_QUERY_KEYS = {
   SUMMARY: "adminSettlementSummary",
   LIST: "adminSettlementList",
@@ -192,6 +195,11 @@ export const BRAND_INVOICE_MAX_BYTES = 10 * 1024 * 1024;
 export const LEGACY_RESIDENT_NUMBER_MISSING = "RESIDENT_NUMBER_MISSING";
 /** 세금계산서 확인 전 보류 사유 코드 — 증빙 줄이 따로 말한다 */
 export const TAX_INVOICE_UNVERIFIED = "TAX_INVOICE_UNVERIFIED";
+/**
+ * 브랜드 계정 정지(정산 정보 불일치 · 사업자 정보 허위 기재) 보류 사유 코드 — 서버가 브랜드 수취자 행의
+ * `failCode`로 남긴다(PayoutHoldTransitions). 07b D8 「브랜드 몫 지급 정지」를 이 코드로 가른다.
+ */
+export const BRAND_SUSPENDED = "BRAND_SUSPENDED";
 
 /** 운임 정산 · 반품 차감 배송비 줄 설명(시안 07b D1 · D3 `.pb`) */
 export const BREAKDOWN_NOTE = {
@@ -199,6 +207,10 @@ export const BREAKDOWN_NOTE = {
   reshipFee: "소비자 결제분",
   returnDeductionFee: "무료배송 · 소비자 귀책",
   freightAdjustment: "귀책 변경",
+  /** 리워드 부가세 칩 「10% · 별도 · 매입세액 공제」의 고정 설명 — 율은 서버 값 */
+  rewardVat: "별도 · 매입세액 공제",
+  /** 사업자 인플루언서 부가세 칩 「10% · 세금계산서」 */
+  creatorVat: "세금계산서",
 } as const;
 
 /**

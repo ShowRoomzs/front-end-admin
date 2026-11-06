@@ -29,6 +29,15 @@ export function operatorGuide(detail: ClaimDetail): string {
     // 시안 06b rev.7 B4(기-93) — 「소비자 이의는 B2와 같은 경로」의 B2만 화면 말로 바꿨다
     return "개설 뒤로는 **일반 반품과 같은 흐름**입니다 — 소비자 회수 송장 입력 → 브랜드 검수 → 통과 시 PG 자동 환불. 브랜드가 검수에서 귀책을 소비자로 바꿀 수 있고, 그 경우 **운임 정산**으로 착불 운임을 소비자에게 청구합니다(환불액에서 차감 · 브랜드 정산에 「+ 운임 정산」). 소비자 이의는 반려 보류 건과 같은 경로로 받습니다.";
   }
+  // 시안 B3 일부 반려 종결 — 반려분 재발송비를 통과분 환불에서 뺐을 때(청구 DEDUCTED)만 「추가 결제 없음」이 사실이다
+  if (
+    row.outcome?.finalized &&
+    row.type === "RETURN" &&
+    detail.claim.rejection?.splitFromClaimNumber != null &&
+    row.reshipFee?.status === "DEDUCTED"
+  ) {
+    return `${NONE}일부 반려는 재발송비를 **통과분 환불**에서 빼고 PG가 자동 환불합니다. 소비자 추가 결제가 없습니다.`;
+  }
   if (row.outcome) {
     switch (row.outcome.code) {
       case "REFUND_PENDING":

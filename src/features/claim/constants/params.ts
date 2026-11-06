@@ -101,6 +101,9 @@ export function inquiryDetailPath(inquiryId: number) {
   return `/support/inquiry/${inquiryId}`;
 }
 
+/** 게시물·소통 모니터링 › 소통 스레드 — 06a 레일과 같은 「연결·소통 스레드 열기」 */
+export const THREAD_PATH = "/monitoring/threads";
+
 export const SELECT_CHEVRON_STYLE = {
   backgroundImage:
     "url(\"data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%235B5F68' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
