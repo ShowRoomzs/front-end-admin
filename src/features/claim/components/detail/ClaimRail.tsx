@@ -180,7 +180,8 @@ function statusRows(
       }
     }
   }
-  if (claim.purchaseConfirm) {
+  // 종결된 건(B3)은 구매확정 줄을 두지 않는다 — 지난 예정일이 「예정」으로 남아 보인다
+  if (claim.purchaseConfirm && row.outcome === null) {
     rows.push({
       label: "구매확정",
       value: claim.purchaseConfirm.paused
