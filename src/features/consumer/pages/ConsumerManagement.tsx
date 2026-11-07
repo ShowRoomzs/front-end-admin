@@ -113,8 +113,8 @@ export default function ConsumerManagement() {
           </div>
           <div className="text-[12px] leading-relaxed text-sz-n-500">
             휴대폰은 <b className="font-semibold text-sz-n-700">뒤 4자리</b>로
-            검색합니다. 회원번호(CST-)와 닉네임은 전체 값이 일치해야 찾을 수
-            있습니다.
+            검색합니다. 회원번호(CST-)는 전체 값이 일치해야 하고, 닉네임은
+            일부만 입력해도 찾을 수 있습니다.
           </div>
         </div>
       );

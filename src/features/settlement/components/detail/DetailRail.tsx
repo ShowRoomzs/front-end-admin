@@ -1,5 +1,6 @@
 import Btn from "@/features/contract/components/shared/Btn";
 import {
+  FLINK_CLASS,
   Hint,
   HistoryTimeline,
   MRow,
@@ -9,6 +10,8 @@ import {
   WaitBox,
 } from "@/features/settlement/components/shared/StlParts";
 import {
+  BRAND_DETAIL_PATH,
+  BRAND_SUSPENDED,
   CONFIRM_REASON_TEXT,
   HISTORY_TONE,
   TAX_INVOICE_UNVERIFIED,
@@ -47,6 +50,34 @@ function payoutRow(detail: Detail, payee: "BRAND" | "CREATOR") {
   return detail.payouts?.rows.find((row) => row.payee === payee);
 }
 
+/**
+ * 브랜드 몫이 브랜드 계정 정지로 멈췄는가(D8) — 서버는 브랜드 행을 BLOCKED + 사유 코드 BRAND_SUSPENDED로
+ * 내린다(PayoutHoldTransitions). 정산 상태는 지급 예정 그대로다.
+ */
+function brandSuspendedRow(detail: Detail) {
+  const brand = payoutRow(detail, "BRAND");
+  return brand?.status === "BLOCKED" && brand.failCode === BRAND_SUSPENDED
+    ? brand
+    : undefined;
+}
+
+/** 인플루언서 몫이 세금계산서 대조 대기 하나로만 보류됐는가 — 그때만 「대조 후」(시안 D7) */
+function isWaitingInvoiceCheck(detail: Detail): boolean {
+  const reasons = activeBlockReasons(detail).filter(
+    (reason) => reason.code !== BRAND_SUSPENDED
+  );
+  return (
+    creatorInvoiceOf(detail)?.status === "SUBMITTED" &&
+    reasons.length > 0 &&
+    reasons.every((reason) => reason.code === TAX_INVOICE_UNVERIFIED)
+  );
+}
+
+/** 보류된 인플루언서 몫의 날짜 자리 — 대조 대기면 「대조 후」, 그 밖의 사유는 「보류 해제 후」 */
+function creatorHeldText(detail: Detail): string {
+  return isWaitingInvoiceCheck(detail) ? "대조 후" : "보류 해제 후";
+}
+
 /** 지급(예정)일 — 인플루언서 몫이 보류되거나 다른 날 나가면 몫별로 적는다(§41-5) */
 function payoutDateText(detail: Detail): ReactNode {
   const { rail } = detail;
@@ -59,7 +90,7 @@ function payoutDateText(detail: Detail): ReactNode {
     return (
       <>
         브랜드 <span className="tabular-nums">{md(brandDate)}</span> ·
-        인플루언서 보류 해제 후
+        인플루언서 {creatorHeldText(detail)}
       </>
     );
   }
@@ -88,18 +119,50 @@ function dateRows(detail: Detail): Array<{ label: string; value: ReactNode }> {
         { label: "합의 기한", value: ymdhmDue(rail.deadlineAt) },
         { label: "지급(예정)일", value: "—" },
       ];
-    default:
+    default: {
+      const confirmRow = {
+        // 지급 예정은 확정 사유를 앞말로(「자동 확정일」), 지급이 끝난 회차는 「정산 확정일」
+        label:
+          detail.status === "PAYOUT_SCHEDULED"
+            ? `${rail.confirmReasonLabel ?? "자동 확정"}일`
+            : "정산 확정일",
+        value: ymd(rail.confirmedAt),
+      };
+      const suspended =
+        detail.status === "PAYOUT_SCHEDULED"
+          ? brandSuspendedRow(detail)
+          : undefined;
+      if (suspended) {
+        // D8 — 지급(예정)일 한 줄 대신 몫별로: 인플루언서 몫은 예정대로, 브랜드 몫은 보조 배지
+        const creator = payoutRow(detail, "CREATOR");
+        return [
+          confirmRow,
+          {
+            label: "인플루언서 몫",
+            value:
+              creator?.status === "BLOCKED" ? (
+                `${creatorHeldText(detail)} 지급`
+              ) : (
+                <span className="tabular-nums">
+                  {ymd(creator?.dueDate ?? rail.payoutDueDate)} 지급 (예정)
+                </span>
+              ),
+          },
+          {
+            label: "브랜드 몫",
+            value: (
+              <StlBadge tone={suspended.statusTone} hideDot>
+                지급 정지
+              </StlBadge>
+            ),
+          },
+        ];
+      }
       return [
+        confirmRow,
         {
-          // 지급 예정은 확정 사유를 앞말로(「자동 확정일」), 지급이 끝난 회차는 「정산 확정일」
-          label:
-            detail.status === "PAYOUT_SCHEDULED"
-              ? `${rail.confirmReasonLabel ?? "자동 확정"}일`
-              : "정산 확정일",
-          value: ymd(rail.confirmedAt),
-        },
-        {
-          label: detail.status === "PAID" ? "지급일" : "지급(예정)일",
+          // 지급 완료여도 라벨은 「지급(예정)일」 그대로(시안 07b D1)
+          label: "지급(예정)일",
           value: (
             <>
               {payoutDateText(detail)}
@@ -112,6 +175,7 @@ function dateRows(detail: Detail): Array<{ label: string; value: ReactNode }> {
           ),
         },
       ];
+    }
   }
 }
 
@@ -138,9 +202,14 @@ function HoldConditions(props: { detail: Detail }) {
     // 기-12 — 주민번호 미등록은 지급 보류 조건이 아니다(줄 자체를 두지 않는다)
     lines.push(<TDim>✓ 세금계산서 — 해당 없음(비사업자)</TDim>);
   }
-  // PG 셀러 등록 대기 · 예금주 불일치 · 계정 정지 등 — 서버 라벨을 그대로
+  // PG 셀러 등록 대기 · 예금주 불일치 · 인플루언서 계정 정지 등 — 서버 라벨을 그대로
+  // (브랜드 계정 정지는 D8 안내 박스가 따로 말한다)
   activeBlockReasons(detail)
-    .filter((reason) => reason.code !== TAX_INVOICE_UNVERIFIED)
+    .filter(
+      (reason) =>
+        reason.code !== TAX_INVOICE_UNVERIFIED &&
+        reason.code !== BRAND_SUSPENDED
+    )
     .forEach((reason) => lines.push(`✕ ${reason.label} — 지급 보류`));
   brandInvoicesOf(detail).forEach((doc) =>
     lines.push(
@@ -162,6 +231,54 @@ function HoldConditions(props: { detail: Detail }) {
         <div key={index}>{line}</div>
       ))}
     </WaitBox>
+  );
+}
+
+/**
+ * D8 브랜드 몫 지급 정지 — 정지 · 해제는 회원 관리 소관이라 버튼 없이 안내와 브랜드 상세 링크만 둔다.
+ * 해제 다음 영업일 지급은 서버 규칙(BrandSanctionService → PayoutHoldTransitions NEXT_BUSINESS_DAY)이다.
+ * 정지 사유 · 처리자는 정산 응답에 없어 쓰지 않고, 날짜는 서버가 남긴 「브랜드 몫 · …」 지급 보류 이력에서 읽는다.
+ */
+function BrandSuspendedNotice(props: {
+  detail: Detail;
+  payeeLabel: string;
+  amount: number;
+}) {
+  const { detail, payeeLabel, amount } = props;
+  const navigate = useNavigate();
+  const blockedAt = detail.history.find(
+    (entry) =>
+      entry.eventType === "PAYOUT_BLOCKED" &&
+      entry.detail?.startsWith(`${payeeLabel} 몫`)
+  )?.occurredAt;
+  return (
+    <>
+      <WaitBox>
+        <b>브랜드 계정 정지</b>
+        {blockedAt && (
+          <>
+            {" "}
+            · <span className="tabular-nums">{ymd(blockedAt)}</span>
+          </>
+        )}
+        <br />
+        브랜드 몫 <b className="tabular-nums">{won(amount)}원</b>은 지급 요청을
+        보내지 않습니다. 정지가 풀리면 <b>다음 영업일</b>에 지급됩니다.{" "}
+        <button
+          type="button"
+          className={FLINK_CLASS}
+          onClick={() =>
+            navigate(`${BRAND_DETAIL_PATH}/${detail.overview.marketId}`)
+          }
+        >
+          브랜드 상세 보기 ↗
+        </button>
+      </WaitBox>
+      <Hint className="mt-0">
+        이 화면에서 지급을 재개하지 않습니다 — 회원 관리에서 정지를 해제하면
+        자동으로 이어집니다.
+      </Hint>
+    </>
   );
 }
 
@@ -243,7 +360,8 @@ export function CurrentStateCard(props: {
       const proposals = adjustment
         ? [...adjustment.proposals].sort((a, b) => a.seq - b.seq)
         : [];
-      const latest = proposals[proposals.length - 1];
+      // 시안 D4 — 다른 금액 제안이 오가도 레일은 처음 요청 금액을 보인다(흐름은 조정 내역 카드에)
+      const first = proposals[0];
       const requester =
         adjustment?.requesterType === "SELLER"
           ? detail.overview.brandName
@@ -253,10 +371,10 @@ export function CurrentStateCard(props: {
           <WaitBox>
             <b>정산 조정 요청</b> — {requester} · {ymd(adjustment.openedAt)} ·
             리워드 {won(adjustment.originalRewardAmount)}
-            {latest && (
+            {first && (
               <>
                 {" "}
-                → <b>{won(latest.rewardAmount)}원</b>
+                → <b>{won(first.rewardAmount)}원</b>
               </>
             )}
             <br />
@@ -289,19 +407,36 @@ export function CurrentStateCard(props: {
       );
       break;
     }
-    case "PAYOUT_SCHEDULED":
-      notice =
-        hasPendingEvidence(detail) || blockReasons.length > 0 ? (
+    case "PAYOUT_SCHEDULED": {
+      const suspended = brandSuspendedRow(detail);
+      const holdConditions =
+        hasPendingEvidence(detail) ||
+        blockReasons.some((reason) => reason.code !== BRAND_SUSPENDED) ? (
           <HoldConditions detail={detail} />
-        ) : (
+        ) : null;
+      if (suspended) {
+        notice = (
+          <>
+            <BrandSuspendedNotice
+              detail={detail}
+              payeeLabel={suspended.payeeLabel}
+              amount={suspended.amount}
+            />
+            {holdConditions && <div className="mt-2">{holdConditions}</div>}
+          </>
+        );
+      } else {
+        notice = holdConditions ?? (
           <Hint className="mt-0">
             {(rail.confirmReason && CONFIRM_REASON_TEXT[rail.confirmReason]) ??
               "정산이 확정됐습니다."}{" "}
             지급은 예정일에 <b>PG가 자동 분배</b>합니다.
           </Hint>
         );
+      }
       primary = evidenceButtons ? null : download;
       break;
+    }
     case "PAID": {
       const invoice = creatorInvoiceOf(detail);
       const checkedAt =
@@ -335,12 +470,20 @@ export function CurrentStateCard(props: {
     case "PAYOUT_FAILED": {
       const failed = rail.failedPayout;
       const days = elapsedDays(failed?.failedAt);
+      const others =
+        detail.payouts?.rows.filter(
+          (row) => row.payoutId !== failed?.payoutId
+        ) ?? [];
       const othersSettled =
-        detail.payouts?.rows
-          .filter((row) => row.payoutId !== failed?.payoutId)
-          .every(
-            (row) => row.status === "PAID" || row.status === "NOT_APPLICABLE"
-          ) ?? false;
+        others.length > 0 &&
+        others.every(
+          (row) => row.status === "PAID" || row.status === "NOT_APPLICABLE"
+        );
+      // 「브랜드·플랫폼 몫은」 — 실제로 지급 완료된 몫 이름만(시안 D5)
+      const paidPayees = others
+        .filter((row) => row.status === "PAID")
+        .map((row) => row.payeeLabel)
+        .join("·");
       const exhausted = failed ? failed.attempt >= failed.retryLimit : false;
       notice = failed && (
         <>
@@ -356,23 +499,20 @@ export function CurrentStateCard(props: {
                 · <b>{days}일 경과</b>
               </>
             )}
-            {othersSettled && (
+            {othersSettled && paidPayees && (
               <>
                 <br />
-                나머지 몫은 <b>정상 지급</b>됐습니다.
+                {paidPayees} 몫은 <b>정상 지급</b>됐습니다.
               </>
             )}
           </WaitBox>
           <Hint className="mt-0">
             재분배는 <b>확정 금액을 그대로</b> 다시 보냅니다 — 금액 재계산이
-            아닙니다. 재분배{" "}
-            <b className="tabular-nums">
-              {failed.attempt}/{failed.retryLimit}회
-            </b>
+            아닙니다.
             {exhausted && (
               <>
                 {" "}
-                — 상한에 닿아 <b>수동 이체 절차</b>로 처리합니다.
+                재분배 상한에 닿아 <b>수동 이체 절차</b>로 처리합니다.
               </>
             )}
           </Hint>

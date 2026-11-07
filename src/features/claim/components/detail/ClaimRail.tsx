@@ -12,9 +12,11 @@ import {
   AUTO_RECEIVE_TEXT,
   operatorGuide,
 } from "@/features/claim/constants/guides";
+import { THREAD_PATH } from "@/features/claim/constants/params";
 import type { ClaimActionKind } from "@/features/claim/hooks/useAdminClaimMutations";
 import type { ClaimDetail } from "@/features/claim/types";
 import type { ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   dDay,
   md,
@@ -42,7 +44,17 @@ interface StatusRow {
 /** 검수 판정 전 — 귀책이 바뀌면 운임 정산이 붙는다(기-93) */
 const BEFORE_JUDGE = new Set(["COLLECT_WAIT", "COLLECTING", "INSPECTION"]);
 
-/** 「현재 상태」 카드 줄 — 단계마다 운영자가 확인할 값만(시안 B1~B4) */
+/** 운영자 사유 환불로 종결한 이력 — 이 둘이 아니면 클레임 환불은 PG 자동이다 */
+const OPERATOR_REFUND_EVENTS = new Set([
+  "DISPUTE_ACCEPTED",
+  "INSPECTION_UNANSWERED",
+]);
+
+/**
+ * 「현재 상태」 카드 줄 — 단계마다 운영자가 확인할 값만, 시안 B1~B4 순서로.
+ * B4 출처 · 귀책 · 운임 정산 · 기한 / B1 검수 기한 · 자동 알림 · 자동 입고 · 통과 시 /
+ * B2 재발송비 · 이의 · 운임 정산 / B3 종결 · 환불 출처. 회수 송장은 ③ 블록이 보여 레일에 두지 않는다.
+ */
 function statusRows(
   detail: ClaimDetail,
   policy: PolicyValues | undefined
@@ -51,11 +63,19 @@ function statusRows(
   const row = claim.summary;
   const rows: Array<StatusRow> = [];
 
-  if (row.stage === "COLLECT_WAIT") {
-    rows.push({
-      label: "회수 송장",
-      value: row.collection?.trackingNumber ? "입력 완료" : "소비자 입력 대기",
-    });
+  // 운영자 개설(B4) — 다른 클레임과 구분되는 값
+  if (row.openedByOperator && row.outcome === null) {
+    rows.push({ label: "출처", value: "운영자 개설" });
+  }
+  // 귀책(B4) — 브랜드 귀책 건은 「착불 · 차감 없음」, 판정 전이면 뒤집힐 때의 운임 정산을 미리 적는다
+  if (detail.feeBearer === "SELLER" && row.outcome === null) {
+    rows.push({ label: "귀책", value: "브랜드 · 착불 · 차감 없음" });
+    if (BEFORE_JUDGE.has(row.stage)) {
+      rows.push({
+        label: "운임 정산",
+        value: "소비자 귀책으로 바뀌면 착불 운임 청구",
+      });
+    }
   }
   // 운영자 개설(B4) — 법정 청약철회 적용 기한
   if (detail.legalDeadline) {
@@ -75,25 +95,6 @@ function statusRows(
       emphasis: row.overdue,
     });
   }
-  // 【잠정】 기-17 자동 입고(B1) — 입고·검수 단계에서 규칙을 적고, 시스템이 입고했으면 그렇게 적는다
-  if (row.stage === "INSPECTION") {
-    rows.push({
-      label: "자동 입고",
-      value: claim.inspection?.autoReceived
-        ? AUTO_RECEIVE_TEXT.done(policy)
-        : AUTO_RECEIVE_TEXT.rule(policy),
-    });
-  }
-  // 귀책(B4) — 브랜드 귀책 건은 「착불 · 차감 없음」, 판정 전이면 뒤집힐 때의 운임 정산을 미리 적는다
-  if (detail.feeBearer === "SELLER" && row.outcome === null) {
-    rows.push({ label: "귀책", value: "브랜드 · 착불 · 차감 없음" });
-    if (BEFORE_JUDGE.has(row.stage)) {
-      rows.push({
-        label: "운임 정산",
-        value: "소비자 귀책으로 바뀌면 착불 운임 청구",
-      });
-    }
-  }
   if (detail.inspectNotice.count > 0) {
     rows.push({
       label: "자동 알림",
@@ -104,14 +105,33 @@ function statusRows(
       }`,
     });
   }
+  // 【잠정】 기-17 자동 입고(B1) — 입고·검수 단계에서 규칙을 적고, 시스템이 입고했으면 그렇게 적는다
+  if (row.stage === "INSPECTION") {
+    rows.push({
+      label: "자동 입고",
+      value: claim.inspection?.autoReceived
+        ? AUTO_RECEIVE_TEXT.done(policy)
+        : AUTO_RECEIVE_TEXT.rule(policy),
+    });
+  }
+  // B2 「재발송비 결제 대기 · D-12」 — 금액은 ③ 반려 보류 블록에 있다
   if (row.reshipFee && row.stage === "REJECT_HOLD") {
     rows.push({
       label: "재발송비",
-      value: `${won(row.reshipFee.amount)} · ${row.reshipFee.statusLabel}${
+      value: `${row.reshipFee.statusLabel}${
         row.reshipFee.status === "PENDING" && row.reshipFee.dueAt
           ? ` · ${dDay(row.reshipFee.dueAt)}`
           : ""
       }`,
+    });
+  }
+  if (detail.dispute) {
+    rows.push({
+      label: "이의",
+      value: detail.dispute.answered
+        ? `답변 완료 · ${md(detail.dispute.answeredAt)}`
+        : `1건 · ${md(detail.dispute.createdAt)}`,
+      emphasis: !detail.dispute.answered,
     });
   }
   // B2 「운임 정산 · 인용 시 + N 소비자 환급」 — 서버 인용 전 예정액(`disputePreview.total` · 58 계획 5-13).
@@ -131,23 +151,37 @@ function statusRows(
       value: `브랜드 정산 ${sum >= 0 ? "+" : "−"} ${won(Math.abs(sum))}`,
     });
   }
-  if (detail.dispute) {
-    rows.push({
-      label: "소비자 이의",
-      value: detail.dispute.answered
-        ? `답변 완료 · ${md(detail.dispute.answeredAt)}`
-        : `접수 · ${md(detail.dispute.createdAt)}`,
-      emphasis: !detail.dispute.answered,
-    });
+  // B3 「종결 09.08」
+  if (row.outcome?.finalized && row.completedAt) {
+    rows.push({ label: "종결", value: md(row.completedAt) });
   }
   if (claim.refund) {
-    rows.push({
-      label: row.outcome ? "환불액" : "통과 시 PG 자동 환불",
-      value: won(claim.refund.requestExpectedAmount),
-      emphasis: true,
-    });
+    const amount = claim.refund.requestExpectedAmount;
+    if (!row.outcome) {
+      // B1 「통과 시 · PG 자동 환불 13,000원」 — 전체 반려로 보류 중이면 나갈 금액이 없어 줄을 두지 않는다
+      if (!(row.stage === "REJECT_HOLD" && amount === 0)) {
+        rows.push({
+          label: "통과 시",
+          value: `PG 자동 환불 ${won(amount)}`,
+          emphasis: true,
+        });
+      }
+    } else {
+      rows.push({ label: "환불액", value: won(amount), emphasis: true });
+      // B3 「환불 출처 · PG 자동」 — 이의 인용 · 검수 무응답으로 닫은 건만 운영자 사유 환불이다
+      if (amount > 0) {
+        const byOperator = claim.history.some((item) =>
+          OPERATOR_REFUND_EVENTS.has(item.eventType)
+        );
+        rows.push({
+          label: "환불 출처",
+          value: byOperator ? "운영자 사유 환불" : "PG 자동",
+        });
+      }
+    }
   }
-  if (claim.purchaseConfirm) {
+  // 종결된 건(B3)은 구매확정 줄을 두지 않는다 — 지난 예정일이 「예정」으로 남아 보인다
+  if (claim.purchaseConfirm && row.outcome === null) {
     rows.push({
       label: "구매확정",
       value: claim.purchaseConfirm.paused
@@ -216,10 +250,14 @@ export default function ClaimRail(props: ClaimRailProps) {
   const { data: policy } = usePolicyValues();
   const rows = statusRows(detail, policy);
   const dispute = detail.dispute;
+  const navigate = useNavigate();
 
   const links = (
     <>
       <RailLink onClick={onOpenOrder}>주문 상세 열기 (주문 조회) ↗</RailLink>
+      <RailLink onClick={() => navigate(THREAD_PATH)}>
+        연결·소통 스레드 열기 ↗
+      </RailLink>
       {dispute && (
         <RailLink onClick={() => onOpenInquiry(dispute.inquiryId)}>
           이의 문의 열기 (1:1 문의 #{dispute.inquiryId}) ↗
@@ -262,8 +300,8 @@ export default function ClaimRail(props: ClaimRailProps) {
             amountNote={<DisputeFreightNote detail={detail} />}
             warning={
               <>
-                인용하면 반려가 <b>환불로 종결</b>됩니다 — 재발송비 결제 요청은
-                소멸하고, 이미 결제됐으면 <b>자동 취소</b>됩니다. 상품은
+                인용하면 반려가 <b>반품 승인과 같아집니다</b> — 재발송비 결제
+                요청이 취소되고(이미 결제됐으면 <b>자동 취소</b>) 상품은
                 브랜드에 남습니다. 환불은 <b>환불 관리</b>에서 재확인 후
                 실행되고, 편입은 <b>철회할 수 없습니다</b>.
               </>

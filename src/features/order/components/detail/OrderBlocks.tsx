@@ -24,7 +24,9 @@ import { inquiryDetailPath } from "@/features/order/constants/params";
 import type {
   AdminOrderDetail,
   AdminOrderGroupDetail,
+  AdminOrderItem,
   AdminOrderStallChoice,
+  OrderBadgeData,
   OrderBadgeTone,
 } from "@/features/order/types";
 import {
@@ -34,6 +36,7 @@ import {
   formatShortDateTime,
   formatWon,
   purchaseConfirmText,
+  shipOverdueDays,
   subOrderSuffix,
   toDotDate,
 } from "@/features/order/utils/format";
@@ -261,6 +264,53 @@ function groupBuyNote(detail: AdminOrderDetail) {
   return unique.length > 0 ? unique.join(" / ") : undefined;
 }
 
+/**
+ * 클레임 단계를 붙일 항목 — `activeClaims`에 항목 id가 없어(백엔드 요청 `ActiveClaim.orderProductId`)
+ * 진행 중 클레임이 하나이고 그 하위주문에서 클레임을 걸 수 있는 항목(결제완료 · 구매확정)도 하나일 때만 정해진다.
+ */
+function claimTargetId(group: AdminOrderGroupDetail) {
+  if (group.activeClaims.length !== 1) return null;
+  const candidates = group.items.filter(
+    (item) => item.status === "PAID" || item.status === "PURCHASE_CONFIRMED"
+  );
+  return candidates.length === 1 ? candidates[0].orderProductId : null;
+}
+
+/**
+ * ② 항목 배지 — 시안은 항목 배지가 그 하위주문의 진행 상태를 따른다(배송중 · 상품준비중 · 배송완료 …).
+ * 취소 · 반품은 항목 자신의 상태. 취소 요청 대상이면 배지를 덧붙이지 않고 그 자리를 「취소 요청」으로 바꾼다(B7),
+ * 발송 기한을 넘긴 하위주문이면 「발송기한 초과」(B4), 클레임 대상이면 그 단계(B8 「회수 중」).
+ */
+function itemBadge(
+  group: AdminOrderGroupDetail,
+  item: AdminOrderItem,
+  claimTarget: number | null
+): OrderBadgeData {
+  const fallback = ITEM_STATUS_BADGE[item.status] ?? {
+    label: item.status,
+    tone: "NEUTRAL" as OrderBadgeTone,
+  };
+  if (item.status === "CANCELLED" || item.status === "RETURNED") {
+    return fallback;
+  }
+  if (group.cancelRequest?.orderProductIds.includes(item.orderProductId)) {
+    return { label: "취소 요청", tone: "WARNING" };
+  }
+  const claim = group.activeClaims[0];
+  if (claim && claimTarget === item.orderProductId) {
+    return { label: claim.statusLabel, tone: "INFO" };
+  }
+  if (item.status === "PURCHASE_CONFIRMED") {
+    return fallback;
+  }
+  if (item.status === "PAID") {
+    return group.shipping.shipOverdue
+      ? { label: "발송기한 초과", tone: "WARNING" }
+      : { label: group.statusLabel, tone: group.statusTone };
+  }
+  return fallback;
+}
+
 /** ② 하위주문 · 항목 — 항목(SKU) 트리는 여기서만 보인다(목록은 하위주문 1단에서 끊는다) */
 export function SubOrdersBlock(props: BlockProps) {
   const { index, detail } = props;
@@ -276,62 +326,51 @@ export function SubOrdersBlock(props: BlockProps) {
       }
     >
       <div>
-        {detail.groups.map((group) => (
-          <SubCard
-            key={group.deliveryGroupId}
-            head={
-              <GroupHead
-                group={group}
-                right={
-                  <>
-                    {group.groupBuyNumber && `${group.groupBuyNumber} · `}
-                    하위주문 {subOrderSuffix(group.subOrderNumber)} ·{" "}
-                    {formatWon(groupAmount(group))}
-                  </>
-                }
-              />
-            }
-          >
-            {group.items.map((item) => {
-              const badge = ITEM_STATUS_BADGE[item.status] ?? {
-                label: item.status,
-                tone: "NEUTRAL" as OrderBadgeTone,
-              };
-              const requested =
-                group.cancelRequest?.orderProductIds.includes(
-                  item.orderProductId
-                ) ?? false;
-              return (
-                <ItRow key={item.orderProductId}>
-                  <span>{item.productName}</span>
-                  {item.optionName && (
-                    <span className="text-sz-n-400">{item.optionName}</span>
-                  )}
-                  <span className="text-sz-n-500">×{item.quantity}</span>
-                  <OrderBadge data={badge} hideDot />
-                  {requested && (
-                    <OrderBadge
-                      data={{ label: "취소 요청", tone: "WARNING" }}
-                      hideDot
-                      className="ml-1.5"
-                    />
-                  )}
-                  {item.returnedQuantity > 0 && (
-                    <span className={SUB}>반품 {item.returnedQuantity}</span>
-                  )}
-                  {item.cancelTypeLabel && (
-                    <span className={SUB}>
-                      {cancelTypeText(item.cancelTypeLabel)}
+        {detail.groups.map((group) => {
+          const claimTarget = claimTargetId(group);
+          return (
+            <SubCard
+              key={group.deliveryGroupId}
+              head={
+                <GroupHead
+                  group={group}
+                  right={
+                    <>
+                      {group.groupBuyNumber && `${group.groupBuyNumber} · `}
+                      하위주문 {subOrderSuffix(group.subOrderNumber)} ·{" "}
+                      {formatWon(groupAmount(group))}
+                    </>
+                  }
+                />
+              }
+            >
+              {group.items.map((item) => {
+                const badge = itemBadge(group, item, claimTarget);
+                return (
+                  <ItRow key={item.orderProductId}>
+                    <span>{item.productName}</span>
+                    {item.optionName && (
+                      <span className="text-sz-n-400">{item.optionName}</span>
+                    )}
+                    <span className="text-sz-n-500">×{item.quantity}</span>
+                    <OrderBadge data={badge} hideDot />
+                    {item.returnedQuantity > 0 && (
+                      <span className={SUB}>반품 {item.returnedQuantity}</span>
+                    )}
+                    {item.cancelTypeLabel && (
+                      <span className={SUB}>
+                        {cancelTypeText(item.cancelTypeLabel)}
+                      </span>
+                    )}
+                    <span className="ml-auto tabular-nums text-sz-n-700">
+                      {formatWon(item.price * item.quantity)}
                     </span>
-                  )}
-                  <span className="ml-auto tabular-nums text-sz-n-700">
-                    {formatWon(item.price * item.quantity)}
-                  </span>
-                </ItRow>
-              );
-            })}
-          </SubCard>
-        ))}
+                  </ItRow>
+                );
+              })}
+            </SubCard>
+          );
+        })}
       </div>
     </Block>
   );
@@ -470,7 +509,9 @@ export function ShippingBlock(props: BlockProps) {
                 {s.shipDueAt ? (
                   <>
                     <span className={TNUM}>{formatDueFull(s.shipDueAt)}</span>
-                    {s.shipOverdue && <b> · 기한 경과</b>}
+                    {s.shipOverdue && (
+                      <b> · {shipOverdueDays(s.shipDueAt)}일 초과</b>
+                    )}
                   </>
                 ) : (
                   "공구 진행 중 — 마감 전이라 기한이 없습니다"

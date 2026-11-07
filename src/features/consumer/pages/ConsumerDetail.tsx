@@ -1,5 +1,5 @@
 import { usePageSubtitle } from "@/common/components/MainLayout/usePageSubtitle";
-import RecordNav from "@/common/components/RecordNav/RecordNav";
+import { DetailHeader } from "@/features/memberShared/components/detail/DetailHeader";
 import {
   AccountCard,
   ActivityCard,
@@ -120,24 +120,23 @@ export default function ConsumerDetail() {
 
   return (
     <>
-      <div className="mb-4 flex items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[20px] font-semibold text-sz-n-900">
-            {detail.nickname}
-          </h1>
-          <p className="mt-0.5 text-[12px] tabular-nums text-sz-n-600">
-            {detail.memberNo}
-          </p>
-        </div>
-        {/* 이전 · 다음은 회원번호 순 인접 소비자(서버 navigation · 목록 필터와 무관) */}
-        <RecordNav
-          onList={() => goTo(CONSUMER_LIST_PATH)}
-          onPrev={
-            previousId ? () => goTo(consumerDetailPath(previousId)) : undefined
-          }
-          onNext={nextId ? () => goTo(consumerDetailPath(nextId)) : undefined}
-        />
-      </div>
+      {/* 이전 · 다음은 회원번호 순 인접 소비자(서버 navigation · 목록 필터와 무관) */}
+      <DetailHeader
+        title={detail.nickname}
+        memberNo={detail.memberNo}
+        badge={
+          withdrawn
+            ? { tone: "NEUTRAL", text: "탈퇴" }
+            : detail.status === "SUSPENDED"
+              ? { tone: "DANGER", text: "정지" }
+              : null
+        }
+        onList={() => goTo(CONSUMER_LIST_PATH)}
+        onPrev={
+          previousId ? () => goTo(consumerDetailPath(previousId)) : undefined
+        }
+        onNext={nextId ? () => goTo(consumerDetailPath(nextId)) : undefined}
+      />
 
       <div className="grid grid-cols-[minmax(0,1fr)_320px] items-start gap-4">
         <div className="flex min-w-0 flex-col gap-4">

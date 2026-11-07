@@ -44,6 +44,17 @@ export function formatDueFull(value: string) {
   return parseServerDateTime(value).format("YYYY.MM.DD HH:mm");
 }
 
+/**
+ * 발송 기한 초과 일수 — 「2026.09.16 23:59 · 3일 초과」. 기한은 영업일 끝(23:59:59 KST)이라 운영자 날짜로
+ * 기한 날짜와 오늘 날짜의 차를 센다(넘긴 다음 날이 1일). 서버가 `shipOverdue`일 때만 부른다.
+ */
+export function shipOverdueDays(shipDueAt: string) {
+  const days = dayjs()
+    .startOf("day")
+    .diff(parseServerDateTime(shipDueAt).startOf("day"), "day");
+  return Math.max(1, days);
+}
+
 /** 58,400 */
 export function formatNumber(value: number) {
   return value.toLocaleString("ko-KR");

@@ -335,7 +335,10 @@ export function BreakdownCard(props: { detail: Detail }) {
                 kind="sub"
                 label={
                   <>
-                    리워드 부가세 <Pb>{rate(brand.rewardVat.rate)}</Pb>
+                    리워드 부가세{" "}
+                    <Pb>
+                      {rate(brand.rewardVat.rate)} · {BREAKDOWN_NOTE.rewardVat}
+                    </Pb>
                   </>
                 }
                 value={minus(brand.rewardVat.amount)}
@@ -443,7 +446,11 @@ export function BreakdownCard(props: { detail: Detail }) {
                     kind="sub"
                     label={
                       <>
-                        부가세 <Pb>{rate(brand.rewardVat.rate)}</Pb>
+                        부가세{" "}
+                        <Pb>
+                          {rate(brand.rewardVat.rate)} ·{" "}
+                          {BREAKDOWN_NOTE.creatorVat}
+                        </Pb>
                       </>
                     }
                     value={plus(creator.vatAmount)}
@@ -799,6 +806,17 @@ export function AdjustmentCard(props: { detail: Detail }) {
   const { adjustment } = props.detail;
   if (!adjustment) return null;
   const proposals = [...adjustment.proposals].sort((a, b) => a.seq - b.seq);
+  const latest = proposals[proposals.length - 1];
+  // 지금 금액이 원래 리워드 그대로면(협의 중 · 만료 · 철회) 분해의 실지급 · 브랜드 수취액이 곧 원래 금액이다
+  const { brand, creator } = props.detail.breakdown;
+  const showsOriginal = brand.rewardAmount === adjustment.originalRewardAmount;
+  // 「소연_쇼룸 응답 대기」(시안 D4-b · 20b 카드) — 마지막 제안의 상대가 답할 차례
+  const responder =
+    adjustment.status === "OPEN" && latest?.status === "PENDING"
+      ? latest.proposerType === "SELLER"
+        ? props.detail.overview.showroomName
+        : props.detail.overview.brandName
+      : null;
   return (
     <StlCard
       title="조정 내역"
@@ -814,7 +832,18 @@ export function AdjustmentCard(props: { detail: Detail }) {
         <span className="tabular-nums">
           {won(adjustment.originalRewardAmount)}
         </span>
-        원 <TSub>· 조정 가능 상한 {won(adjustment.maxRewardAmount)}원</TSub>
+        원
+        {showsOriginal ? (
+          <>
+            {" "}
+            · 실지급{" "}
+            <span className="tabular-nums">{won(creator.payoutAmount)}</span> ·
+            브랜드 수취액{" "}
+            <span className="tabular-nums">{won(brand.payoutAmount)}</span>
+          </>
+        ) : (
+          <TSub> · 조정 가능 상한 {won(adjustment.maxRewardAmount)}원</TSub>
+        )}
       </FRow>
       {proposals.map((proposal) => (
         <FRow
@@ -825,16 +854,11 @@ export function AdjustmentCard(props: { detail: Detail }) {
           <span className="tabular-nums">{md(proposal.proposedAt)}</span> →
           리워드 <B className="tabular-nums">{won(proposal.rewardAmount)}</B>원
           {proposal.reason && <TSub> · {proposal.reason}</TSub>}
-          <TSub className="block">
-            {proposal.statusLabel} · 이 금액이면 실지급{" "}
-            {won(proposal.preview.creatorNetAmount)} · 브랜드 수취액{" "}
-            {won(proposal.preview.brandPayoutAmount)}
-          </TSub>
         </FRow>
       ))}
       <FRow label="진행">
         <StlBadge tone={ADJUSTMENT_TONE[adjustment.status]} hideDot>
-          {adjustment.statusLabel}
+          {responder ? `${responder} 응답 대기` : adjustment.statusLabel}
         </StlBadge>{" "}
         {adjustment.status === "OPEN" ? (
           <TSub>
@@ -914,6 +938,37 @@ function documentMeta(doc: TaxDocument): string | null {
   }
 }
 
+/**
+ * 증빙 줄 제목 · 방향(시안 07b D1-b · D6 · D7) — 「세금계산서 (정발행) · 민재_셀렉트 → 플랫폼」 ·
+ * 「세금계산서 · 플랫폼 → 퓨어랩」 · 「원천징수영수증 · 시스템 생성 → 글로우_지민」.
+ * 시안에 없는 유형(수정세금계산서)은 서버 라벨 · 방향 그대로.
+ */
+function documentTitle(
+  doc: TaxDocument,
+  detail: Detail
+): { title: string; direction: string } {
+  const { showroomName, brandName } = detail.overview;
+  switch (doc.type) {
+    case "CREATOR_TAX_INVOICE":
+      return {
+        title: "세금계산서 (정발행)",
+        direction: `${showroomName} → 플랫폼`,
+      };
+    case "BRAND_TAX_INVOICE":
+      return { title: "세금계산서", direction: `플랫폼 → ${brandName}` };
+    case "WITHHOLDING_RECEIPT":
+      return {
+        title: doc.typeLabel,
+        direction: `시스템 생성 → ${showroomName}`,
+      };
+    default:
+      return {
+        title: doc.typeLabel,
+        direction: `${doc.direction} · ${doc.counterpartyName}`,
+      };
+  }
+}
+
 function documentRow(doc: TaxDocument, detail: Detail): EvidenceRow {
   const amounts =
     doc.type === "WITHHOLDING_RECEIPT" ? (
@@ -929,8 +984,7 @@ function documentRow(doc: TaxDocument, detail: Detail): EvidenceRow {
     );
   return {
     key: String(doc.documentId),
-    title: doc.typeLabel,
-    direction: `${doc.direction} · ${doc.counterpartyName}`,
+    ...documentTitle(doc, detail),
     amounts,
     badge: { label: doc.statusLabel, tone: TAX_DOCUMENT_TONE[doc.status] },
     meta: documentMeta(doc),
@@ -992,6 +1046,17 @@ function evidenceHint(detail: Detail): ReactNode {
   );
 }
 
+/**
+ * 카드 머리(시안 07b D1-b · D6 · D7) — 비사업자 회차는 플랫폼이 리워드 지급자라 원천징수영수증을 시스템이
+ * 만든다(「증빙 N건 자동 발행」). 사업자 회차는 인플루언서 세금계산서를 홈택스에서 손으로 주고받는다.
+ * 응답에 문서별 발행 방식 칸이 없어 사업자 여부로 가른다.
+ */
+function evidenceNote(detail: Detail): string {
+  return detail.overview.creatorBusinessType === "INDIVIDUAL"
+    ? `플랫폼이 리워드 지급자 · 증빙 ${detail.taxDocuments.length}건 자동 발행`
+    : "MVP — 외부 발행 서비스 없음 · 홈택스 수동";
+}
+
 export function EvidenceCard(props: {
   detail: Detail;
   onVerify: (doc: TaxDocument) => void;
@@ -1003,7 +1068,7 @@ export function EvidenceCard(props: {
     row: documentRow(doc, detail),
   }));
   return (
-    <StlCard title="증빙" note="MVP — 외부 발행 서비스 없음 · 홈택스 수동">
+    <StlCard title="증빙" note={evidenceNote(detail)}>
       {rows.map(({ doc, row }) => (
         <IBar
           key={row.key}
@@ -1080,6 +1145,17 @@ export function FixedFeeCard(props: {
       </Hint>
     </StlCard>
   );
+}
+
+/** 합계 행 꼬리 「(재발송비 9건 · 반품 차감 배송비 2건 별도)」(시안 07b D1-b) — 0건인 종류는 뺀다 */
+function statementExtra(detail: Detail): string {
+  const { reshipFee, returnDeductionFee } = detail.breakdown.brand;
+  const parts = [
+    reshipFee.count > 0 && `재발송비 ${reshipFee.count}건`,
+    returnDeductionFee.count > 0 &&
+      `반품 차감 배송비 ${returnDeductionFee.count}건`,
+  ].filter(Boolean);
+  return parts.length > 0 ? ` (${parts.join(" · ")} 별도)` : "";
 }
 
 /** 주문 단위 명세 최근 5건 — 반품 건은 정산 반영액 0(차감 근거가 행 단위로 보인다) */
@@ -1184,6 +1260,7 @@ export function StatementCard(props: {
             </td>
             <td className={cn(LTAB_FOOT, "text-[11px] text-sz-n-500")}>
               반품 {items.returnCount} · 교환 {items.exchangeCount}
+              {statementExtra(detail)}
             </td>
             <td className={cn(LTAB_FOOT, "text-right tabular-nums")}>
               {won(items.footer.settledAmount)}

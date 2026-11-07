@@ -199,15 +199,24 @@ function requestedHolderOf(diffRows: Array<ChangeDiffRow>) {
 
 /** C5b — 사업자 구분 변경(사업자등록증 · 폐업사실증명원)과 본인확인 정보 대조 */
 function BusinessTypePanel(props: ComparePanelProps) {
-  const { type, referenceItems, compareItems, approvalImpact } = props;
+  const { type, diffRows, referenceItems, compareItems, approvalImpact } =
+    props;
   const toIndividual = type === "TO_INDIVIDUAL";
+  // 비교 기준 — 변경 표의 사업자등록번호 현재 값(지금 등록된 번호)
+  const registeredBusinessRegNumber =
+    diffRows.find((row) => row.fieldKey === "CREATOR_BUSINESS_REG_NUMBER")
+      ?.currentValue ?? null;
 
   return (
     <>
       <SectionTitle first>서류와 대조할 값 (본인확인 정보)</SectionTitle>
       {(compareItems ?? []).map((item) => (
         <PlainRow key={item.key} label={item.label}>
-          <CompareValue item={item} toIndividual={toIndividual} />
+          <CompareValue
+            item={item}
+            toIndividual={toIndividual}
+            registeredValue={registeredBusinessRegNumber}
+          />
         </PlainRow>
       ))}
 
@@ -245,9 +254,12 @@ function BusinessTypePanel(props: ComparePanelProps) {
 function CompareValue({
   item,
   toIndividual,
+  registeredValue,
 }: {
   item: ChangeRequestCompareItem;
   toIndividual: boolean;
+  /** 지금 등록된 사업자등록번호 — 비사업자 전환 건의 「현재 등록값과 같음」 판정용 */
+  registeredValue: string | null;
 }) {
   const value =
     item.key === "BIRTHDAY" ? formatBirthday(item.value) : item.value;
@@ -266,9 +278,16 @@ function CompareValue({
   if (item.serverCheck === "MATCH") {
     return <>{value || "—"} · 일치</>;
   }
-  // 비사업자 전환의 사업자등록번호는 요청 값이 아니라 지금 등록된 번호다(C5b)
+  // 비사업자 전환의 사업자등록번호는 요청 값이 아니라 지금 등록된 번호다(C5b).
+  // 등록값과 같다고 확인될 때만 시안 「· 현재 등록값과 같음」, 아니면 기존 표기
   if (toIndividual && item.key === "BUSINESS_REG_NUMBER") {
-    return <>{value || "—"} · 현재 등록값</>;
+    const isSameAsRegistered = !!value && value === registeredValue;
+    return (
+      <>
+        {value || "—"} ·{" "}
+        {isSameAsRegistered ? "현재 등록값과 같음" : "현재 등록값"}
+      </>
+    );
   }
   return <>{value || "—"}</>;
 }

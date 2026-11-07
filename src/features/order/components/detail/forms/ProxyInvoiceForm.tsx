@@ -34,7 +34,8 @@ const INLINE_ERROR_CODES = ["INVOICE_FORMAT_INVALID", "INVOICE_DUPLICATE"];
 /**
  * 시안 B4 — 송장 대행 등록. 상품준비중 ∧ 발송 기한 경과 ∧ 자동 알림 3회 무응답일 때만 열린다
  * (`actions.canRegisterShipment`). 택배사는 추적 연동 목록 하나에서만 고른다(자유 입력 없음).
- * 대행 사유 필수(300자) · 이력에 「운영자 대행」으로 남는다.
+ * 대행 사유 필수(300자) · 송장 출처가 「운영자 대행」으로 남고 브랜드에게 알림이 간다
+ * (`OrderNotificationService` ORDER_INVOICE_BY_ADMIN). 형식 오류 · 중복 송장은 서버가 거절한다.
  * 빈 값은 버튼 비활성만 — 송장 형식 · 중복은 서버가 판정하고 그 문구를 칸 아래에 띄운다.
  */
 export default function ProxyInvoiceForm(props: {
@@ -139,8 +140,8 @@ export default function ProxyInvoiceForm(props: {
         />
 
         <FormWarn tone="info">
-          이력에 <b>「운영자 대행」</b>으로 기록됩니다. 형식 오류·중복 송장은
-          등록되지 않습니다.
+          송장 출처가 <b>「운영자 대행」</b>으로 기록되며 브랜드에게 통지됩니다.
+          형식 오류·중복 송장은 등록되지 않습니다.
         </FormWarn>
         <OrderBtn
           variant="primary"
@@ -153,8 +154,8 @@ export default function ProxyInvoiceForm(props: {
         </OrderBtn>
       </FormShell>
       <RailText>
-        칸이 모두 채워질 때까지 버튼은 <b>비활성</b>입니다 — 에러 문구는 형식
-        오류·중복에만 뜹니다.
+        {groups.length > 1 ? "칸이" : "세 칸이"} 모두 채워질 때까지 버튼은{" "}
+        <b>비활성</b>입니다 — 에러 문구는 형식 오류·중복에만 뜹니다.
       </RailText>
     </RailCard>
   );

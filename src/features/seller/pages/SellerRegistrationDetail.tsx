@@ -31,6 +31,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
+const LIST_PATH = "/market/registration";
+
 /**
  * 반려 건이면 파기 정책(기능요구사항 §3-2)에 따라 "파기됨"으로 표시한다.
  *
@@ -75,7 +77,6 @@ export default function SellerRegistrationDetail() {
       {
         key: "businessLicense",
         label: "사업자등록증 사본",
-        fileName: "사업자등록증_사본.jpg",
         url: detail.businessLicenseImageUrl ?? "",
         compareRows: [
           {
@@ -87,14 +88,13 @@ export default function SellerRegistrationDetail() {
             value: detail.businessCompanyName ?? "—",
           },
           { label: "대표자명", value: detail.representativeName ?? "—" },
-          { label: "업태", value: detail.businessCategory ?? "—" },
+          { label: "업태 · 종목", value: detail.businessCategory ?? "—" },
           { label: "사업장 주소", value: detail.businessAddress ?? "—" },
         ],
       },
       {
         key: "mailOrderLicense",
         label: "통신판매업신고증 사본",
-        fileName: "통신판매업신고증_사본.jpg",
         url: detail.mailOrderLicenseImageUrl ?? "",
         compareRows: [
           {
@@ -110,7 +110,6 @@ export default function SellerRegistrationDetail() {
       {
         key: "bankBook",
         label: "통장 사본",
-        fileName: "통장_사본.jpg",
         url: detail.bankBookImageUrl ?? "",
         compareRows: [
           { label: "은행명", value: detail.settlementBankName ?? "—" },
@@ -141,7 +140,10 @@ export default function SellerRegistrationDetail() {
         .then((res) => {
           const length = res.headers.get("content-length");
           if (!cancelled && length) {
-            setFileSizes((prev) => ({ ...prev, [document_.key]: Number(length) }));
+            setFileSizes((prev) => ({
+              ...prev,
+              [document_.key]: Number(length),
+            }));
           }
         })
         .catch(() => {
@@ -180,7 +182,7 @@ export default function SellerRegistrationDetail() {
         // 반려와 파기는 같은 트랜잭션·같은 시각에 일어나지만 API는 이력 1건만 준다.
         // 정책상 항상 함께 일어나는 일이라 프론트에서 이력을 하나 더 만들어 보여준다.
         items.push({
-          label: "계정 · 제출 정보 파기",
+          label: "계정·제출 정보 파기",
           processedAt: item.processedAt,
           tone: "muted",
         });
@@ -217,10 +219,12 @@ export default function SellerRegistrationDetail() {
       refresh();
       setIsApprovalOpen(false);
       toast.success(`${detail.marketName} 입점 신청을 승인했습니다.`);
+      // 시안 T — 처리 후 목록으로 돌아가 갱신된 배지를 보여준다
+      navigate(LIST_PATH);
     } finally {
       setIsSubmitting(false);
     }
-  }, [detail, refresh]);
+  }, [detail, refresh, navigate]);
 
   const handleReject = useCallback(
     async (reasonType: RejectionReason, reasonDetail: string) => {
@@ -237,11 +241,12 @@ export default function SellerRegistrationDetail() {
         refresh();
         setIsRejectionOpen(false);
         toast.success(`${detail.marketName} 입점 신청을 반려했습니다.`);
+        navigate(LIST_PATH);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [detail, refresh]
+    [detail, refresh, navigate]
   );
 
   const goSibling = useCallback(
@@ -280,7 +285,7 @@ export default function SellerRegistrationDetail() {
           {detail.marketName}
         </h1>
         <RecordNav
-          onList={() => navigate("/market/registration")}
+          onList={() => navigate(LIST_PATH)}
           onPrev={hasPrev ? () => goSibling(-1) : undefined}
           onNext={hasNext ? () => goSibling(1) : undefined}
         />
@@ -289,7 +294,10 @@ export default function SellerRegistrationDetail() {
       <div className="grid grid-cols-[1fr_320px] items-start gap-4">
         {/* 좌측 — 신청 내용 */}
         <div className="flex flex-col gap-4">
-          <DetailCard title="기본 정보" note={isRejected ? "파기됨" : undefined}>
+          <DetailCard
+            title="기본 정보"
+            note={isRejected ? "파기됨" : undefined}
+          >
             {isRejected && (
               <div className="my-2 flex gap-2 rounded-[6px] bg-sz-n-100 px-3.5 py-3 text-[11px] leading-relaxed text-sz-n-600">
                 <span>ⓘ</span>
@@ -329,7 +337,8 @@ export default function SellerRegistrationDetail() {
             <FieldRow label="사업자등록번호">
               {renderValue(detail.businessRegistrationNumber, isRejected)}
             </FieldRow>
-            <FieldRow label="업태">
+            {/* 가입 때 업태와 종목을 한 칸(businessCondition 「도소매업 / 전자상거래」)에 받는다 */}
+            <FieldRow label="업태 · 종목">
               {renderValue(detail.businessCategory, isRejected)}
             </FieldRow>
             <FieldRow label="대표자명">
@@ -362,7 +371,10 @@ export default function SellerRegistrationDetail() {
             )}
           </DetailCard>
 
-          <DetailCard title="정산 정보" note={isRejected ? "파기됨" : undefined}>
+          <DetailCard
+            title="정산 정보"
+            note={isRejected ? "파기됨" : undefined}
+          >
             <FieldRow label="은행명">
               {renderValue(detail.settlementBankName, isRejected)}
             </FieldRow>
@@ -394,20 +406,19 @@ export default function SellerRegistrationDetail() {
                 label="신청일"
                 value={formatDateTimeShort(detail.applicationDate)}
               />
-              {/* 승인 건은 처리일을 굳이 보여주지 않는다(반려 건은 파기 시각으로서 의미가 있어 유지) */}
-              {detail.processedDate && detail.status !== "APPROVED" && (
-                <MetaRow
-                  label="처리일"
-                  value={formatDateTimeShort(detail.processedDate)}
-                />
-              )}
-              {/* 승인/반려로 처리가 끝난 건은 경과 시간이 의미가 없어 행 자체를 뺀다 */}
-              {isPending && (
-                <MetaRow
-                  label="경과"
-                  value={formatElapsed(detail.applicationDate) ?? "—"}
-                />
-              )}
+              {/*
+                처리일 행은 두지 않는다(시안 B2·B3) — 처리 완료 건의 경과는 "신청 → 처리"까지
+                걸린 시간이라 신청일 + 경과 = 처리일이 되어 행이 중복된다. 처리 시각은 처리 이력에 있다.
+              */}
+              <MetaRow
+                label="경과"
+                value={
+                  formatElapsed(
+                    detail.applicationDate,
+                    isPending ? null : detail.processedDate
+                  ) ?? "—"
+                }
+              />
               {detail.processorLoginId && (
                 <MetaRow label="처리자" value={detail.processorLoginId} />
               )}
@@ -415,15 +426,17 @@ export default function SellerRegistrationDetail() {
 
             {isRejected && detail.rejectionReason && (
               <div className="mt-2.5 rounded-[6px] bg-sz-danger-bg px-3.5 py-3">
+                {/* 시안 B3 — 제목 줄에 정형 사유, 다음 줄에 상세 사유 */}
                 <div className="mb-1 text-[11px] font-semibold text-sz-danger-text">
-                  반려 사유
-                </div>
-                <div className="text-[11px] leading-relaxed text-sz-n-700">
+                  반려 사유 ·{" "}
                   {SELLER_REJECTION_REASON_LABELS[detail.rejectionReason] ??
                     detail.rejectionReason}
-                  {detail.rejectionReasonDetail &&
-                    ` - ${detail.rejectionReasonDetail}`}
                 </div>
+                {detail.rejectionReasonDetail && (
+                  <div className="text-[11px] leading-relaxed text-sz-n-700">
+                    {detail.rejectionReasonDetail}
+                  </div>
+                )}
               </div>
             )}
 
@@ -541,10 +554,13 @@ export default function SellerRegistrationDetail() {
       />
       <DocumentPreviewModal
         open={previewIndex !== null}
-        onOpenChange={(open) => setPreviewIndex(open ? (previewIndex ?? 0) : null)}
+        onOpenChange={(open) =>
+          setPreviewIndex(open ? (previewIndex ?? 0) : null)
+        }
         documents={documents}
         currentIndex={previewIndex ?? 0}
         onIndexChange={setPreviewIndex}
+        fileSizes={fileSizes}
       />
     </div>
   );

@@ -11,7 +11,11 @@ import { queryClient } from "@/common/lib/queryClient";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import ApplicationApprovalModal from "@/features/creator/components/ApplicationApprovalModal/ApplicationApprovalModal";
 import ApplicationRejectionModal from "@/features/creator/components/ApplicationRejectionModal/ApplicationRejectionModal";
-import { CREATOR_REJECTION_REASON_LABELS } from "@/features/creator/constants/params";
+import {
+  CREATOR_REJECTION_REASON_LABELS,
+  CREATOR_REJECTION_REASONS,
+  SNS_TYPE_LABELS,
+} from "@/features/creator/constants/params";
 import {
   CREATOR_APPLICATION_DETAIL_QUERY_KEY,
   CREATOR_APPLICATION_LIST_QUERY_KEY,
@@ -27,6 +31,8 @@ import { getApplicationStatusBadge } from "@/features/creator/utils/statusBadge"
 import { useCallback, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+
+const LIST_PATH = "/showroom/registration";
 
 /**
  * 반려 건이면 파기 정책(§9-5)에 따라 "파기됨"으로 표시한다.
@@ -67,6 +73,15 @@ export default function CreatorApplicationDetail() {
       (a.processedAt ?? "").localeCompare(b.processedAt ?? "")
     );
 
+    // B3 반려 이력 보조줄 「{시각} · 반려 사유(채널 실적 확인 불가) 이메일 통지」 — 메일이 실제로 나간 건만.
+    // 신청자에게 간 라벨이라 내부 라벨이 아니라 통지 라벨(noticeLabel)을 쓴다.
+    const noticeLabel =
+      detail?.noticeSent === true
+        ? CREATOR_REJECTION_REASONS.find(
+            (reason) => reason.value === detail.rejectReasonType
+          )?.noticeLabel
+        : undefined;
+
     const items: Array<HistoryItem> = [];
     for (const item of sorted) {
       const processedBy = item.processorEmail ?? "—";
@@ -82,6 +97,10 @@ export default function CreatorApplicationDetail() {
           label: `반려 처리 · ${processedBy}`,
           processedAt: item.processedAt,
           tone: "muted",
+          // 공용 HistoryList는 이 값을 시각 뒤에 「 · 」로 잇는다 — 처리자 자리를 통지 표기에 쓴다
+          processorName: noticeLabel
+            ? `반려 사유(${noticeLabel}) 이메일 통지`
+            : null,
         });
         // 반려와 파기는 같은 트랜잭션·같은 시각에 일어나지만 API는 이력 1건만 준다.
         // 정책상 항상 함께 일어나는 일이라 프론트에서 이력을 하나 더 만들어 보여준다.
@@ -121,10 +140,12 @@ export default function CreatorApplicationDetail() {
       refresh();
       setIsApprovalOpen(false);
       toast.success(`@${detail.accountId} 입점 신청을 승인했습니다.`);
+      // 시안 T — 처리 후 목록으로 돌아가 갱신된 배지를 보여준다
+      navigate(LIST_PATH);
     } finally {
       setIsSubmitting(false);
     }
-  }, [detail, refresh]);
+  }, [detail, refresh, navigate]);
 
   const handleReject = useCallback(
     async (reasonType: CreatorRejectionReasonType, reasonDetail: string) => {
@@ -140,11 +161,12 @@ export default function CreatorApplicationDetail() {
         refresh();
         setIsRejectionOpen(false);
         toast.success(`@${detail.accountId} 입점 신청을 반려했습니다.`);
+        navigate(LIST_PATH);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [detail, refresh]
+    [detail, refresh, navigate]
   );
 
   const goSibling = useCallback(
@@ -184,7 +206,7 @@ export default function CreatorApplicationDetail() {
       */}
       <div className="mb-4 flex justify-end">
         <RecordNav
-          onList={() => navigate("/showroom/registration")}
+          onList={() => navigate(LIST_PATH)}
           onPrev={hasPrev ? () => goSibling(-1) : undefined}
           onNext={hasNext ? () => goSibling(1) : undefined}
         />
@@ -239,14 +261,21 @@ export default function CreatorApplicationDetail() {
             )}
           </DetailCard>
 
-          <DetailCard title="활동 채널" note="계약 이후 검증 식별 키">
+          <DetailCard
+            title="활동 채널"
+            note={
+              isRejected ? "계정 아이디·채널은 유지" : "계약 이행 검증 식별 키"
+            }
+          >
             {/*
               활동명/계정 이름 행은 두지 않는다.
               활동명은 신청서가 수집하지 않는 값이고(기능요구사항 §9-1·§3-4), 백엔드가
               activityName으로 내려주는 것의 실체는 소비자 계정 닉네임이라 심사 판단에
               쓸모가 없다. 쇼룸명은 승인 후 온보딩에서 생기므로 심사 시점에는 존재하지 않는다.
             */}
-            <FieldRow label="플랫폼">{detail.snsType}</FieldRow>
+            <FieldRow label="플랫폼">
+              {SNS_TYPE_LABELS[detail.snsType] ?? detail.snsType}
+            </FieldRow>
             <FieldRow label="채널 주소">
               {/* 운영자가 실적을 바로 확인해야 하므로 실제 링크로 연다(§3-5).
                   반려 건도 공개 식별자라 파기하지 않으므로 동일하게 링크를 유지한다. */}
@@ -295,17 +324,20 @@ export default function CreatorApplicationDetail() {
             title="약관 동의"
             note={isRejected ? "파기됨" : undefined}
           >
-            <FieldRow label="마케팅 정보 수신 동의">
-              {isRejected ? (
+            {/* 반려 건은 동의 내역 자체가 파기돼 행 이름도 「동의 이력」으로 바뀐다(시안 B3) */}
+            {isRejected ? (
+              <FieldRow label="동의 이력">
                 <PurgedValue />
-              ) : detail.marketingAgree === null ? (
-                "—"
-              ) : detail.marketingAgree ? (
-                "동의 (선택)"
-              ) : (
-                "미동의 (선택)"
-              )}
-            </FieldRow>
+              </FieldRow>
+            ) : (
+              <FieldRow label="마케팅 정보 수신 동의">
+                {detail.marketingAgree === null
+                  ? "—"
+                  : detail.marketingAgree
+                    ? "동의 (선택)"
+                    : "미동의 (선택)"}
+              </FieldRow>
+            )}
           </DetailCard>
         </div>
 

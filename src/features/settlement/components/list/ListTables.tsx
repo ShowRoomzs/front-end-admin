@@ -123,12 +123,7 @@ function scheduleText(item: SettlementListItem): ReactNode {
           {date} <TDim>(예정)</TDim>
         </>
       );
-    case "FAILED_AT":
-      return (
-        <>
-          {date} <TDim>실패</TDim>
-        </>
-      );
+    // 지급 완료 · 분배 실패는 날짜만(시안 07a 「지급 완료·실패=지급일」)
     default:
       return date;
   }
@@ -248,6 +243,19 @@ function isCreatorSide(row: EvidenceListItem): boolean {
   );
 }
 
+/**
+ * 「처리 항목」 열의 앞말(시안 07a L5) — 운영자가 할 일로 부른다. 시안에 없는 유형은 서버 라벨 그대로.
+ * 방향(「인플루언서 → 플랫폼」)은 서버 값이다.
+ */
+const EVIDENCE_TASK_LABEL: Partial<Record<EvidenceListItem["type"], string>> = {
+  CREATOR_TAX_INVOICE: "세금계산서 대조",
+  BRAND_TAX_INVOICE: "브랜드 세금계산서 발행",
+};
+
+function evidenceTask(row: EvidenceListItem): string {
+  return EVIDENCE_TASK_LABEL[row.type] ?? row.typeLabel;
+}
+
 function evidenceDate(row: EvidenceListItem): string {
   if (row.inputAt) return `${md(row.inputAt)} 입력`;
   if (row.dueAt) return `${mdDue(row.dueAt)} 기한`;
@@ -300,9 +308,9 @@ export function EvidenceTable(props: {
               </td>
               <td
                 className={cn(CELL, "truncate")}
-                title={`${row.typeLabel} · ${row.direction}`}
+                title={`${evidenceTask(row)} · ${row.direction}`}
               >
-                {row.typeLabel} <TDim>· {row.direction}</TDim>
+                {evidenceTask(row)} <TDim>· {row.direction}</TDim>
               </td>
               <td className={cn(CELL, "text-center tabular-nums")}>
                 {evidenceDate(row)}
@@ -350,7 +358,8 @@ function clawbackRowStatus(row: ClawbackListItem): ClawbackRowStatus {
 function shareCell(
   amount: number,
   side: ClawbackRowStatus | null,
-  rowStatus: ClawbackRowStatus
+  rowStatus: ClawbackRowStatus,
+  appliedSettlementNumber: string | null
 ): ReactNode {
   if (rowStatus === "RECALCULATED") {
     return <TDim>{CLAWBACK_STATUS.RECALCULATED.label}</TDim>;
@@ -360,7 +369,12 @@ function shareCell(
     <>
       {`− ${won(amount)}`}
       {side !== rowStatus && (
-        <TDim className="block text-[11px]">{CLAWBACK_STATUS[side].label}</TDim>
+        <TDim className="block text-[11px]">
+          {/* 한쪽만 차감된 건(시안 L6 CLW-0003 「STL-2608-015 차감」) — 차감 정산번호가 있으면 그 번호로 */}
+          {side === "APPLIED" && appliedSettlementNumber
+            ? `${appliedSettlementNumber} 차감`
+            : CLAWBACK_STATUS[side].label}
+        </TDim>
       )}
     </>
   );
@@ -430,10 +444,20 @@ export function ClawbackTable(props: {
                   <TitleCell title={target} sub={sub} />
                 </td>
                 <td className={cn(CELL, "text-right tabular-nums")}>
-                  {shareCell(row.brandAmount, row.brandStatus, status)}
+                  {shareCell(
+                    row.brandAmount,
+                    row.brandStatus,
+                    status,
+                    row.appliedSettlementNumber
+                  )}
                 </td>
                 <td className={cn(CELL, "text-right tabular-nums")}>
-                  {shareCell(row.creatorAmount, row.creatorStatus, status)}
+                  {shareCell(
+                    row.creatorAmount,
+                    row.creatorStatus,
+                    status,
+                    row.appliedSettlementNumber
+                  )}
                 </td>
                 <td className={cn(CELL, "text-center tabular-nums")}>
                   {appliedCell(row, status)}

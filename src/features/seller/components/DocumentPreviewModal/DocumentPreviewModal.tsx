@@ -1,3 +1,4 @@
+import { formatFileSize } from "@/common/utils/formatFileSize";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface CompareRow {
@@ -9,7 +10,6 @@ export interface SellerDocument {
   key: string;
   /** 서류 이름 (예: 사업자등록증 사본) */
   label: string;
-  fileName: string;
   url: string;
   /** 이 서류와 대조해야 할 신청서 입력값 */
   compareRows: Array<CompareRow>;
@@ -21,6 +21,23 @@ interface DocumentPreviewModalProps {
   documents: Array<SellerDocument>;
   currentIndex: number;
   onIndexChange: (index: number) => void;
+  /** 서류 key별 파일 용량(바이트) — 상세가 HEAD 요청으로 읽은 값. 못 읽은 서류는 없다 */
+  fileSizes?: Record<string, number>;
+}
+
+/**
+ * 파일 형식 — 저장 키가 UUID라 원본 파일명은 없지만 확장자는 URL에 남는다(예: `…/3f2a….jpg`).
+ * 확장자를 못 읽으면 null(표시 생략).
+ */
+function getFileExtension(url: string): string | null {
+  let pathname = url;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    // 상대 경로 등 — 그대로 본다
+  }
+  const match = /\.([a-z0-9]{2,5})$/i.exec(pathname);
+  return match ? match[1].toUpperCase() : null;
 }
 
 const VIEWER_BTN =
@@ -34,7 +51,14 @@ const VIEWER_BTN =
  * 줌은 MVP 제외 — 대신 [원본 열기]로 브라우저 기본 확대를 쓴다.
  */
 export default function DocumentPreviewModal(props: DocumentPreviewModalProps) {
-  const { open, onOpenChange, documents, currentIndex, onIndexChange } = props;
+  const {
+    open,
+    onOpenChange,
+    documents,
+    currentIndex,
+    onIndexChange,
+    fileSizes,
+  } = props;
   const [rotation, setRotation] = useState(0);
   const [hasImageError, setHasImageError] = useState(false);
   const imageBoxRef = useRef<HTMLDivElement>(null);
@@ -104,8 +128,14 @@ export default function DocumentPreviewModal(props: DocumentPreviewModalProps) {
     return null;
   }
 
-  const fileExtension =
-    document_.fileName.split(".").pop()?.toUpperCase() ?? "IMAGE";
+  // 시안 「1.2MB · JPG · 업로드 2026.07.10」 — 서버에 원본 파일명 · 업로드 일시가 없어 용량 · 형식만 둔다
+  const fileSize = fileSizes?.[document_.key];
+  const fileMeta = [
+    fileSize !== undefined ? formatFileSize(fileSize) : null,
+    getFileExtension(document_.url),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div
@@ -193,16 +223,16 @@ export default function DocumentPreviewModal(props: DocumentPreviewModalProps) {
                 <button
                   type="button"
                   className={VIEWER_BTN}
-                  onClick={() => setRotation((prev) => prev + 90)}
+                  onClick={() => setRotation((prev) => prev - 90)}
                 >
-                  ↻ 90°
+                  ↺ 90°
                 </button>
                 <button
                   type="button"
                   className={VIEWER_BTN}
-                  onClick={() => setRotation((prev) => prev - 90)}
+                  onClick={() => setRotation((prev) => prev + 90)}
                 >
-                  ↺ 90°
+                  ↻ 90°
                 </button>
                 <a
                   href={document_.url}
@@ -243,8 +273,8 @@ export default function DocumentPreviewModal(props: DocumentPreviewModalProps) {
             <div className="text-[13px] font-semibold text-sz-n-900">
               {document_.label}
             </div>
-            <div className="mb-4 text-[11px] text-sz-n-500">
-              {fileExtension}
+            <div className="mb-4 min-h-[16px] text-[11px] text-sz-n-500">
+              {fileMeta}
             </div>
 
             <div className="mb-2 border-b border-sz-n-200 pb-1.5 text-[11px] font-semibold text-sz-n-500">
@@ -268,6 +298,8 @@ export default function DocumentPreviewModal(props: DocumentPreviewModalProps) {
               <span>ⓘ</span>
               <span>
                 표시되는 항목은 <b>선택한 서류에 따라 바뀝니다.</b>
+                <br />
+                신고증 → 신고번호·상호명 / 통장 → 은행·예금주·계좌번호
               </span>
             </div>
           </div>
