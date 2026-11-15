@@ -335,9 +335,19 @@ export function settlementTransferred(detail: Detail): boolean {
   );
 }
 
-/** B5a 정산 단계 배지 색 — 서버 라벨로 고른다(모르는 라벨 · 「정산 대기」는 중립) */
-export function settlementStageTone(label: string): GroupBuyTone {
-  return SETTLEMENT_STAGE_TONE[label] ?? "NEUTRAL";
+/**
+ * B5a 정산 단계 배지 색 — 서버 `stageTone`(정산 목록과 같은 톤)을 그대로 쓴다.
+ * 옛 배포 서버라 톤이 없을 때만 라벨로 고른다(모르는 라벨 · 「정산 대기」는 중립).
+ */
+export function settlementStageTone(settlement: {
+  stageLabel: string;
+  stageTone?: GroupBuyTone;
+}): GroupBuyTone {
+  return (
+    settlement.stageTone ??
+    SETTLEMENT_STAGE_TONE[settlement.stageLabel] ??
+    "NEUTRAL"
+  );
 }
 
 // ── 처리 이력 ─────────────────────────────────────────

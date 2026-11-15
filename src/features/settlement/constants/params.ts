@@ -74,6 +74,7 @@ export const SETTLEMENT_INITIAL_PARAMS: SettlementListParams = {
   keyword: "",
   sort: "SCHEDULE_DESC",
   marketId: "",
+  creatorId: "",
   page: 1,
   size: 20,
 };

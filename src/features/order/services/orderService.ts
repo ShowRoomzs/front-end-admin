@@ -1,10 +1,5 @@
 import { apiInstance } from "@/common/lib/apiInstance";
 import type { PageResponse } from "@/common/types/page";
-import {
-  DEV_MOCK_ENABLED,
-  mockDelay,
-  mockScenario,
-} from "@/common/utils/devMock";
 import { paramsToSearchParams } from "@/common/utils/paramsToSearchParams";
 import type { AdminGroupBuyListItem } from "@/features/groupBuy/types";
 import type {
@@ -28,28 +23,12 @@ const BASE = "/admin/orders";
 const groupPath = (deliveryGroupId: number, action: string) =>
   `${BASE}/groups/${deliveryGroupId}/${action}`;
 
-/*
-  DEV 목업 시나리오(`?mock=stall` · 개발 서버 전용 · 배포본은 항상 실호출):
-  목록 = 06a A3 배송 이상 4건 + 추적 정지 보조줄 「소비자 선택 개방까지 N일」 · 요약 · 행을 누르면 그 주문 상세.
-  남긴 이유: 목록 `AdminOrderGroupSummary`에 `stallChoice`가 아직 없다(origin/main · 백엔드 요청 — 58 계획 5-12는
-  06d만 더했다). 상세 `stallChoice`는 서버가 주지만, 목업 목록 행의 주문 id가 서버에 없어 상세도 목업으로 짝을 맞춘다.
-  목록 `stallChoice`가 서버에 생기면 이 분기와 `mocks/orderMock.ts`를 지운다.
-*/
-function stallScenario() {
-  return DEV_MOCK_ENABLED && mockScenario() === "stall";
-}
-
 /**
  * 어드민 주문 API — 백엔드 `AdminOrderController`와 1:1.
  * 조치는 전부 하위주문(`deliveryGroupId`) 단위이고, 성공하면 갱신된 주문 상세를 돌려준다(B6만 생성 id).
  */
 export const orderService = {
   getList: async (query: AdminOrderListQuery) => {
-    if (stallScenario()) {
-      // DEV 목업 — 목록 `stallChoice`가 서버에 생기면 삭제
-      const { mockOrderList } = await import("../mocks/orderMock");
-      return mockDelay(mockOrderList());
-    }
     const { data } = await apiInstance.get<PageResponse<AdminOrderListItem>>(
       BASE,
       { params: paramsToSearchParams(query) }
@@ -59,11 +38,6 @@ export const orderService = {
 
   /** 탭 · 상태 · 이상 유형 건수 — 목록과 같은 조건(탭 · 상태 · 이상 유형 · 정렬 제외) */
   getSummary: async (query: AdminOrderSummaryQuery) => {
-    if (stallScenario()) {
-      // DEV 목업 — 위 목록 목업과 짝
-      const { mockOrderSummary } = await import("../mocks/orderMock");
-      return mockDelay(mockOrderSummary());
-    }
     const { data } = await apiInstance.get<AdminOrderSummary>(
       `${BASE}/summary`,
       { params: paramsToSearchParams(query) }
@@ -72,11 +46,6 @@ export const orderService = {
   },
 
   getDetail: async (orderId: number) => {
-    if (stallScenario()) {
-      // DEV 목업 — 위 목록 목업 행의 짝(목업 주문 id는 서버에 없다)
-      const { mockOrderDetail } = await import("../mocks/orderMock");
-      return mockDelay(mockOrderDetail(orderId));
-    }
     const { data } = await apiInstance.get<AdminOrderDetail>(
       `${BASE}/${orderId}`
     );

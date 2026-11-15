@@ -245,13 +245,18 @@ export function BreakdownTable(props: {
 
 /**
  * 핵심 탭 4칸(시안 `.kq`) — 네 묶음(공급 · 공구 · 수요 · 신뢰)에서 하나씩. 대표 지표가 왜 움직였는지 한 줄로 읽힌다.
- * 보조줄은 비율이면 건수(「6/8」), 아니면 서버 설명.
+ * 보조줄은 비율이면 건수(「6/8」), 아니면 서버 설명. 분모가 0이라 값이 없으면(—) 「0/0」은 읽을 것이 없어
+ * 설명을 대신 적는다. 칸이 좁아 긴 설명은 한 줄로 자르고 전체는 툴팁으로 본다.
  */
 export function CoreCards(props: { cards: Array<MetricsRow> }) {
   return (
     <div className="mb-4 grid grid-cols-4 rounded-[8px] border border-sz-n-200 bg-white">
       {props.cards.map((card) => {
         const delta = deltaView(card);
+        const sub =
+          card.current !== null && card.currentCount
+            ? card.currentCount
+            : card.note;
         return (
           <div
             key={card.key}
@@ -261,11 +266,12 @@ export function CoreCards(props: { cards: Array<MetricsRow> }) {
             <div className="mt-[3px] text-[16px] font-semibold tabular-nums text-sz-n-900">
               {formatMetricValue(card, card.current, null, null)}
             </div>
-            <div className="mt-[2px] text-[11px] tabular-nums">
-              <span className={TONE_CLASS[delta.tone]}>{delta.text}</span>{" "}
-              <span className="text-sz-n-500">
-                · {card.currentCount ?? card.note}
-              </span>
+            <div
+              className="mt-[2px] truncate text-[11px] tabular-nums"
+              title={sub || undefined}
+            >
+              <span className={TONE_CLASS[delta.tone]}>{delta.text}</span>
+              {sub && <span className="text-sz-n-500"> · {sub}</span>}
             </div>
           </div>
         );

@@ -130,6 +130,11 @@ export interface SettlementListParams extends PageParams {
    * 없으면 빈 문자열. 서버는 정산 탭에만 걸고 증빙 · 차감 탭은 전체를 준다.
    */
   marketId: string;
+  /**
+   * 인플루언서 ID — 인플루언서 상세 「정산 관리에서 보기」가 `?creatorId=`로 넘긴다(2026-11-15 백엔드 반영).
+   * `marketId`와 같이 주소 값 문자열 · 없으면 빈 문자열이고, 서버는 정산 탭에만 건다.
+   */
+  creatorId: string;
 }
 
 export type ScheduleKind =

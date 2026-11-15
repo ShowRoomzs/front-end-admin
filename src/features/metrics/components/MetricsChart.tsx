@@ -40,13 +40,12 @@ export default function MetricsChart(props: {
   const points = chart.points;
   // 응답에 없을 때(빈 배열 · 누락)는 이번 기간 막대만 그린다
   const comparePoints = chart.comparePoints ?? [];
-  const max = niceMax(
-    Math.max(
-      0,
-      ...points.map((point) => point.value),
-      ...comparePoints.map((point) => point.value)
-    )
+  const rawMax = Math.max(
+    0,
+    ...points.map((point) => point.value),
+    ...comparePoints.map((point) => point.value)
   );
+  const max = niceMax(rawMax);
   const wide = points.length <= 6;
   const step = labelStep(points.length);
   const columns = {
@@ -90,9 +89,12 @@ export default function MetricsChart(props: {
         className="relative mt-3 grid h-32 items-end border-b border-sz-n-300 pt-1"
         style={{ ...GRID_STYLE, ...columns }}
       >
-        <span className="absolute top-[-2px] left-0 bg-white pr-1 text-[10px] leading-none tabular-nums text-sz-n-500">
-          {compactValue(max, chart.metricKey)}
-        </span>
+        {/* 두 기간 모두 0이면 막대가 없어 눈금 값이 의미 없다 — niceMax의 나눗셈용 1을 적지 않는다 */}
+        {rawMax > 0 && (
+          <span className="absolute top-[-2px] left-0 bg-white pr-1 text-[10px] leading-none tabular-nums text-sz-n-500">
+            {compactValue(max, chart.metricKey)}
+          </span>
+        )}
         {points.map((point, index) => {
           const compare = comparePoints[index];
           const bar = cn(

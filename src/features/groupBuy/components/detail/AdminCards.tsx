@@ -881,7 +881,11 @@ export function ItemsCard(props: {
               <B className="tabular-nums text-sz-n-900">
                 {formatPercent(item.rewardRate)}
               </B>{" "}
-              · 예상 리워드{" "}
+              · 예상 리워드
+              {/* 옵션 상품이면 이 값은 기본 옵션 기준이다 — 옵션별 값은 아래 「옵션 —」 줄 */}
+              {(item.options ?? []).some(
+                (option) => option.variantName !== null
+              ) && "(기본 옵션)"}{" "}
               <span className="tabular-nums">
                 {won(item.expectedUnitReward)}
               </span>{" "}
@@ -890,7 +894,10 @@ export function ItemsCard(props: {
                 {item.minQuantity === null ? "—" : `${num(item.minQuantity)}개`}
               </span>
             </PiX>
-            {/* 옵션 상품 — 판매가·최소 물량이 옵션마다 다르고 서로 대체 충족되지 않는다 */}
+            {/*
+              옵션 상품 — 판매가·최소 물량이 옵션마다 다르고 서로 대체 충족되지 않는다. 개당 리워드도
+              옵션 판매가 기준이라(정산 · 계약서와 같은 계산) 옵션마다 적고, 서버 값이 없으면 상품 값으로 둔다.
+            */}
             {(item.options ?? []).some(
               (option) => option.variantName !== null
             ) && (
@@ -899,7 +906,9 @@ export function ItemsCard(props: {
                 {item.options
                   .map(
                     (option) =>
-                      `${option.variantName ?? "단품"} ${won(option.salePrice)} · 최소 ${
+                      `${option.variantName ?? "단품"} ${won(option.salePrice)} · 리워드 ${won(
+                        option.unitReward ?? item.expectedUnitReward
+                      )} · 최소 ${
                         option.minQuantity === null
                           ? "—"
                           : `${num(option.minQuantity)}개`
@@ -958,10 +967,7 @@ export function SettlementCard(props: {
                     {settlement.settlementNumber ?? "—"}
                   </span>{" "}
                   ·{" "}
-                  <GbBadge
-                    hideDot
-                    tone={settlementStageTone(settlement.stageLabel)}
-                  >
+                  <GbBadge hideDot tone={settlementStageTone(settlement)}>
                     {settlement.stageLabel}
                   </GbBadge>{" "}
                   <button
@@ -974,7 +980,7 @@ export function SettlementCard(props: {
                 </>
               ) : (
                 <>
-                  <GbBadge hideDot tone="NEUTRAL">
+                  <GbBadge hideDot tone={settlementStageTone(settlement)}>
                     {settlement.stageLabel}
                   </GbBadge>{" "}
                   <button

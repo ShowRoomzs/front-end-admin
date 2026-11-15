@@ -109,8 +109,18 @@ function toolbarLine(input: {
   hasKeyword: boolean;
   /** 브랜드 상세에서 `?marketId=`로 들어왔을 때 그 브랜드명(행에서 읽는다) */
   brandFilterName: string | null;
+  /** 인플루언서 상세에서 `?creatorId=`로 들어왔을 때 그 쇼룸명(행에서 읽는다) */
+  creatorFilterName: string | null;
 }): ReactNode {
-  const { tab, total, toolbar, summary, hasKeyword, brandFilterName } = input;
+  const {
+    tab,
+    total,
+    toolbar,
+    summary,
+    hasKeyword,
+    brandFilterName,
+    creatorFilterName,
+  } = input;
   if (total === undefined) return null;
   switch (tab) {
     case "EVIDENCE":
@@ -180,8 +190,9 @@ function toolbarLine(input: {
       );
     }
     default: {
-      // 탭 숫자는 검색 · 브랜드 필터와 무관한 전체 기준이라 걸러 볼 때는 총 건수만 보인다
-      const filtered = hasKeyword || brandFilterName !== null;
+      // 탭 숫자는 검색 · 브랜드 · 인플루언서 필터와 무관한 전체 기준이라 걸러 볼 때는 총 건수만 보인다
+      const filtered =
+        hasKeyword || brandFilterName !== null || creatorFilterName !== null;
       const adjusting = filtered ? 0 : (summary?.tabCounts.ADJUSTING ?? 0);
       const failed = filtered ? 0 : (summary?.tabCounts.PAYOUT_FAILED ?? 0);
       return (
@@ -189,6 +200,7 @@ function toolbarLine(input: {
           총 {b(total)}건{adjusting > 0 && <> · 조정 협의 {b(adjusting)}건</>}
           {failed > 0 && <> · 분배 실패 {b(failed)}건</>}
           {brandFilterName && <TSub> · 브랜드 {brandFilterName}</TSub>}
+          {creatorFilterName && <TSub> · 인플루언서 {creatorFilterName}</TSub>}
         </>
       );
     }
@@ -344,10 +356,14 @@ export default function SettlementManagement() {
               toolbar: active.data?.toolbar,
               summary,
               hasKeyword: keyword !== "",
-              // 정산 탭만 브랜드로 걸러진다(증빙 · 차감 탭은 서버가 전체를 준다)
+              // 정산 탭만 브랜드 · 인플루언서로 걸러진다(증빙 · 차감 탭은 서버가 전체를 준다)
               brandFilterName:
                 isSettlementRowTab && params.marketId
                   ? (settlementQuery.data?.content[0]?.brandName ?? null)
+                  : null,
+              creatorFilterName:
+                isSettlementRowTab && params.creatorId
+                  ? (settlementQuery.data?.content[0]?.showroomName ?? null)
                   : null,
             })}
           </span>

@@ -59,8 +59,8 @@ const NOTE = "mt-[3px] block text-[11px] font-medium";
 
 /**
  * 추적 정지 보조줄(06a A3 · 기-15 【잠정】) — 「소비자 선택 개방까지 N일」.
- * 목록 응답(`AdminOrderGroupSummary`)에 `stallChoice`가 아직 없어(백엔드 요청 · 06d 행 · 06a 상세에는 있다)
- * 값이 올 때만 그린다 — 지금은 DEV 목업(`?mock=stall`)만 채운다.
+ * N은 목록 행 `stallChoice.daysUntilOpen`(06a 상세 · 06d 행과 같은 값). 서버가 null을 주거나
+ * 옛 배포 서버라 필드가 없으면 그리지 않는다.
  */
 function StallChoiceNote(props: { choice: AdminOrderStallChoice }) {
   const { choice } = props;

@@ -260,8 +260,9 @@ export default function InfluencerMemberDetail() {
             onOpen={(settlementId) =>
               navigate(`${SETTLEMENT_PATH}/${settlementId}`)
             }
+            // 이 인플루언서의 정산만 — 서버 `creatorId` 필터(2026-11-15 · 정산 탭에만 걸린다)
             onOpenList={() =>
-              navigate(`${SETTLEMENT_PATH}?keyword=${encodeURIComponent(name)}`)
+              navigate(`${SETTLEMENT_PATH}?creatorId=${creatorId}`)
             }
           />
           <InfluencerContractsCard
