@@ -238,8 +238,8 @@ export interface AdminOrderGroupSummary {
   /** 반품 · 교환 요약 — 없으면 null */
   claim: AdminOrderClaimSummary | null;
   /**
-   * 【서버 없음】 추적 정지 소비자 선택 — origin/main 목록 응답에도 아직 없다(06a 상세 · 06d 행에는 있다).
-   * 백엔드 요청: `AdminOrderGroupSummary.stallChoice`. 지금은 DEV 목업(`?mock=stall`)만 채운다.
+   * 추적 정지 · 소비자 선택 — 하위주문 상세 `stallChoice`와 같은 값(2026-11-15 백엔드 반영). 없으면 null.
+   * 옛 배포 서버는 내리지 않는다(undefined).
    */
   stallChoice?: AdminOrderStallChoice | null;
 }
@@ -433,6 +433,11 @@ export interface AdminOrderActiveClaim {
   type: ClaimType;
   status: ClaimStatus;
   statusLabel: string;
+  /**
+   * 클레임 대상 주문 항목 — `items[].orderProductId`와 같은 값(2026-11-15 백엔드 반영).
+   * 옛 배포 서버는 내리지 않는다(undefined) · 항목을 모르면 null.
+   */
+  orderProductId?: number | null;
 }
 
 /** `AdminOrderHistory` */

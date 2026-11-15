@@ -22,6 +22,7 @@ import {
 } from "@/features/order/constants/labels";
 import { inquiryDetailPath } from "@/features/order/constants/params";
 import type {
+  AdminOrderActiveClaim,
   AdminOrderDetail,
   AdminOrderGroupDetail,
   AdminOrderItem,
@@ -265,15 +266,26 @@ function groupBuyNote(detail: AdminOrderDetail) {
 }
 
 /**
- * 클레임 단계를 붙일 항목 — `activeClaims`에 항목 id가 없어(백엔드 요청 `ActiveClaim.orderProductId`)
- * 진행 중 클레임이 하나이고 그 하위주문에서 클레임을 걸 수 있는 항목(결제완료 · 구매확정)도 하나일 때만 정해진다.
+ * 항목별 진행 중 클레임 — 서버 `activeClaims[].orderProductId`로 항목 행에 잇는다(한 항목에 여럿이면 앞의 것).
+ * 항목 id가 하나도 없으면(옛 배포 서버 · 서버가 null) 진행 중 클레임이 하나이고 클레임을 걸 수 있는
+ * 항목(결제완료 · 구매확정)도 하나일 때만 그 항목에 붙인다.
  */
-function claimTargetId(group: AdminOrderGroupDetail) {
-  if (group.activeClaims.length !== 1) return null;
-  const candidates = group.items.filter(
-    (item) => item.status === "PAID" || item.status === "PURCHASE_CONFIRMED"
-  );
-  return candidates.length === 1 ? candidates[0].orderProductId : null;
+function claimsByItem(group: AdminOrderGroupDetail) {
+  const byItem = new Map<number, AdminOrderActiveClaim>();
+  group.activeClaims.forEach((claim) => {
+    if (claim.orderProductId != null && !byItem.has(claim.orderProductId)) {
+      byItem.set(claim.orderProductId, claim);
+    }
+  });
+  if (byItem.size === 0 && group.activeClaims.length === 1) {
+    const candidates = group.items.filter(
+      (item) => item.status === "PAID" || item.status === "PURCHASE_CONFIRMED"
+    );
+    if (candidates.length === 1) {
+      byItem.set(candidates[0].orderProductId, group.activeClaims[0]);
+    }
+  }
+  return byItem;
 }
 
 /**
@@ -284,7 +296,7 @@ function claimTargetId(group: AdminOrderGroupDetail) {
 function itemBadge(
   group: AdminOrderGroupDetail,
   item: AdminOrderItem,
-  claimTarget: number | null
+  claim: AdminOrderActiveClaim | undefined
 ): OrderBadgeData {
   const fallback = ITEM_STATUS_BADGE[item.status] ?? {
     label: item.status,
@@ -296,8 +308,7 @@ function itemBadge(
   if (group.cancelRequest?.orderProductIds.includes(item.orderProductId)) {
     return { label: "취소 요청", tone: "WARNING" };
   }
-  const claim = group.activeClaims[0];
-  if (claim && claimTarget === item.orderProductId) {
+  if (claim) {
     return { label: claim.statusLabel, tone: "INFO" };
   }
   if (item.status === "PURCHASE_CONFIRMED") {
@@ -327,7 +338,7 @@ export function SubOrdersBlock(props: BlockProps) {
     >
       <div>
         {detail.groups.map((group) => {
-          const claimTarget = claimTargetId(group);
+          const itemClaims = claimsByItem(group);
           return (
             <SubCard
               key={group.deliveryGroupId}
@@ -345,7 +356,11 @@ export function SubOrdersBlock(props: BlockProps) {
               }
             >
               {group.items.map((item) => {
-                const badge = itemBadge(group, item, claimTarget);
+                const badge = itemBadge(
+                  group,
+                  item,
+                  itemClaims.get(item.orderProductId)
+                );
                 return (
                   <ItRow key={item.orderProductId}>
                     <span>{item.productName}</span>
@@ -397,7 +412,7 @@ function ShipRow(props: {
 
 /**
  * 추적 정지 · 소비자 선택(기-15 【잠정】) — 시안은 목록 보조줄(A3)에만 그렸고 상세 자리는 없다.
- * 서버가 상세에 `stallChoice`를 내리므로(목록 행에는 아직 없다) 배송 블록 「추적」 아래 한 줄로 둔다.
+ * 서버가 상세에도 `stallChoice`를 내리므로(목록 행과 같은 값) 배송 블록 「추적」 아래 한 줄로 둔다.
  */
 function StallChoiceRow(props: { choice: AdminOrderStallChoice }) {
   const { choice } = props;

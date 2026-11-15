@@ -14,6 +14,7 @@ import {
   type Detail,
   actorText,
   d,
+  daysBetween,
   dueD,
   dDayFromNow,
   dLabel,
@@ -466,6 +467,23 @@ export function CurrentStateCard(props: {
           rows.push({
             label: "종결 경과",
             value: `${settlement.watch.elapsedDays}일`,
+          });
+        }
+        // 시안 B5a 「종결 완료 2026.08.27 · 20일」 — 서버 주문 종결 시각(정산이 생겨야 채워진다) · 종료부터 걸린 날
+        const ordersClosedAt = orderClosure?.ordersClosedAt;
+        if (transferred && ordersClosedAt) {
+          const days = daysBetween(
+            groupBuy.endedAt ?? timeline.endAt,
+            ordersClosedAt
+          );
+          rows.push({
+            label: "종결 완료",
+            value: (
+              <span className="tabular-nums">
+                {d(ordersClosedAt)}
+                {days !== null && ` · ${days}일`}
+              </span>
+            ),
           });
         }
         rows.push({

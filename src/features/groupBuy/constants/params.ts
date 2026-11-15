@@ -29,8 +29,9 @@ export const SETTLEMENT_PATH = "/settlement/group-buy";
 */
 
 /**
- * B5a 정산 단계 배지 색 — 서버는 라벨(`settlement.stageLabel`)만 내린다. 라벨 · 톤은 백엔드
- * SettlementStatus 표 그대로이고, 모르는 라벨(「정산 대기」 포함)은 중립색.
+ * B5a 정산 단계 배지 색 — 옛 배포 서버용 대체값. 서버가 `settlement.stageTone`을 내리면 그것을 쓴다
+ * (2026-11-15 백엔드 반영 · 배포 서버가 올라간 뒤 지운다). 라벨 · 톤은 백엔드 SettlementStatus 표 그대로이고,
+ * 모르는 라벨(「정산 대기」 포함)은 중립색.
  */
 export const SETTLEMENT_STAGE_TONE: Record<string, GroupBuyTone> = {
   "정산 확인 중": "INFO",

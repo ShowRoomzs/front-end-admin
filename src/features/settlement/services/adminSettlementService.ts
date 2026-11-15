@@ -61,13 +61,16 @@ function withoutLegacyEvidence(
 
 /**
  * 고정 정렬 탭은 sort를 보내지 않는다(서버도 무시한다) · 증빙 탭은 검색을 받지 않는다 ·
- * 브랜드 필터(`marketId`)는 서버가 정산 탭에만 건다(58 계획 5-31) — 증빙 · 차감 탭에는 보내지 않는다.
+ * 브랜드 · 인플루언서 필터(`marketId` · `creatorId`)는 서버가 정산 탭에만 건다(58 계획 5-31 · 2026-11-15)
+ * — 증빙 · 차감 탭에는 보내지 않는다.
  */
 function listQuery(params: SettlementListParams): URLSearchParams {
+  const rowTab = SETTLEMENT_ROW_TABS.includes(params.tab);
   return paramsToSearchParams({
     tab: params.tab,
     keyword: params.tab === "EVIDENCE" ? "" : params.keyword.trim(),
-    marketId: SETTLEMENT_ROW_TABS.includes(params.tab) ? params.marketId : "",
+    marketId: rowTab ? params.marketId : "",
+    creatorId: rowTab ? params.creatorId : "",
     sort: params.tab === "ALL" ? params.sort : "",
     page: params.page,
     size: params.size,

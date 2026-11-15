@@ -209,6 +209,10 @@ export interface AdminGroupBuyDetail {
     regularPrice: number | null;
     groupBuyPrice: number | null;
     rewardRate: number | null;
+    /**
+     * 상품 개당 리워드 = 공구가 × 리워드율 — 기본 옵션 1개 기준이다. 옵션가가 있으면
+     * 옵션마다 다르니 `options[].unitReward`를 본다
+     */
     expectedUnitReward: number | null;
     /** 옵션별 최소 물량의 합계 */
     minQuantity: number | null;
@@ -218,6 +222,11 @@ export interface AdminGroupBuyDetail {
       variantName: string | null;
       salePrice: number | null;
       minQuantity: number | null;
+      /**
+       * 옵션 개당 리워드 = ⌊옵션 판매가 × 리워드율 ÷ 100⌋ — 정산 · 계약서 PDF와 같은 계산(2026-11-15 백엔드 반영).
+       * 옛 배포 서버는 내리지 않는다(undefined) · null이면 상품 `expectedUnitReward`로 대신 적는다
+       */
+      unitReward?: number | null;
     }>;
   }>;
   fixedFee: {
@@ -401,6 +410,11 @@ export interface AdminGroupBuyDetail {
        * 없으면 「정산 대기」
        */
       stageLabel: string;
+      /**
+       * 단계 배지 톤 — 정산이 있으면 정산 상태 톤(정산 목록과 같은 값), 없으면 NEUTRAL(2026-11-15 백엔드 반영).
+       * 옛 배포 서버는 내리지 않는다(undefined) — 그때만 라벨로 고른다
+       */
+      stageTone?: GroupBuyTone;
     } | null;
     orderClosure: {
       totalCount: number;
@@ -411,6 +425,11 @@ export interface AdminGroupBuyDetail {
       purchaseConfirmedCount: number | null;
       /** 종결 중 환불(결제 후 취소) — 판매 모듈이 모르면 null */
       refundedCount: number | null;
+      /**
+       * 주문 종결 시각(UTC 순간) — 정산 상세 `ordersClosedAt`과 같은 값. 정산이 아직 없으면 null ·
+       * 옛 배포 서버는 내리지 않는다(undefined)(2026-11-15 백엔드 반영)
+       */
+      ordersClosedAt?: string | null;
     } | null;
     openIssue: {
       issueId: number;
