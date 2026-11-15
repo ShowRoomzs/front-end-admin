@@ -881,7 +881,11 @@ export function ItemsCard(props: {
               <B className="tabular-nums text-sz-n-900">
                 {formatPercent(item.rewardRate)}
               </B>{" "}
-              · 예상 리워드{" "}
+              · 예상 리워드
+              {/* 옵션 상품이면 이 값은 기본 옵션 기준이다 — 옵션별 값은 아래 「옵션 —」 줄 */}
+              {(item.options ?? []).some(
+                (option) => option.variantName !== null
+              ) && "(기본 옵션)"}{" "}
               <span className="tabular-nums">
                 {won(item.expectedUnitReward)}
               </span>{" "}
