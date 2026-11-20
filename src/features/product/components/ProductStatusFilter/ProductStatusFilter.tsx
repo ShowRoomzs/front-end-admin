@@ -168,7 +168,7 @@ export default function ProductStatusFilter(props: ProductStatusFilterProps) {
       <button
         type="button"
         onClick={onReset}
-        className="absolute right-3.5 top-[17px] inline-flex h-[26px] items-center gap-[5px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-500 hover:border-sz-n-400 hover:bg-sz-n-100 hover:text-sz-n-700"
+        className="absolute right-3.5 top-[17px] inline-flex h-[26px] items-center gap-[5px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100"
       >
         <svg
           viewBox="0 0 24 24"
@@ -221,12 +221,12 @@ export default function ProductStatusFilter(props: ProductStatusFilterProps) {
             }
           }}
           placeholder={searchPlaceholder}
-          className="h-9 w-[340px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+          className="h-8 w-[340px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 py-1.5 text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
         />
         <button
           type="button"
           onClick={onSearch}
-          className="inline-flex h-9 items-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100"
+          className="inline-flex h-8 items-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100"
         >
           검색
         </button>

@@ -59,8 +59,8 @@ export const CONTRACT_SORT_OPTIONS: Array<{
   value: AdminContractSort;
   label: string;
 }> = [
-  { value: "REVIEW_REQUESTED_ASC", label: "검토 요청 오래된순" },
   { value: "CREATED_DESC", label: "최근 생성순" },
+  { value: "REVIEW_REQUESTED_ASC", label: "검토 요청 오래된순" },
   { value: "START_AT_ASC", label: "공구 시작일순" },
 ];
 
@@ -70,8 +70,11 @@ export const CONTRACT_INITIAL_PARAMS: AdminContractListParams = {
   tab: "ALL",
   queue: "",
   keyword: "",
-  // 방치 건이 먼저 — 기본 정렬은 검토 요청 오래된순
-  sort: "REVIEW_REQUESTED_ASC",
+  /*
+    기본 정렬은 최근 생성순(사용자 결정 11-20). 「초기화」도 이 값으로 돌아간다. 서버 기본값은
+    REVIEW_REQUESTED_ASC라 정렬 키는 늘 함께 보낸다(paramsToSearchParams). 방치 건은 조치 큐로 본다.
+  */
+  sort: "CREATED_DESC",
   page: 1,
   size: 20,
 };

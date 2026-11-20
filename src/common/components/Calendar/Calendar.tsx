@@ -1,6 +1,9 @@
-import Dropdown from "@/common/components/Dropdown/Dropdown";
 import { cn } from "@/lib/utils";
 import { Dayjs } from "dayjs";
+
+/** 시안 10-terms `.cal-b` — 26px 이전/다음 달 버튼 */
+const NAV_BUTTON_CLASS =
+  "inline-flex size-[26px] items-center justify-center rounded-[6px] border border-sz-n-200 text-[11px] text-sz-n-600 hover:bg-sz-n-100 hover:text-sz-n-900";
 
 interface CalendarProps {
   currentMonth: Dayjs;
@@ -63,98 +66,60 @@ export default function Calendar(props: CalendarProps) {
     return false;
   };
 
-  const handleYearChange = (value: string) => {
-    const year = parseInt(value);
-    const newDate = currentMonth.year(year);
-    onMonthChange(newDate);
-  };
-
-  const handleMonthChange = (value: string) => {
-    const month = parseInt(value);
-    const newDate = currentMonth.month(month);
-    onMonthChange(newDate);
-  };
-
-  const getYearRange = () => {
-    const currentYear = currentMonth.year();
-    const years: number[] = [];
-    for (let i = currentYear - 10; i <= currentYear + 10; i++) {
-      years.push(i);
-    }
-    return years.map((year) => ({
-      label: `${year}년`,
-      value: year.toString(),
-    }));
-  };
-
-  const getMonths = () => {
-    return Array.from({ length: 12 }, (_, i) => ({
-      label: `${i + 1}월`,
-      value: i.toString(),
-    }));
-  };
-
-  const currentYear = currentMonth.year();
-  const currentMonthIndex = currentMonth.month();
-  const yearItems = getYearRange();
-  const monthItems = getMonths();
-
   return (
-    <div className="min-w-[186px] flex flex-col">
-      {/* 달력 헤더 */}
-      <div className="flex items-center gap-[6px] mb-[12px]">
-        <Dropdown
-          items={yearItems}
-          value={currentYear.toString()}
-          onChange={handleYearChange}
-          className="flex-1 py-[2px] border-none"
-        />
-        <Dropdown
-          items={monthItems}
-          value={currentMonthIndex.toString()}
-          onChange={handleMonthChange}
-          className="flex-1 py-[2px] border-none"
-        />
+    <div className="min-w-[224px] flex flex-col">
+      {/* 달력 헤더 — 시안 10-terms `.cal-h` · `.cal-t` · `.cal-b` */}
+      <div className="mb-2.5 flex items-center justify-between">
+        <div className="text-[13px] font-semibold text-sz-n-900">
+          {`${currentMonth.year()}년 ${currentMonth.month() + 1}월`}
+        </div>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            aria-label="이전 달"
+            onClick={() => onMonthChange(currentMonth.subtract(1, "month"))}
+            className={NAV_BUTTON_CLASS}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            aria-label="다음 달"
+            onClick={() => onMonthChange(currentMonth.add(1, "month"))}
+            className={NAV_BUTTON_CLASS}
+          >
+            ›
+          </button>
+        </div>
       </div>
 
-      {/* 요일 헤더 */}
-      <div className="grid grid-cols-7 gap-[3px] mb-[6px]">
+      {/* 요일 헤더 — 시안 `.cal-w` */}
+      <div className="grid grid-cols-7 gap-[2px]">
         {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
           <div
             key={day}
-            className="text-center text-[11px] text-gray-500 font-medium py-[3px]"
+            className="pt-[3px] pb-[5px] text-center text-[11px] text-sz-n-500"
           >
             {day}
           </div>
         ))}
       </div>
 
-      {/* 날짜 그리드 */}
-      <div className="grid grid-cols-7 gap-[3px]">
+      {/* 날짜 그리드 — 시안 `.cal-d` · `.mute` · `.on` */}
+      <div className="grid grid-cols-7 gap-[2px]">
         {getDaysInMonth().map((date, index) => {
           const disabled = date ? isDisabled(date) : false;
+          const selected = date ? isSelected(date) : false;
           return (
             <div
               key={index}
               className={cn(
-                "text-center py-[5px] px-[5px] text-[11px] rounded cursor-pointer",
+                "flex h-8 items-center justify-center rounded-[6px] text-[12px] tabular-nums text-sz-n-900 cursor-pointer",
                 !date && "cursor-default",
-                date && !disabled && "hover:bg-gray-100",
-                date && disabled && "opacity-30 cursor-not-allowed",
-                date && isInRange(date) && "bg-blue-50",
-                date &&
-                  isSelected(date) &&
-                  "bg-[#5468CD] text-white hover:bg-[#5468CD]",
-                date &&
-                  date.day() === 0 &&
-                  !isSelected(date) &&
-                  !disabled &&
-                  "text-red-500",
-                date &&
-                  date.day() === 6 &&
-                  !isSelected(date) &&
-                  !disabled &&
-                  "text-blue-500"
+                date && !disabled && !selected && "hover:bg-sz-n-100",
+                date && disabled && "text-sz-n-300 cursor-not-allowed",
+                date && !selected && isInRange(date) && "bg-sz-accent-50",
+                selected && "bg-sz-accent-500 font-semibold text-white"
               )}
               onClick={() => date && !disabled && onDateClick(date)}
             >

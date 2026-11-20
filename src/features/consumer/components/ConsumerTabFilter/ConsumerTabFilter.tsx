@@ -59,7 +59,7 @@ export default function ConsumerTabFilter(props: ConsumerTabFilterProps) {
             >
               {item.label}
               <span
-                className={`rounded-lg px-1.5 text-[10px] ${
+                className={`rounded-lg px-[5px] text-[10px] ${
                   isActive
                     ? "bg-sz-accent-50 text-sz-accent-600"
                     : "bg-sz-n-100 text-sz-n-600"

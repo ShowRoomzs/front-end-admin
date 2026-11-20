@@ -169,7 +169,7 @@ export default function DecisionModal(props: DecisionModalProps) {
             onClick={handleSubmit}
             // 미선택은 에러 문구 없이 버튼 비활성만으로 표현한다(§18-5)
             disabled={!canSubmit || isSubmitting}
-            className={`inline-flex h-8 items-center rounded-[6px] px-3.5 text-[12px] font-medium text-white disabled:cursor-not-allowed disabled:bg-sz-n-100 disabled:text-sz-n-400 ${
+            className={`inline-flex h-8 items-center rounded-[6px] px-3.5 text-[12px] font-medium text-white disabled:cursor-not-allowed disabled:border disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400 ${
               tone === "danger"
                 ? "bg-sz-danger-text hover:bg-[#8f2828]"
                 : "bg-sz-accent-500 hover:bg-sz-accent-600"

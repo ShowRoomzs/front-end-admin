@@ -23,8 +23,9 @@ function Label(props: { required?: boolean; children: ReactNode }) {
 
 const READONLY_INPUT_CLASS = cn(
   INPUT_CLASS,
-  // 시안 .inp는 비활성이어도 흰 바탕 · 본문색이다 — 값을 고칠 수 없다는 것만 disabled가 알린다
-  "h-7 w-full px-2.5 py-0 text-[11px] disabled:bg-white disabled:text-sz-n-900"
+  // 시안 .inp는 비활성이어도 흰 바탕 · 본문색이다 — 값을 고칠 수 없다는 것만 disabled가 알린다.
+  // 크기는 시안 `.ifm .inp`(28px · 11px) 대신 DS `.inp`(32px · 13px) 그대로 — DS 통일(11-20)
+  "w-full disabled:bg-white disabled:text-sz-n-900"
 );
 
 interface OperatorRefundFormProps {
@@ -67,10 +68,7 @@ export default function OperatorRefundForm(props: OperatorRefundFormProps) {
         aria-label="근거"
         rows={2}
         maxLength={DETAIL_MAX}
-        className={cn(
-          TEXTAREA_CLASS,
-          "min-h-[52px] px-2.5 pb-1.5 pt-[7px] text-[11px] leading-[1.6]"
-        )}
+        className={cn(TEXTAREA_CLASS, "min-h-[52px] py-1.5")}
         value={detail}
         onChange={(event) => setDetail(event.target.value)}
       />

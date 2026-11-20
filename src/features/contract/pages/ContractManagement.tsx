@@ -133,7 +133,7 @@ export default function ContractManagement() {
 
       <div className="mb-4 flex items-center gap-1.5">
         <input
-          className={cn(INPUT_CLASS, "h-8 w-[300px]")}
+          className={cn(INPUT_CLASS, "w-[300px]")}
           placeholder="공구명 · 브랜드명 · 쇼룸명 · 계약번호 검색"
           value={localParams.keyword}
           onChange={(event) => updateLocalParam("keyword", event.target.value)}

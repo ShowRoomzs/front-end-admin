@@ -209,7 +209,7 @@ export default function PostMonitoring() {
         </div>
         <div className="flex gap-1.5">
           <input
-            className={cn(INPUT_CLASS, "h-8 w-[200px] px-2.5 py-1.5")}
+            className={cn(INPUT_CLASS, "w-[200px]")}
             placeholder="쇼룸명 · 본문 검색"
             value={localParams.keyword}
             onChange={(event) =>

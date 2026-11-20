@@ -1,5 +1,6 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import type { Columns } from "@/common/components/Table/types";
+import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import type { NoticeListItem } from "@/features/notice/types/notice";
 
@@ -102,7 +103,7 @@ export const createNoticeListColumns = (
         <button
           type="button"
           onClick={() => handlers.onEdit(record)}
-          className="inline-flex h-[26px] items-center rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100"
+          className={BTN_SM_SECONDARY}
         >
           수정
         </button>
@@ -110,7 +111,7 @@ export const createNoticeListColumns = (
           <button
             type="button"
             onClick={() => handlers.onEnd(record)}
-            className="inline-flex h-[26px] items-center rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100"
+            className={BTN_SM_SECONDARY}
           >
             게시 종료
           </button>
@@ -118,7 +119,7 @@ export const createNoticeListColumns = (
           <button
             type="button"
             onClick={() => handlers.onPublish(record)}
-            className="inline-flex h-[26px] items-center rounded-[6px] border border-sz-accent-100 bg-sz-accent-50 px-2.5 text-[11px] font-medium text-sz-accent-600 hover:bg-sz-accent-100"
+            className={BTN_SM_SECONDARY}
           >
             게시
           </button>

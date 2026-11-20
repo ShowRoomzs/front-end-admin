@@ -1,4 +1,5 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
 import { DEVICE_LABEL } from "@/features/influencerMember/constants/params";
 import type { AdminCreatorDetail } from "@/features/influencerMember/types";
 import {
@@ -46,8 +47,8 @@ function LockCountdown(props: { seconds: number; onExpire: () => void }) {
   );
 }
 
-const UNMASK_BTN =
-  "inline-flex h-6 cursor-pointer items-center gap-[5px] rounded-[6px] border border-sz-n-300 bg-white px-[9px] text-[11px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:text-sz-n-900 disabled:cursor-not-allowed disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400";
+/** 마스킹 해제 · 지금 잠금 — 시안 `.unmask` 24px · 11px 대신 DS 작은 버튼 28px(DS 통일(11-20)) */
+const UNMASK_BTN = BTN_SM_SECONDARY;
 
 interface InfluencerTopCardsProps {
   detail: AdminCreatorDetail;

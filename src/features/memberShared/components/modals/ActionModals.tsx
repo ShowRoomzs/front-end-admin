@@ -8,7 +8,6 @@ import {
 import { REASON_DETAIL_MAX_LENGTH } from "@/features/memberShared/constants/params";
 import {
   BTN_DANGER,
-  BTN_DANGER_OUTLINE,
   BTN_PRIMARY,
   BTN_SECONDARY,
 } from "@/features/memberShared/constants/styles";
@@ -27,8 +26,6 @@ interface WithdrawalApproveModalProps {
   /** 회색 요약 박스 — 신청 · 경과 · 조건 건수(0이 아니면 경고색) · (인플루언서) 탈퇴 사유 */
   summary: ReactNode;
   warning: ReactNode;
-  /** 브랜드는 꽉 찬 위험색, 인플루언서는 인디고(시안 15 · 18 M2) */
-  confirmVariant: "danger" | "primary";
   isPending: boolean;
   onConfirm: () => void;
 }
@@ -36,17 +33,11 @@ interface WithdrawalApproveModalProps {
 /**
  * M2 탈퇴 승인 — 조건 검증 결과를 실행 직전에 한 번 더 보여 주고, 되돌릴 수 없음을 적는다.
  * 사유 입력은 받지 않는다(승인은 조건 충족의 확인이다). 서버가 승인 직전에 조건을 다시 판정한다.
+ * 실행 버튼은 회원 유형과 관계없이 채운 위험색이다 — 비가역 액션이라 DS danger(DS 통일(11-20).
+ * 시안 18은 인플루언서를 인디고로 그렸다).
  */
 export function WithdrawalApproveModal(props: WithdrawalApproveModalProps) {
-  const {
-    onClose,
-    intro,
-    summary,
-    warning,
-    confirmVariant,
-    isPending,
-    onConfirm,
-  } = props;
+  const { onClose, intro, summary, warning, isPending, onConfirm } = props;
 
   return (
     <ModalShell
@@ -61,7 +52,7 @@ export function WithdrawalApproveModal(props: WithdrawalApproveModalProps) {
           </button>
           <button
             type="button"
-            className={confirmVariant === "danger" ? BTN_DANGER : BTN_PRIMARY}
+            className={BTN_DANGER}
             disabled={isPending}
             onClick={onConfirm}
           >
@@ -88,8 +79,6 @@ interface WithdrawalRejectModalProps {
   /** 「브랜드에 전달할 안내」 · 「인플루언서에게 전달할 안내」 */
   noteLabel: string;
   info: ReactNode;
-  /** 브랜드는 인디고(되돌리는 조치), 인플루언서는 흰 배경 + 위험색 글자(시안 15 · 18 M3) */
-  confirmVariant: "primary" | "dangerOutline";
   isPending: boolean;
   onSubmit: (payload: MemberWithdrawalRejectPayload) => void;
 }
@@ -97,18 +86,12 @@ interface WithdrawalRejectModalProps {
 /**
  * M3 탈퇴 반려(기-04 【잠정】) — 사유 필수 · 선택지가 탈퇴 조건과 같은 축이라 무엇이 걸렸는지 회원이 바로 안다.
  * 기타면 안내가 필수다. 반려하면 계정은 활성으로 돌아가고 재신청할 수 있다.
+ * 실행 버튼은 회원 유형과 관계없이 인디고다 — 계정을 활성으로 되돌리는 조치라서(DS 통일(11-20).
+ * 시안 18은 인플루언서를 테두리형 위험색으로 그렸다).
  */
 export function WithdrawalRejectModal(props: WithdrawalRejectModalProps) {
-  const {
-    onClose,
-    intro,
-    reasons,
-    noteLabel,
-    info,
-    confirmVariant,
-    isPending,
-    onSubmit,
-  } = props;
+  const { onClose, intro, reasons, noteLabel, info, isPending, onSubmit } =
+    props;
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
 
@@ -132,9 +115,7 @@ export function WithdrawalRejectModal(props: WithdrawalRejectModalProps) {
           </button>
           <button
             type="button"
-            className={
-              confirmVariant === "primary" ? BTN_PRIMARY : BTN_DANGER_OUTLINE
-            }
+            className={BTN_PRIMARY}
             disabled={!canSubmit}
             onClick={() =>
               selected &&

@@ -428,7 +428,6 @@ export default function InfluencerMemberDetail() {
             </>
           }
           warning={INFLUENCER_APPROVE_WARNING}
-          confirmVariant="primary"
           isPending={actions.approve.isPending}
           onConfirm={() =>
             actions.approve.mutate(review.requestId, {
@@ -454,7 +453,6 @@ export default function InfluencerMemberDetail() {
           reasons={reasons?.withdrawalRejectReasons ?? []}
           noteLabel="인플루언서에게 전달할 안내"
           info={INFLUENCER_REJECT_INFO}
-          confirmVariant="dangerOutline"
           isPending={actions.reject.isPending}
           onSubmit={(payload) =>
             actions.reject.mutate(

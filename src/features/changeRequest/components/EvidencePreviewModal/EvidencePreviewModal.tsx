@@ -1,3 +1,4 @@
+import { DS_BTN_DISABLED } from "@/common/constants/buttonStyle";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import { formatFileSize } from "@/common/utils/formatFileSize";
 import ComparePanel from "@/features/changeRequest/components/EvidencePreviewModal/ComparePanel";
@@ -13,8 +14,11 @@ import type {
 } from "@/features/changeRequest/services/changeRequestService";
 import { useEffect, useRef, useState } from "react";
 
-const VIEWER_BTN =
-  "inline-flex h-7 items-center gap-[5px] rounded-[6px] border-none bg-white/10 px-2.5 text-[11px] font-medium text-white/85 hover:bg-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-40";
+/**
+ * 어두운 배경 뷰어 버튼 — DS에 정의가 없어 28px · 반투명 흰 모양은 시안 `.pv-b`를 두고,
+ * 글자는 DS 12px/500, 비활성은 opacity 대신 DS `.btn:disabled`로 맞춘다(DS 통일(11-20))
+ */
+const VIEWER_BTN = `inline-flex h-7 items-center gap-[5px] rounded-[6px] border-0 bg-white/10 px-2.5 text-[12px] font-medium text-white/85 hover:bg-white/20 hover:text-white ${DS_BTN_DISABLED}`;
 
 /** 확대 · 축소(시안 「− 100% +」) — 박스에 맞춘 크기를 100%로 본다 */
 const ZOOM_DEFAULT = 100;

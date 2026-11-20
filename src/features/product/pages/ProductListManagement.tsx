@@ -1,4 +1,5 @@
 import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
 import Table from "@/common/components/Table/Table";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
@@ -18,13 +19,14 @@ import { useNavigate } from "react-router-dom";
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
 
-// Tailwind 임의값으로는 데이터 URI가 파싱되지 않아 인라인 스타일로 넣는다
+// DS `.sel-sm` — 스트로크 셰브론 10×6(n-600), 오른쪽 9px
 const SELECT_CHEVRON_STYLE = {
-  backgroundImage:
-    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='5'><path d='M0 0L4.5 5L9 0Z' fill='%237B7F89'/></svg>\")",
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 8px center",
+  ...MODAL_SELECT_CHEVRON_STYLE,
+  backgroundPosition: "right 9px center",
 };
+
+const TOOLBAR_SELECT_CLASS =
+  "h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
 
 const EMPTY_DISPLAY_COUNTS = {
   all: 0,
@@ -59,7 +61,8 @@ export default function ProductListManagement() {
   const { data: productList, isLoading } = useGetProductList(params);
 
   // 상태별 건수는 목록 응답에 함께 온다(별도 집계 호출 불필요)
-  const displayCounts = productList?.displayStatusCounts ?? EMPTY_DISPLAY_COUNTS;
+  const displayCounts =
+    productList?.displayStatusCounts ?? EMPTY_DISPLAY_COUNTS;
   const groupBuyCounts =
     productList?.groupBuyStatusCounts ?? EMPTY_GROUP_BUY_COUNTS;
 
@@ -128,7 +131,7 @@ export default function ProductListManagement() {
                 )
               }
               style={SELECT_CHEVRON_STYLE}
-              className="h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white pl-2 pr-[22px] text-[12px] text-sz-n-700 outline-none"
+              className={TOOLBAR_SELECT_CLASS}
             >
               {PRODUCT_SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -142,7 +145,7 @@ export default function ProductListManagement() {
                 updateParam("size", Number(event.target.value))
               }
               style={SELECT_CHEVRON_STYLE}
-              className="h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white pl-2 pr-[22px] text-[12px] text-sz-n-700 outline-none"
+              className={TOOLBAR_SELECT_CLASS}
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
                 <option key={size} value={size}>

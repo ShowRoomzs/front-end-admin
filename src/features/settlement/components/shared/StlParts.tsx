@@ -1,4 +1,5 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
 import type { Tone } from "@/features/settlement/types";
 import { toneToVariant } from "@/features/settlement/utils/format";
 import { cn } from "@/lib/utils";
@@ -53,8 +54,8 @@ export function B(props: { children: ReactNode; className?: string }) {
 export const FLINK_CLASS =
   "cursor-pointer text-sz-n-600 underline underline-offset-2 hover:text-sz-accent-600";
 
-/** 시안 `.card-h .btn` — 카드 머리 안의 작은 버튼(26px · 11px) */
-export const CARD_HEAD_BTN_CLASS = "ml-3 h-[26px] px-2.5 text-[11px]";
+/** 카드 머리 안의 작은 버튼 — 시안 `.card-h .btn`(26px · 11px) 대신 DS 작은 버튼 28px · 12px(DS 통일(11-20)) */
+export const CARD_HEAD_BTN_CLASS = `ml-3 ${BTN_SM_SECONDARY}`;
 
 /**
  * 시안 `.card` · `.card-h` · `.card-b` — 보조문(.ch-n)은 우측으로 밀리고, 머리 버튼은 그 뒤에 붙는다.

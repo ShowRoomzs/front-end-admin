@@ -248,11 +248,12 @@ export default function OrderFilter(props: OrderFilterProps) {
           ))}
         </div>
         {params.period === "CUSTOM" ? (
+          // 날짜 칸은 DS `.inp`(13px · n-900 · 32px) — 같은 줄의 기간 세그먼트(테두리 포함 32px)와 높이를 맞춘다(DS 통일 11-20)
           <span className="flex items-center gap-1.5 text-[11px] text-sz-n-500">
             <input
               type="date"
               aria-label="결제일 시작"
-              className={cn(SELECT_SM_CLASS, "w-[128px] pr-2")}
+              className={cn(INPUT_CLASS, "w-[136px]")}
               value={params.from}
               max={params.to || undefined}
               onChange={(event) => onChange({ from: event.target.value })}
@@ -261,7 +262,7 @@ export default function OrderFilter(props: OrderFilterProps) {
             <input
               type="date"
               aria-label="결제일 종료"
-              className={cn(SELECT_SM_CLASS, "w-[128px] pr-2")}
+              className={cn(INPUT_CLASS, "w-[136px]")}
               value={params.to}
               min={params.from || undefined}
               onChange={(event) => onChange({ to: event.target.value })}

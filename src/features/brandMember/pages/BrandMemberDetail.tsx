@@ -394,7 +394,6 @@ export default function BrandMemberDetail() {
             </>
           }
           warning={BRAND_APPROVE_WARNING}
-          confirmVariant="danger"
           isPending={actions.approve.isPending}
           onConfirm={() =>
             actions.approve.mutate(review.requestId, {
@@ -419,7 +418,6 @@ export default function BrandMemberDetail() {
           reasons={reasons?.withdrawalRejectReasons ?? []}
           noteLabel="브랜드에 전달할 안내"
           info={BRAND_REJECT_INFO}
-          confirmVariant="primary"
           isPending={actions.reject.isPending}
           onSubmit={(payload) =>
             actions.reject.mutate(

@@ -72,7 +72,7 @@ export default function EditableField<T = string | null>(
                 value={props.value}
                 onChange={(e) => props.onChange(e.target.value)}
                 placeholder={props.placeholder}
-                className="h-8 w-[100px]"
+                className="w-[100px]"
               />
             )}
             {props.type === "select" && (
@@ -94,7 +94,7 @@ export default function EditableField<T = string | null>(
                   }
                 }}
               >
-                <SelectTrigger className="h-8">
+                <SelectTrigger>
                   <SelectValue placeholder={props.placeholder} />
                 </SelectTrigger>
                 <SelectContent position="popper">

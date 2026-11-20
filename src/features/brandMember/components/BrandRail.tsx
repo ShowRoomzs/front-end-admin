@@ -37,7 +37,7 @@ interface BrandStatusCardProps {
 
 /**
  * 현재 상태 — 상태와 그 상태를 바꾸는 버튼을 한 카드에 둔다(계정 상태 관리 카드를 없앴다 · 시안 15 rev.7).
- * 정지 버튼은 흰 배경 + 위험색 글자, 해제는 복구라 인디고. 탈퇴 계정은 버튼 자체가 없다.
+ * 정지 버튼은 채운 위험색(시안 `.btn-danger-o` 대신 DS danger, DS 통일(11-20)), 해제는 복구라 인디고. 탈퇴 계정은 버튼 자체가 없다.
  */
 export function BrandStatusCard(props: BrandStatusCardProps) {
   const { detail, onSuspend, onRelease, onOpenThread } = props;

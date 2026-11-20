@@ -1,3 +1,4 @@
+import { DS_BTN_DISABLED } from "@/common/constants/buttonStyle";
 import {
   FlagChip,
   PhotoFill,
@@ -97,7 +98,12 @@ export default function PhotoViewer(props: PhotoViewerProps) {
               type="button"
               disabled={isFlagPending}
               onClick={() => onToggleFlag(image)}
-              className="inline-flex h-7 items-center gap-[5px] rounded-[6px] bg-white/10 px-2.5 text-[11px] font-medium text-white/85 hover:bg-white/20 hover:text-white disabled:opacity-50"
+              // 시안 `.pv-b`(어두운 뷰어 위 반투명 버튼) 모양은 유지 — DS에 어두운 배경 버튼이 없다.
+              // 글자 12px/500 · 비활성은 opacity 대신 DS `.btn:disabled` 값 — DS 통일(11-20)
+              className={cn(
+                "inline-flex h-7 cursor-pointer items-center gap-[5px] rounded-[6px] bg-white/10 px-2.5 text-[12px] font-medium text-white/85 hover:bg-white/20 hover:text-white",
+                DS_BTN_DISABLED
+              )}
             >
               {image.reportFlagged ? "신고 지목 해제" : "신고 지목 표시"}
             </button>

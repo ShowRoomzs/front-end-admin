@@ -11,8 +11,12 @@ import type {
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
 
+/**
+ * 직접 선택 날짜 칸 — DS 입력 13px · n-900 · 6px · n-300 테두리 · DS 포커스 링(DS 통일 11-20).
+ * 높이는 같은 줄의 기간 세그먼트(28px 칸)에 맞춰 28px(`.sel-sm` 높이)로 둔다.
+ */
 const DATE_INPUT =
-  "h-7 w-[128px] rounded-[6px] border border-sz-n-300 bg-white px-2 text-[11px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
+  "h-7 w-[136px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
 
 /**
  * 기간 세그먼트(시안 `.seg`) — 오늘 · 7일 · 한 달(기본) · 6개월 · 직접 선택.

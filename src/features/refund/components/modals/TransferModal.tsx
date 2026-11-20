@@ -54,7 +54,8 @@ function useBanks() {
   });
 }
 
-const FIELD_CLASS = cn(INPUT_CLASS, "h-8 px-2.5 text-[12px]");
+/** DS `.inp` · 06c M3 `.msel`/`.inp` — 32px · 13px(INPUT_CLASS 그대로) */
+const FIELD_CLASS = INPUT_CLASS;
 
 /**
  * 시안 M3 「PG 취소 27,200원 [완료 09.18]」 — 같은 환급을 나눈 PG 취소 짝 행(`pairedRefundTaskId` · 58 계획 5-14).

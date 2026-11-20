@@ -232,7 +232,7 @@ export default function NoticeFormPage() {
               <button
                 type="button"
                 onClick={goToList}
-                className="inline-flex h-9 flex-1 items-center justify-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100"
+                className="inline-flex h-8 flex-1 items-center justify-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100"
               >
                 취소
               </button>
@@ -241,7 +241,7 @@ export default function NoticeFormPage() {
                 onClick={handleSubmit}
                 // 필수 미입력은 에러 문구 없이 버튼 비활성만으로 표현한다
                 disabled={!canSubmit || isSubmitting}
-                className="inline-flex h-9 flex-1 items-center justify-center rounded-[6px] bg-sz-accent-500 px-3.5 text-[12px] font-medium text-white hover:bg-sz-accent-600 disabled:cursor-not-allowed disabled:bg-sz-n-100 disabled:text-sz-n-400"
+                className="inline-flex h-8 flex-1 items-center justify-center rounded-[6px] bg-sz-accent-500 px-3.5 text-[12px] font-medium text-white hover:bg-sz-accent-600 disabled:cursor-not-allowed disabled:border disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400"
               >
                 {isEdit ? "저장" : "게시"}
               </button>

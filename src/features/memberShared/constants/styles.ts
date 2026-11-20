@@ -5,19 +5,23 @@
   값은 시안 `<style>` 블록에서 그대로 옮겼다.
 */
 
+import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
+
 /** `.btn` — 32px · 12px/500 · 좌우 14px */
 const BTN_BASE =
   "inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-[6px] px-3.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed";
 
 export const BTN_PRIMARY = `${BTN_BASE} bg-sz-accent-500 text-white hover:bg-sz-accent-600 disabled:border disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400`;
 export const BTN_SECONDARY = `${BTN_BASE} border border-sz-n-300 bg-white text-sz-n-900 hover:bg-sz-n-100 disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400`;
-/** `.btn-danger-o` — 흰 배경 + 중립 테두리 + 위험색 글자(레일의 정지 · 반려) */
-export const BTN_DANGER_OUTLINE = `${BTN_BASE} border border-sz-n-300 bg-white text-sz-danger-text hover:border-sz-n-400 hover:bg-sz-danger-bg disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400`;
-/** `.btn-danger` — 꽉 찬 위험색은 모달의 최종 실행 버튼에만 쓴다 */
+/** `.btn-danger` — 꽉 찬 위험색. 파괴적 · 비가역 액션에 쓴다 */
 export const BTN_DANGER = `${BTN_BASE} bg-sz-danger-text text-white hover:bg-[#8f2828] disabled:border disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400`;
-/** `.card-h .btn` — 카드 머리 안 작은 버튼(메모 기입) */
-export const BTN_CARD_HEAD =
-  "inline-flex h-[26px] cursor-pointer items-center whitespace-nowrap rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-900 hover:bg-sz-n-100";
+/**
+ * 레일의 정지 · 반려. 시안 `.btn-danger-o`(테두리형)는 DS에 없어 채운 `.btn-danger`와 같게 둔다(DS 통일(11-20)).
+ * 이름은 쓰는 곳을 그대로 두려고 남겼다.
+ */
+export const BTN_DANGER_OUTLINE = BTN_DANGER;
+/** 카드 머리 안 작은 버튼(메모 기입) — 시안 `.card-h .btn` 26px · 11px 대신 DS 작은 버튼 28px(DS 통일(11-20)) */
+export const BTN_CARD_HEAD = BTN_SM_SECONDARY;
 
 /** `.inp` — 32px · 13px */
 export const INPUT_CLASS =
