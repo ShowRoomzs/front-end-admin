@@ -113,7 +113,7 @@ export default function LoginPage() {
               value={formData.email}
               onChange={handleEmailChange}
               onBlur={handleEmailBlur}
-              className={errors.email ? "border-red-500" : ""}
+              className={errors.email ? "border-sz-danger-text" : ""}
             />
             {errors.email && (
               <p className="mt-1 text-sm text-red-500">{errors.email}</p>
@@ -134,18 +134,14 @@ export default function LoginPage() {
               value={formData.password}
               onChange={handlePasswordChange}
               onBlur={handlePasswordBlur}
-              className={errors.password ? "border-red-500" : ""}
+              className={errors.password ? "border-sz-danger-text" : ""}
             />
             {errors.password && (
               <p className="mt-1 text-sm text-red-500">{errors.password}</p>
             )}
           </div>
 
-          <Button
-            type="submit"
-            disabled={!isFormValid}
-            className="w-full h-14 text-base bg-[#334155] hover:bg-[#1e293b] disabled:bg-gray-300"
-          >
+          <Button type="submit" disabled={!isFormValid} className="w-full h-14">
             로그인
           </Button>
         </form>

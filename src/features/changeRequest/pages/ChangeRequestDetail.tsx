@@ -359,14 +359,14 @@ export default function ChangeRequestDetail() {
                   <button
                     type="button"
                     onClick={() => setIsRejectionOpen(true)}
-                    className="inline-flex h-9 flex-1 items-center justify-center rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828]"
+                    className="inline-flex h-8 flex-1 items-center justify-center rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828]"
                   >
                     ✕ 반려
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsApprovalOpen(true)}
-                    className="inline-flex h-9 flex-1 items-center justify-center rounded-[6px] bg-sz-accent-500 px-3.5 text-[12px] font-medium text-white hover:bg-sz-accent-600"
+                    className="inline-flex h-8 flex-1 items-center justify-center rounded-[6px] bg-sz-accent-500 px-3.5 text-[12px] font-medium text-white hover:bg-sz-accent-600"
                   >
                     ✓ 승인
                   </button>

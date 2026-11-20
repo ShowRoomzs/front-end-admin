@@ -17,6 +17,13 @@ interface DateRangePickerProps {
 
 const DEFAULT_SELECTED_FLAG = { start: false, end: false };
 
+/** DS `.inp` · 시안 10-terms `.inp-date` — 32px · 6px · n-300 · 13px */
+const FIELD_CLASS =
+  "flex h-8 min-w-[150px] flex-1 cursor-pointer flex-row items-center justify-between rounded-[6px] border border-sz-n-300 bg-white pl-2.5 pr-2.5 transition-[border-color,box-shadow]";
+/** 달력이 열려 있는 동안 DS `.inp:focus`와 같은 테두리 + 링 */
+const FIELD_OPEN_CLASS = "border-sz-accent-500 ring-[3px] ring-sz-accent-50";
+const FIELD_DISABLED_CLASS = "cursor-not-allowed bg-sz-n-100";
+
 export function DateRangePicker({
   startDate,
   endDate,
@@ -170,50 +177,48 @@ export function DateRangePicker({
     <>
       <div
         ref={wrapperRef}
-        className={cn(
-          "flex items-center gap-2",
-          disabled && "opacity-50 cursor-not-allowed",
-          className
-        )}
+        className={cn("flex items-center gap-2", className)}
       >
         {/* 시작일 Input */}
         <div
           className={cn(
-            "rounded-[3px] border-[1px] border-gray-300 min-w-[150px] pl-[10px] pr-[12px] py-[7px] bg-white flex flex-row items-center justify-between cursor-pointer flex-1",
-            disabled && "cursor-not-allowed"
+            FIELD_CLASS,
+            isOpen && FIELD_OPEN_CLASS,
+            disabled && FIELD_DISABLED_CLASS
           )}
           onClick={handleToggle}
         >
           <div
             className={cn(
-              "text-[12px] font-normal",
-              startDate ? "text-[#000000]" : "text-[#B3B3B3]"
+              "text-[13px] font-normal",
+              startDate ? "text-sz-n-900" : "text-sz-n-400"
             )}
           >
             {startDate || startPlaceholder}
           </div>
-          <CalendarIcon className="w-4 h-4 ml-2" />
+          <CalendarIcon className="ml-2 size-[13px] text-sz-n-500" />
         </div>
 
-        <span className="text-gray-400">-</span>
+        <span className="text-sz-n-400">-</span>
 
         {/* 종료일 Input */}
         <div
           className={cn(
-            "rounded-[3px] border-[1px] border-gray-300 min-w-[150px] pl-[10px] pr-[12px] py-[7px] bg-white flex flex-row items-center justify-between cursor-pointer flex-1",
-            disabled && "cursor-not-allowed"
+            FIELD_CLASS,
+            isOpen && FIELD_OPEN_CLASS,
+            disabled && FIELD_DISABLED_CLASS
           )}
           onClick={handleToggle}
         >
           <div
             className={cn(
-              "text-[12px] font-normal",
-              endDate ? "text-[#000000]" : "text-[#B3B3B3]"
+              "text-[13px] font-normal",
+              endDate ? "text-sz-n-900" : "text-sz-n-400"
             )}
           >
             {endDate || endPlaceholder}
           </div>
-          <CalendarIcon className="w-4 h-4 ml-2" />
+          <CalendarIcon className="ml-2 size-[13px] text-sz-n-500" />
         </div>
       </div>
 
@@ -221,7 +226,7 @@ export function DateRangePicker({
         createPortal(
           <div
             ref={calendarRef}
-            className="absolute bg-white border-[1px] border-gray-300 rounded-[8px] shadow-lg z-[9999] p-[12px] flex gap-[20px]"
+            className="absolute bg-white border-[1px] border-sz-n-200 rounded-[8px] shadow-lg z-[9999] p-[12px] flex gap-[20px]"
             style={{
               top: `${position.top}px`,
               left: `${position.left}px`,

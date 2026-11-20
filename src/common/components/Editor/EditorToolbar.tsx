@@ -44,8 +44,11 @@ function ToolbarButton(props: ToolbarButtonProps) {
       disabled={disabled}
       title={title}
       aria-label={title}
-      className={`inline-flex size-7 items-center justify-center rounded-[4px] text-sz-n-600 hover:bg-sz-n-200 hover:text-sz-n-900 disabled:cursor-not-allowed disabled:opacity-40 ${
-        isActive ? "bg-sz-n-200 text-sz-n-900" : ""
+      // 시안 09-notice `.ed-b` — 26px · 좌우 7px · 4px · n-600 · hover n-200 · 활성 `.on` accent-50/600
+      className={`inline-flex h-[26px] min-w-[26px] items-center justify-center rounded-[4px] px-[7px] disabled:cursor-not-allowed disabled:bg-transparent disabled:text-sz-n-300 ${
+        isActive
+          ? "bg-sz-accent-50 text-sz-accent-600"
+          : "text-sz-n-600 hover:bg-sz-n-200 hover:text-sz-n-900"
       }`}
     >
       {children}
@@ -233,19 +236,19 @@ export default function EditorToolbar(props: EditorToolbarProps) {
             }}
             placeholder="https://example.com"
             autoFocus
-            className="h-7 w-[240px] rounded-[4px] border border-sz-n-300 px-2 text-[12px] outline-none focus:border-sz-accent-500"
+            className="h-8 w-[240px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 py-1.5 text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
           />
           <button
             type="button"
             onClick={applyLink}
-            className="inline-flex h-7 items-center rounded-[4px] bg-sz-accent-500 px-2.5 text-[11px] font-medium text-white hover:bg-sz-accent-600"
+            className="inline-flex h-8 items-center rounded-[6px] bg-sz-accent-500 px-3.5 text-[12px] font-medium text-white hover:bg-sz-accent-600"
           >
             확인
           </button>
           <button
             type="button"
             onClick={() => setIsLinkOpen(false)}
-            className="inline-flex h-7 items-center rounded-[4px] border border-sz-n-300 px-2.5 text-[11px] font-medium text-sz-n-700 hover:bg-sz-n-100"
+            className="inline-flex h-8 items-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100"
           >
             취소
           </button>
@@ -296,7 +299,8 @@ function TableAction(props: TableActionProps) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-6 items-center rounded-[4px] border border-sz-n-300 bg-white px-1.5 text-[11px] text-sz-n-600 hover:bg-sz-n-100 hover:text-sz-n-900"
+      // 어드민 시안 표 안 버튼 `.rbtn` 규격(26px · 6px · 11px/500 · n-700)
+      className="inline-flex h-[26px] items-center rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100"
     >
       {children}
     </button>

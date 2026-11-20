@@ -116,20 +116,10 @@ export default function FilterCard<P extends BaseParams>(
         )}
       </div>
       <div className="absolute right-4 top-4 flex flex-row gap-4">
-        <Button
-          onClick={onSubmit}
-          variant="default"
-          size="default"
-          className="px-6"
-        >
+        <Button onClick={onSubmit} variant="default" size="default">
           검색하기
         </Button>
-        <Button
-          onClick={onReset}
-          variant="outline"
-          size="default"
-          className="px-6"
-        >
+        <Button onClick={onReset} variant="outline" size="default">
           초기화
         </Button>
       </div>

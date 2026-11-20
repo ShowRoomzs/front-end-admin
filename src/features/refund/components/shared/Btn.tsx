@@ -12,8 +12,7 @@ const BASE =
 
 const VARIANT_CLASS = {
   primary: "bg-sz-accent-500 text-white hover:bg-sz-accent-600",
-  secondary:
-    "border border-sz-n-300 bg-white text-sz-n-900 hover:bg-sz-n-100 hover:border-sz-n-400",
+  secondary: "border border-sz-n-300 bg-white text-sz-n-900 hover:bg-sz-n-100",
 } as const;
 
 interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {

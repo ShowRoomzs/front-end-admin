@@ -81,8 +81,8 @@ export default function UnlistModal(props: UnlistModalProps) {
         </div>
 
         <div className="px-5 py-5 text-[12px] leading-relaxed text-sz-n-700">
-          <b className="text-sz-n-900">{productName}</b>을(를) 미진열 처리합니다.
-          소비자 화면 노출이 즉시 중단됩니다.
+          <b className="text-sz-n-900">{productName}</b>을(를) 미진열
+          처리합니다. 소비자 화면 노출이 즉시 중단됩니다.
           <label
             htmlFor="hide-reason-type"
             className="mb-1 mt-4 block text-[12px] font-medium text-sz-n-600"
@@ -105,7 +105,6 @@ export default function UnlistModal(props: UnlistModalProps) {
               </option>
             ))}
           </select>
-
           <label
             htmlFor="hide-reason-detail"
             className="mb-1 mt-4 block text-[12px] font-medium text-sz-n-600"
@@ -133,10 +132,9 @@ export default function UnlistModal(props: UnlistModalProps) {
               isDetailMissing ? "text-sz-danger-text" : "text-sz-n-500"
             }`}
           >
-            사유를 <b>기타(직접 입력)</b>로 선택한 경우 상세 사유는{" "}
-            <b>필수</b>입니다.
+            사유를 <b>기타(직접 입력)</b>로 선택한 경우 상세 사유는 <b>필수</b>
+            입니다.
           </p>
-
           <div className="mt-4 flex gap-2 rounded-[6px] bg-sz-danger-bg px-3 py-2.5 text-[11px] font-medium leading-relaxed text-sz-danger-text">
             <span>⚠</span>
             <span>
@@ -159,7 +157,7 @@ export default function UnlistModal(props: UnlistModalProps) {
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
-            className="inline-flex h-8 items-center rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828] disabled:cursor-not-allowed disabled:bg-sz-n-100 disabled:text-sz-n-400"
+            className="inline-flex h-8 items-center rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828] disabled:cursor-not-allowed disabled:border disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400"
           >
             {isSubmitting ? "처리 중" : "미진열 처리"}
           </button>

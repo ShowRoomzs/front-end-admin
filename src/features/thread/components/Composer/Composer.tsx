@@ -205,14 +205,14 @@ export default function Composer(props: ComposerProps) {
           }}
           rows={1}
           placeholder="메시지 입력…"
-          className="h-[38px] flex-1 resize-none rounded-[19px] border border-sz-n-300 px-4 py-[8px] text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 disabled:cursor-not-allowed disabled:bg-sz-n-100"
+          className="h-[38px] flex-1 resize-none rounded-[19px] border border-sz-n-300 px-4 py-[8px] text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50 disabled:cursor-not-allowed disabled:bg-sz-n-100"
         />
         <button
           type="button"
           disabled={!canSend}
           onClick={handleSend}
           aria-label="전송"
-          className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-sz-accent-500 text-white hover:bg-sz-accent-600 disabled:cursor-not-allowed disabled:bg-sz-n-200 disabled:text-sz-n-400"
+          className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-sz-accent-500 text-white hover:bg-sz-accent-600 disabled:cursor-not-allowed disabled:border disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400"
         >
           <SendIcon />
         </button>

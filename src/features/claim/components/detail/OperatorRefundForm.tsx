@@ -67,10 +67,7 @@ export default function OperatorRefundForm(props: OperatorRefundFormProps) {
         aria-label="근거"
         rows={2}
         maxLength={DETAIL_MAX}
-        className={cn(
-          TEXTAREA_CLASS,
-          "min-h-[52px] px-2.5 pb-1.5 pt-[7px] text-[11px] leading-[1.6]"
-        )}
+        className={cn(TEXTAREA_CLASS, "min-h-[52px] text-[11px]")}
         value={detail}
         onChange={(event) => setDetail(event.target.value)}
       />

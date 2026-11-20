@@ -228,6 +228,14 @@
   body {
     @apply bg-background text-foreground font-sans;
   }
+  /*
+    디자인 시스템 `.btn`은 cursor:pointer다. Tailwind v4 preflight는 button 커서를 default로 두어
+    손으로 만든 버튼마다 cursor-pointer가 빠져 있었다 — 여기서 한 번에 맞춘다(비활성은 not-allowed 유지).
+  */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
 }
 
 @layer utilities {

@@ -446,14 +446,14 @@ export default function SellerRegistrationDetail() {
                   <button
                     type="button"
                     onClick={() => setIsRejectionOpen(true)}
-                    className="inline-flex h-9 flex-1 items-center justify-center rounded-[6px] bg-sz-danger-text px-4 text-[13px] font-medium text-white hover:bg-[#8f2828]"
+                    className="inline-flex h-8 flex-1 items-center justify-center rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828]"
                   >
                     반려
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsApprovalOpen(true)}
-                    className="inline-flex h-9 flex-1 items-center justify-center rounded-[6px] bg-sz-accent-500 px-4 text-[13px] font-medium text-white hover:bg-sz-accent-600"
+                    className="inline-flex h-8 flex-1 items-center justify-center rounded-[6px] bg-sz-accent-500 px-3.5 text-[12px] font-medium text-white hover:bg-sz-accent-600"
                   >
                     승인
                   </button>
@@ -522,7 +522,7 @@ export default function SellerRegistrationDetail() {
                     <button
                       type="button"
                       onClick={() => setPreviewIndex(index)}
-                      className="inline-flex h-[26px] items-center rounded-[6px] border border-sz-n-300 bg-white px-[9px] text-[11px] font-medium text-sz-n-900 hover:bg-sz-n-100"
+                      className="inline-flex h-8 items-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100"
                     >
                       미리보기
                     </button>

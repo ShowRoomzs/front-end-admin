@@ -194,7 +194,7 @@ export default function TermsDocumentDetail() {
                       `${TERMS_LIST_PATH}/${detail.documentId}/versions/register`
                     )
                   }
-                  className="inline-flex h-9 w-full items-center justify-center rounded-[6px] bg-sz-accent-500 px-3.5 text-[12px] font-medium text-white hover:bg-sz-accent-600"
+                  className="inline-flex h-8 w-full items-center justify-center rounded-[6px] bg-sz-accent-500 px-3.5 text-[12px] font-medium text-white hover:bg-sz-accent-600"
                 >
                   새 버전 등록
                 </button>

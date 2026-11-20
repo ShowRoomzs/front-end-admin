@@ -20,7 +20,7 @@ const SELECT_CHEVRON_STYLE = {
   backgroundImage:
     "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='5'><path d='M0 0L4.5 5L9 0Z' fill='%237B7F89'/></svg>\")",
   backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 8px center",
+  backgroundPosition: "right 9px center",
 };
 
 const EMPTY_COUNTS = { all: 0, pending: 0, approved: 0, rejected: 0 };
@@ -109,7 +109,7 @@ export default function SellerRegistrationManagement() {
               updateParam("size", Number(event.target.value))
             }
             style={SELECT_CHEVRON_STYLE}
-            className="h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white pl-2 pr-[22px] text-[12px] text-sz-n-700 outline-none"
+            className="h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
           >
             {PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>

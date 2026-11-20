@@ -93,8 +93,8 @@ function StatusBanner(props: {
       <div className="flex gap-2 rounded-[6px] bg-sz-n-100 px-3.5 py-3 text-[11px] leading-relaxed text-sz-n-600">
         <span>ⓘ</span>
         <span>
-          <b>브랜드 요청</b>으로 미진열 상태입니다{meta}. 정보 오류로 인한 조치가
-          아니므로, 브랜드가 이후 상품 정보를 수정해도{" "}
+          <b>브랜드 요청</b>으로 미진열 상태입니다{meta}. 정보 오류로 인한
+          조치가 아니므로, 브랜드가 이후 상품 정보를 수정해도{" "}
           <b>재검토 대기로 전환되지 않습니다.</b>
         </span>
       </div>
@@ -134,8 +134,10 @@ export default function ProductDetailPage() {
     if (!detail) {
       return [];
     }
-    return [detail.representativeImageUrl, ...(detail.coverImageUrls ?? [])]
-      .filter((url): url is string => !!url);
+    return [
+      detail.representativeImageUrl,
+      ...(detail.coverImageUrls ?? []),
+    ].filter((url): url is string => !!url);
   }, [detail]);
 
   const notice: ProductNotice = useMemo(
@@ -361,13 +363,12 @@ export default function ProductDetailPage() {
                       시안의 "옵션가"는 정가 대비 추가금이므로 차액으로 되돌린다 —
                       차액이 0이면 정가 그대로라는 뜻이라 "정가 적용"으로 표기한다.
                     */
-                    const extraPrice = variant.regularPrice - detail.regularPrice;
+                    const extraPrice =
+                      variant.regularPrice - detail.regularPrice;
 
                     return (
                       <tr key={variant.variantId}>
-                        <td
-                          className={`${SKU_CELL_CLASS} text-left`}
-                        >
+                        <td className={`${SKU_CELL_CLASS} text-left`}>
                           {variant.name || "기본 조합(옵션 없음)"}
                         </td>
                         <td className={SKU_CELL_CLASS}>
@@ -404,7 +405,9 @@ export default function ProductDetailPage() {
                             "요청" 구분은 상품 단위 개념이라 SKU에 내려오면 안 된다.
                             서버에 조합별 플래그가 없어 상품 진열 상태에서 파생한다.
                           */}
-                          <StatusBadge variant={isDisplayed ? "success" : "danger"}>
+                          <StatusBadge
+                            variant={isDisplayed ? "success" : "danger"}
+                          >
                             {isDisplayed ? "진열" : "미진열"}
                           </StatusBadge>
                         </td>
@@ -471,7 +474,7 @@ export default function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={() => setIsUnlistOpen(true)}
-                  className="mt-1 inline-flex h-9 w-full items-center justify-center rounded-[6px] bg-sz-danger-text px-4 text-[13px] font-medium text-white hover:bg-[#8f2828]"
+                  className="mt-1 inline-flex h-8 w-full items-center justify-center rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828]"
                 >
                   미진열 처리
                 </button>
@@ -486,7 +489,7 @@ export default function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={() => setIsRelistOpen(true)}
-                  className="mt-1 inline-flex h-9 w-full items-center justify-center rounded-[6px] bg-sz-accent-500 px-4 text-[13px] font-medium text-white hover:bg-sz-accent-600"
+                  className="mt-1 inline-flex h-8 w-full items-center justify-center rounded-[6px] bg-sz-accent-500 px-3.5 text-[12px] font-medium text-white hover:bg-sz-accent-600"
                 >
                   다시 진열
                 </button>
@@ -494,8 +497,8 @@ export default function ProductDetailPage() {
                   {isHideRequest ? (
                     <>
                       브랜드 요청으로 인한 미진열은 <b>운영자 재검수 없이도</b>{" "}
-                      브랜드가 준비되는 대로 다시 진열을 요청할 수 있습니다. 다시
-                      진열 처리 자체는 기존과 동일하게 <b>운영자만</b>{" "}
+                      브랜드가 준비되는 대로 다시 진열을 요청할 수 있습니다.
+                      다시 진열 처리 자체는 기존과 동일하게 <b>운영자만</b>{" "}
                       수행합니다.
                     </>
                   ) : (
@@ -536,7 +539,9 @@ export default function ProductDetailPage() {
       />
       <PreviewModal
         isOpen={previewIndex !== null}
-        onOpenChange={(open) => setPreviewIndex(open ? (previewIndex ?? 0) : null)}
+        onOpenChange={(open) =>
+          setPreviewIndex(open ? (previewIndex ?? 0) : null)
+        }
         imageUrl={images[previewIndex ?? 0] ?? ""}
         currentIndex={previewIndex ?? 0}
         fileLength={images.length}

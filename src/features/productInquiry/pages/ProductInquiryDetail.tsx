@@ -422,7 +422,7 @@ export default function ProductInquiryDetail() {
                     <button
                       type="button"
                       onClick={() => setIsDeleteOpen(true)}
-                      className="inline-flex h-9 w-full items-center justify-center rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828]"
+                      className="inline-flex h-8 w-full items-center justify-center rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828]"
                     >
                       삭제
                     </button>
@@ -432,7 +432,7 @@ export default function ProductInquiryDetail() {
                     <button
                       type="button"
                       onClick={() => setIsRejectOpen(true)}
-                      className="inline-flex h-9 w-full items-center justify-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100"
+                      className="inline-flex h-8 w-full items-center justify-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100"
                     >
                       반려
                     </button>

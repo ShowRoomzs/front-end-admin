@@ -210,7 +210,7 @@ export default function ApplicationRejectionModal(
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting}
-            className="inline-flex h-8 items-center rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828] disabled:cursor-not-allowed disabled:bg-sz-n-100 disabled:text-sz-n-400"
+            className="inline-flex h-8 items-center rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828] disabled:cursor-not-allowed disabled:border disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400"
           >
             {isSubmitting ? "처리 중" : "반려 처리"}
           </button>

@@ -31,14 +31,8 @@ interface ApplicationTabFilterProps {
  * 검색은 브랜드명 단일 검색이다 — API도 브랜드명(keyword)만 지원한다.
  */
 export default function ApplicationTabFilter(props: ApplicationTabFilterProps) {
-  const {
-    status,
-    onStatusChange,
-    counts,
-    keyword,
-    onKeywordChange,
-    onSearch,
-  } = props;
+  const { status, onStatusChange, counts, keyword, onKeywordChange, onSearch } =
+    props;
 
   return (
     <div className="mb-4 flex shrink-0 items-center justify-between gap-4 rounded-[8px] border border-sz-n-200 bg-white px-4 py-3">
@@ -58,7 +52,7 @@ export default function ApplicationTabFilter(props: ApplicationTabFilterProps) {
             >
               {tab.label}
               <span
-                className={`rounded-lg px-1.5 text-[10px] ${
+                className={`rounded-lg px-[5px] text-[10px] ${
                   isActive
                     ? "bg-sz-accent-50 text-sz-accent-600"
                     : "bg-sz-n-100 text-sz-n-600"

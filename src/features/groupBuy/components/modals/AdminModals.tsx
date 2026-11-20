@@ -545,7 +545,7 @@ export function NoticeModal(
           <input
             type="date"
             aria-label="집행 날짜"
-            className={cn(INPUT_CLASS, "h-8 w-[150px] px-2.5 py-1")}
+            className={cn(INPUT_CLASS, "w-[150px]")}
             value={executeDate ?? ""}
             min={selectable.find((item) => !isLocked(item))?.date}
             onChange={(event) => setExecuteDate(event.target.value || null)}
@@ -553,7 +553,7 @@ export function NoticeModal(
           <input
             type="time"
             aria-label="집행 시각"
-            className={cn(INPUT_CLASS, "h-8 w-[130px] px-2.5 py-1")}
+            className={cn(INPUT_CLASS, "w-[130px]")}
             value={executeTime}
             onChange={(event) => setExecuteTime(event.target.value || "10:00")}
           />
@@ -596,7 +596,7 @@ export function NoticeModal(
       {deadlineChoice === "custom" && options && (
         <input
           type="datetime-local"
-          className={cn(INPUT_CLASS, "mt-2 h-8 w-[220px] px-2.5 py-1")}
+          className={cn(INPUT_CLASS, "mt-2 w-[220px]")}
           min={parseServerDateTime(options.appealDeadline.min).format(
             "YYYY-MM-DDTHH:mm"
           )}

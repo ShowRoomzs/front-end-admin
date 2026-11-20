@@ -35,14 +35,31 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-fit items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-9 data-[size=sm]:h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        // DS v1.2 select(`.inp`와 같은 규격) · 시안 `.msel` — 32px · 13px · n-300 · 모서리 6px · 오른쪽 10px 스트로크 셰브론
+        // sm은 목록 툴바 `.sel-sm`(28px · 12px · n-700)
+        "border border-sz-n-300 bg-white text-sz-n-900 data-[placeholder]:text-sz-n-400 [&_svg:not([class*='text-'])]:text-sz-n-600 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50 aria-invalid:border-sz-danger-text flex w-fit items-center justify-between gap-2 rounded-[6px] py-1.5 pl-2.5 pr-2.5 text-[13px] whitespace-nowrap transition-[color,box-shadow,border-color] outline-none disabled:cursor-not-allowed disabled:bg-sz-n-100 disabled:text-sz-n-500 data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:text-[12px] data-[size=sm]:text-sz-n-700 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="size-4 opacity-50" />
+        {/* MODAL_SELECT_CHEVRON_STYLE와 같은 10×6 셰브론(n-600) */}
+        <svg
+          viewBox="0 0 10 6"
+          fill="none"
+          aria-hidden="true"
+          className="text-sz-n-600"
+          style={{ width: 10, height: 6 }}
+        >
+          <path
+            d="M1 1L5 5L9 1"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );

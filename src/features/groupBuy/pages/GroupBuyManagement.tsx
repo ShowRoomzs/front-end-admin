@@ -209,7 +209,7 @@ export default function GroupBuyManagement() {
         </div>
         <div className="flex gap-1.5">
           <input
-            className={cn(INPUT_CLASS, "h-8 w-[280px] px-2.5 py-1.5")}
+            className={cn(INPUT_CLASS, "w-[280px]")}
             placeholder="공구명 · 공구번호 · 브랜드 · 쇼룸명 검색"
             value={localParams.keyword}
             onChange={(event) =>

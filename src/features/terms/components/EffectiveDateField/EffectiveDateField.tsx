@@ -39,14 +39,36 @@ export default function EffectiveDateField(props: EffectiveDateFieldProps) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex h-8 w-[180px] items-center justify-between rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[13px] tabular-nums text-sz-n-900 hover:border-sz-n-400"
+        className="inline-flex h-8 w-[180px] items-center justify-between rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[13px] tabular-nums text-sz-n-900 outline-none hover:border-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
       >
         <span className={value ? "" : "text-sz-n-400"}>
           {value ? dayjs(value).format("YYYY.MM.DD") : "날짜 선택"}
         </span>
-        <span aria-hidden className="text-[12px] text-sz-n-500">
-          📅
-        </span>
+        {/* 시안 `.inp-date` 아이콘 — 13px 선 달력(n-500) */}
+        <svg
+          aria-hidden
+          width="13"
+          height="13"
+          viewBox="0 0 14 14"
+          fill="none"
+          className="shrink-0 text-sz-n-500"
+        >
+          <rect
+            x="1.5"
+            y="2.5"
+            width="11"
+            height="10"
+            rx="1.5"
+            stroke="currentColor"
+            strokeWidth="1.2"
+          />
+          <path
+            d="M1.5 5.5h11M4.5 1.5v2M9.5 1.5v2"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+          />
+        </svg>
       </button>
 
       {isOpen && (
