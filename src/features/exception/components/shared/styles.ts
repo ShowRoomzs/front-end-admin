@@ -2,8 +2,9 @@
   시안 ui-admin-06d의 원자 클래스 — 이 화면 안에서만 쓴다.
 
   공용 `Button`(shadcn)은 14px 베이스라 12px 라벨 · 32px 높이로 짜인 어드민 목록 시안과 어긋난다
-  (계약 관리의 `BTN_*`와 같은 판단). 시안 `.btn`(12px/500 · 32px · 좌우 14px) · `.btn-sm`(28px · 좌우 12px) ·
+  (계약 관리의 `BTN_*`와 같은 판단). 시안 `.btn`(12px/500 · 32px · 좌우 14px) ·
   `.inp`(13px · 32px) · `.sel-sm`(12px · 28px)를 그대로 옮긴다.
+  표 행 버튼(시안 `.btn-sm`)은 공용 `BTN_SM_SECONDARY`(common/constants/buttonStyle)를 쓴다 — DS 통일(11-20).
 */
 
 const BTN_BASE =
@@ -11,8 +12,6 @@ const BTN_BASE =
 
 /** 시안 `.btn.btn-secondary` — 32px */
 export const BTN_SECONDARY = `${BTN_BASE} h-8 border border-sz-n-300 bg-white px-3.5 text-sz-n-900 hover:bg-sz-n-100`;
-/** 시안 `.btn.btn-secondary.btn-sm` — 표 행 버튼 28px */
-export const BTN_SECONDARY_SM = `${BTN_BASE} h-7 border border-sz-n-300 bg-white px-3 text-sz-n-900 hover:bg-sz-n-100`;
 
 /** 시안 `.inp` — 32px · 13px · 패딩 6/10 · 포커스 링 */
 export const INPUT_CLASS =

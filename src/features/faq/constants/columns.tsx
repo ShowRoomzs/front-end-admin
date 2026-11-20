@@ -1,5 +1,9 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import type { Columns } from "@/common/components/Table/types";
+import {
+  BTN_SM_DANGER,
+  BTN_SM_SECONDARY,
+} from "@/common/constants/buttonStyle";
 import type { Faq } from "@/features/faq/types/faq";
 import dayjs from "dayjs";
 import { GripVertical } from "lucide-react";
@@ -97,14 +101,14 @@ export const createFaqListColumns = (
         <button
           type="button"
           onClick={() => handlers.onEdit(record)}
-          className="inline-flex h-[26px] items-center rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100"
+          className={BTN_SM_SECONDARY}
         >
           수정
         </button>
         <button
           type="button"
           onClick={() => handlers.onDelete(record)}
-          className="inline-flex h-[26px] items-center rounded-[6px] border border-[#E9C9C9] bg-white px-2.5 text-[11px] font-medium text-sz-danger-text hover:bg-sz-danger-bg"
+          className={BTN_SM_DANGER}
         >
           삭제
         </button>

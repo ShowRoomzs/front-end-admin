@@ -13,8 +13,9 @@ import { eventDateTime } from "@/features/memberShared/utils/format";
 import { useState } from "react";
 import type { ReactNode } from "react";
 
+/** 시안 `.memo` 12px 대신 DS 입력 13px(DS 통일(11-20)) */
 const MEMO_TEXTAREA_CLASS =
-  "min-h-14 w-full resize-y rounded-[6px] border border-sz-n-300 bg-white px-2.5 py-2 text-[12px] leading-[1.6] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
+  "min-h-14 w-full resize-y rounded-[6px] border border-sz-n-300 bg-white px-2.5 py-2 text-[13px] leading-[1.6] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
 
 /** 입력칸 + 「0 / 300자」 + 버튼 줄(`.memo` · `.memo-f`) */
 function MemoEditor(props: {

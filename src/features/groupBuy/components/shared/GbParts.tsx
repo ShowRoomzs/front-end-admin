@@ -1,4 +1,5 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
 import { toneToVariant } from "@/features/contract/utils/statusBadge";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/features/groupBuy/constants/params";
 import type {
@@ -273,7 +274,10 @@ export function MWarn(props: {
   );
 }
 
-/** 시안 `.unmask` — 카드 하단 보조 버튼(게시물 노출 중지 · 노출 중지 해제 · 본문 대조) */
+/**
+ * 카드 하단 보조 버튼(게시물 노출 중지 · 노출 중지 해제 · 본문 대조). 시안 `.unmask`(24px · 11px · n-700)
+ * 대신 DS 작은 버튼 secondary 28px · 12px로 그린다(DS 통일(11-20)).
+ */
 export function MiniBtn(props: {
   children: ReactNode;
   onClick?: () => void;
@@ -285,10 +289,7 @@ export function MiniBtn(props: {
       type="button"
       onClick={props.onClick}
       disabled={props.disabled}
-      className={cn(
-        "inline-flex h-6 items-center gap-[5px] rounded-[6px] border border-sz-n-300 bg-white px-[9px] text-[11px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:text-sz-n-900 disabled:cursor-not-allowed disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400",
-        props.className
-      )}
+      className={cn(BTN_SM_SECONDARY, props.className)}
     >
       {props.children}
     </button>

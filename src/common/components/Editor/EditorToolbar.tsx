@@ -1,3 +1,4 @@
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
 import type { Editor } from "@tiptap/react";
 import {
   Bold,
@@ -61,6 +62,12 @@ function Divider() {
   return <span className="mx-0.5 h-[18px] w-px bg-sz-n-300" />;
 }
 
+// DS `.sel-sm` 셰브론 — 모달 셀렉트와 같은 10×6 스트로크(n-600), 위치만 오른쪽 9px
+const BLOCK_SELECT_CHEVRON_STYLE = {
+  ...MODAL_SELECT_CHEVRON_STYLE,
+  backgroundPosition: "right 9px center",
+};
+
 const BLOCK_OPTIONS = [
   { value: "paragraph", label: "본문" },
   { value: "h1", label: "제목 1" },
@@ -118,11 +125,13 @@ export default function EditorToolbar(props: EditorToolbarProps) {
 
   return (
     <div className="relative flex flex-wrap items-center gap-0.5 border-b border-sz-n-200 bg-sz-n-50 px-2 py-1.5">
+      {/* DS 통일(11-20): 시안 `.ed-b`(26px · 테두리 없음) 대신 DS `.sel-sm` — 28px · 12px · n-700 · 스트로크 셰브론 오른쪽 9px */}
       <select
         aria-label="본문 스타일"
         value={currentBlock}
         onChange={(event) => handleBlockChange(event.target.value)}
-        className="mr-1 h-7 rounded-[4px] border border-sz-n-300 bg-white px-1.5 text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500"
+        style={BLOCK_SELECT_CHEVRON_STYLE}
+        className="mr-1 h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
       >
         {BLOCK_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>

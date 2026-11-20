@@ -1,3 +1,4 @@
+import { DS_BTN_DISABLED } from "@/common/constants/buttonStyle";
 import {
   CloseIcon,
   AttachIcon,
@@ -48,7 +49,8 @@ function useObjectUrls(files: Array<StagedFile>) {
 }
 
 /**
- * 입력창(시안 `.th-input`) — 클립 · 둥근 입력 · 원형 전송.
+ * 입력창(시안 `.th-input`) — 클립 · 입력 · 전송. 시안의 38px 둥근 입력 · 원형 전송 대신
+ * DS 입력(32px · 모서리 6px · 13px)과 32px 정사각 버튼으로 그린다(DS 통일(11-20)).
  *
  * 개수(20개)와 합계 용량(500MB)은 서로 독립인 두 축이라 둘 다 본다. 여기 검사는 즉시 피드백용이고
  * 서버가 전송 때 다시 판정한다. Enter = 전송 · Shift+Enter = 줄바꿈(한글 조합 중 Enter는 무시).
@@ -185,7 +187,7 @@ export default function Composer(props: ComposerProps) {
           disabled={isDisabled}
           onClick={() => fileInputRef.current?.click()}
           aria-label="파일 첨부"
-          className="flex size-9 shrink-0 items-center justify-center rounded-[6px] border border-sz-n-300 text-sz-n-500 hover:bg-sz-n-100 disabled:cursor-not-allowed disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400"
+          className={`flex size-8 shrink-0 items-center justify-center rounded-[6px] border border-sz-n-300 bg-white text-sz-n-500 hover:bg-sz-n-100 ${DS_BTN_DISABLED}`}
         >
           <AttachIcon />
         </button>
@@ -205,14 +207,14 @@ export default function Composer(props: ComposerProps) {
           }}
           rows={1}
           placeholder="메시지 입력…"
-          className="h-[38px] flex-1 resize-none rounded-[19px] border border-sz-n-300 px-4 py-[8px] text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50 disabled:cursor-not-allowed disabled:bg-sz-n-100"
+          className="h-8 min-h-8 flex-1 resize-none rounded-[6px] border border-sz-n-300 bg-white px-2.5 py-1.5 text-[13px] leading-[18px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50 disabled:cursor-not-allowed disabled:bg-sz-n-100"
         />
         <button
           type="button"
           disabled={!canSend}
           onClick={handleSend}
           aria-label="전송"
-          className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-sz-accent-500 text-white hover:bg-sz-accent-600 disabled:cursor-not-allowed disabled:border disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400"
+          className={`flex size-8 shrink-0 items-center justify-center rounded-[6px] bg-sz-accent-500 text-white hover:bg-sz-accent-600 ${DS_BTN_DISABLED}`}
         >
           <SendIcon />
         </button>

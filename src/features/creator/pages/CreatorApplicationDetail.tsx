@@ -419,18 +419,19 @@ export default function CreatorApplicationDetail() {
 
             {isPending ? (
               <>
+                {/* 시안 03 `.btn-lg` 36px · 13px 대신 DS `.btn` 32px · 12px(DS 통일(11-20)) */}
                 <div className="mt-4 flex gap-2">
                   <button
                     type="button"
                     onClick={() => setIsRejectionOpen(true)}
-                    className="inline-flex h-9 flex-1 items-center justify-center rounded-[6px] bg-sz-danger-text px-4 text-[13px] font-medium text-white hover:bg-[#8f2828]"
+                    className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[6px] bg-sz-danger-text px-3.5 text-[12px] font-medium text-white hover:bg-[#8f2828]"
                   >
                     반려
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsApprovalOpen(true)}
-                    className="inline-flex h-9 flex-1 items-center justify-center rounded-[6px] bg-sz-accent-500 px-4 text-[13px] font-medium text-white hover:bg-sz-accent-600"
+                    className="inline-flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[6px] bg-sz-accent-500 px-3.5 text-[12px] font-medium text-white hover:bg-sz-accent-600"
                   >
                     승인
                   </button>

@@ -1,3 +1,4 @@
+import { DS_BTN_DISABLED } from "@/common/constants/buttonStyle";
 import { formatFileSize } from "@/common/utils/formatFileSize";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -40,8 +41,11 @@ function getFileExtension(url: string): string | null {
   return match ? match[1].toUpperCase() : null;
 }
 
-const VIEWER_BTN =
-  "inline-flex h-7 items-center gap-[5px] rounded-[6px] border-none bg-white/10 px-2.5 text-[11px] font-medium text-white/85 hover:bg-white/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-40";
+/**
+ * 어두운 배경 뷰어 버튼 — DS에 정의가 없어 28px · 반투명 흰 모양은 시안 `.pv-b`를 두고,
+ * 글자는 DS 12px/500, 비활성은 opacity 대신 DS `.btn:disabled`로 맞춘다(DS 통일(11-20))
+ */
+const VIEWER_BTN = `inline-flex h-7 items-center gap-[5px] rounded-[6px] border-0 bg-white/10 px-2.5 text-[12px] font-medium text-white/85 hover:bg-white/20 hover:text-white ${DS_BTN_DISABLED}`;
 
 /**
  * 첨부 서류 미리보기 — 라이트박스 + 우측 대조 패널.

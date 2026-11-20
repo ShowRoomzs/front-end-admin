@@ -16,8 +16,12 @@ interface DateTimeFieldProps {
   ariaLabel?: string;
 }
 
+/*
+  시안 `.dt`는 12px · 30px이지만 DS 입력 13px · 32px로 맞춘다(DS 통일(11-20)).
+  바깥 칸이 32px(h-8 · 테두리 포함)이고, 안쪽 날짜 버튼 · 시/분 셀렉트는 테두리 안을 채우는 30px다.
+*/
 const INNER_SELECT =
-  "h-[30px] cursor-pointer appearance-none border-none bg-transparent py-0 pl-[9px] pr-[22px] text-[12px] tabular-nums text-sz-n-900 outline-none disabled:cursor-not-allowed disabled:text-sz-n-400";
+  "h-[30px] cursor-pointer appearance-none border-none bg-transparent py-0 pl-[9px] pr-[22px] text-[13px] tabular-nums text-sz-n-900 outline-none disabled:cursor-not-allowed disabled:text-sz-n-400";
 
 /**
  * 날짜 칸 — 시안 `.dt input.d`는 「2026.08.14」 글자다. 브라우저 기본 날짜 입력은
@@ -50,7 +54,7 @@ function DateButton(props: {
         disabled={disabled}
         onClick={open}
         className={cn(
-          "h-[30px] w-[104px] bg-transparent px-2.5 text-left text-[12px] tabular-nums outline-none disabled:cursor-not-allowed disabled:text-sz-n-400",
+          "h-[30px] w-[108px] bg-transparent px-2.5 text-left text-[13px] tabular-nums outline-none disabled:cursor-not-allowed disabled:text-sz-n-400",
           value ? "text-sz-n-900" : "text-sz-n-400"
         )}
       >
@@ -123,7 +127,7 @@ export default function DateTimeField(props: DateTimeFieldProps) {
           </option>
         ))}
       </select>
-      <span className="px-px text-[12px] text-sz-n-400">:</span>
+      <span className="px-px text-[13px] text-sz-n-400">:</span>
       <select
         aria-label={ariaLabel ? `${ariaLabel} 분` : undefined}
         disabled={disabled}

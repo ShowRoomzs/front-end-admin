@@ -74,6 +74,7 @@ export function FormHint({ children }: { children: ReactNode }) {
 
 /**
  * 시안 `.cbrow` — 체크 + 항목명 + 오른쪽 수량 칸.
+ * 수량 칸은 시안 `.qty`(22px · 10px · 4px) 대신 DS 작은 컨트롤(28px · 12px · 6px · 포커스 링)로 통일(11-20).
  * 선택되면 수량을 고칠 수 있고(`editable`), 안 된 항목은 0으로 흐리게 접는다.
  */
 export function CheckRow(props: {
@@ -135,12 +136,12 @@ export function CheckRow(props: {
             // 비워 둔 채 벗어나면 마지막으로 맞춰 둔 값(최소 1)으로 돌아간다
             setDraft(null);
           }}
-          className="ml-auto h-[22px] w-[38px] rounded-[4px] border border-sz-n-300 bg-white text-center text-[10px] tabular-nums text-sz-n-900 outline-none focus:border-sz-accent-500"
+          className="ml-auto h-7 w-12 rounded-[6px] border border-sz-n-300 bg-white text-center text-[12px] tabular-nums text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
         />
       ) : (
         <span
           className={cn(
-            "ml-auto flex h-[22px] w-[38px] items-center justify-center rounded-[4px] border border-sz-n-300 bg-white text-[10px] tabular-nums",
+            "ml-auto flex h-7 w-12 items-center justify-center rounded-[6px] border border-sz-n-300 bg-white text-[12px] tabular-nums",
             "text-sz-n-900"
           )}
         >

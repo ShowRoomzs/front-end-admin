@@ -16,12 +16,14 @@ export const BTN_DISABLED =
 export const BTN_PRIMARY = `${BTN_BASE} bg-sz-accent-500 text-white hover:bg-sz-accent-600 ${BTN_DISABLED}`;
 export const BTN_SECONDARY = `${BTN_BASE} border border-sz-n-300 bg-white text-sz-n-900 hover:bg-sz-n-100 ${BTN_DISABLED}`;
 export const BTN_GHOST = `${BTN_BASE} bg-transparent text-sz-n-600 hover:bg-sz-n-100 ${BTN_DISABLED}`;
-/** 시안 `.btn-danger` — 흰 배경 + 위험색 글자(테두리 #E9C9C9). 종결·거절처럼 되돌릴 수 없는 액션 */
-export const BTN_DANGER = `${BTN_BASE} border border-[#E9C9C9] bg-white text-sz-danger-text hover:bg-sz-danger-bg disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400`;
-/** 시안 `.btn-del` — 작성 내용 삭제(회색 테두리 · 위험색 글자) */
-export const BTN_DELETE = `${BTN_BASE} border border-sz-n-300 bg-white text-sz-danger-text hover:border-[#E9C9C9] hover:bg-sz-danger-bg disabled:border-sz-n-200 disabled:bg-sz-n-100 disabled:text-sz-n-400`;
-/** 채운 위험색 — 확인 모달의 [삭제]·[거절] 확정 버튼(디자인시스템 `.btn-danger`) */
+/** DS `.btn-danger` — 채운 위험색. 되돌릴 수 없는 액션 */
 export const BTN_DANGER_SOLID = `${BTN_BASE} bg-sz-danger-text text-white hover:bg-[#8f2828] ${BTN_DISABLED}`;
+/*
+  시안의 테두리형 위험 버튼(`.btn-danger-o` · `.btn-del`)은 DS에 없다 — DS 기준 통일(11-20)로 채운
+  `.btn-danger` 하나로 쓴다. 호출부 variant 이름(`danger` · `delete`)은 그대로 두고 값만 맞춘다.
+*/
+export const BTN_DANGER = BTN_DANGER_SOLID;
+export const BTN_DELETE = BTN_DANGER_SOLID;
 export const BTN_LG = "h-[38px] px-5 text-[13px]";
 
 /** 시안 01 · DS `.inp` — 32px · 13px · 패딩 6/10 · 포커스 링(파트너 시안 36px 값을 옮겨 왔던 것을 바로잡음) */
