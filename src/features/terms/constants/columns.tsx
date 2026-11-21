@@ -1,6 +1,6 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import type { Columns } from "@/common/components/Table/types";
-import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
+import { BTN_ACT } from "@/common/constants/buttonStyle";
 import { formatDateOnly } from "@/common/utils/formatDate";
 import type { TermsListItem } from "@/features/terms/types/terms";
 import { getTermsDocumentVariant } from "@/features/terms/utils/statusBadge";
@@ -89,7 +89,7 @@ export const createTermsListColumns = (
         <button
           type="button"
           onClick={() => handlers.onRegisterVersion(record)}
-          className={BTN_SM_SECONDARY}
+          className={BTN_ACT}
         >
           새 버전 등록
         </button>

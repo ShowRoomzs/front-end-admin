@@ -2,6 +2,7 @@ import {
   policyDaysText,
   usePolicyValues,
 } from "@/common/hooks/usePolicyValues";
+import { NOTICE_DANGER_CLASS } from "@/common/constants/dsStyle";
 import OrderBadge from "@/features/order/components/shared/OrderBadge";
 import {
   Block,
@@ -90,7 +91,7 @@ export function OrderBanner(props: {
     return null;
   }
   return (
-    <div className="mb-2.5 flex gap-[9px] rounded-[8px] border border-[#EECFCF] bg-sz-danger-bg px-3 py-2.5 text-[11px] font-medium leading-[1.65] text-sz-danger-text">
+    <div className={cn(NOTICE_DANGER_CLASS, "mb-2.5 flex gap-2")}>
       <span>!</span>
       <span>
         {returned ? (

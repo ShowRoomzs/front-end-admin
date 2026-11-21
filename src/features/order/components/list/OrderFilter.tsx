@@ -5,8 +5,16 @@ import {
   ORDER_SEARCH_TYPES,
   ORDER_STATUS_OPTIONS,
   ORDER_TABS,
-  SELECT_CHEVRON_STYLE,
+  MODAL_SELECT_CHEVRON_STYLE,
 } from "@/features/order/constants/params";
+import {
+  DATE_INPUT_CLASS,
+  SEG_CLASS,
+  SEG_ITEM_CLASS,
+  SEG_ITEM_ON_CLASS,
+  TAB_CLASS,
+  TAB_ON_CLASS,
+} from "@/common/constants/dsStyle";
 import {
   INPUT_CLASS,
   SELECT_SM_CLASS,
@@ -135,10 +143,9 @@ export default function OrderFilter(props: OrderFilterProps) {
               type="button"
               onClick={() => onTabChange(tab.value)}
               className={cn(
-                "mr-5 flex cursor-pointer items-center gap-1.5 border-b-2 px-0.5 py-1.5 text-[12px]",
-                isActive
-                  ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                  : "border-transparent text-sz-n-500 hover:text-sz-n-700"
+                TAB_CLASS,
+                "flex items-center gap-1.5",
+                isActive && TAB_ON_CLASS
               )}
             >
               {tab.label}
@@ -168,7 +175,7 @@ export default function OrderFilter(props: OrderFilterProps) {
               SELECT_SM_CLASS,
               params.tab === "DELIVERY_ISSUE" ? "w-[152px]" : "w-[134px]"
             )}
-            style={SELECT_CHEVRON_STYLE}
+            style={MODAL_SELECT_CHEVRON_STYLE}
             value={params.status}
             onChange={(event) => onChange({ status: event.target.value })}
           >
@@ -187,7 +194,7 @@ export default function OrderFilter(props: OrderFilterProps) {
         <select
           aria-label="검색 기준"
           className={cn(SELECT_SM_CLASS, "w-[104px]")}
-          style={SELECT_CHEVRON_STYLE}
+          style={MODAL_SELECT_CHEVRON_STYLE}
           value={params.searchType}
           onChange={(event) =>
             onChange({
@@ -219,7 +226,7 @@ export default function OrderFilter(props: OrderFilterProps) {
 
       <div className="mt-[11px] flex w-full items-center gap-2 border-t border-sz-n-100 pt-[11px]">
         <span className={FLAB}>결제일</span>
-        <div className="flex overflow-hidden rounded-[6px] border border-sz-n-300 bg-white">
+        <div className={SEG_CLASS}>
           {ORDER_PERIOD_PRESETS.map((preset) => (
             <button
               key={preset.value}
@@ -237,10 +244,8 @@ export default function OrderFilter(props: OrderFilterProps) {
                 })
               }
               className={cn(
-                "flex h-[30px] cursor-pointer items-center border-r border-sz-n-200 px-[11px] text-[11px] last:border-r-0",
-                params.period === preset.value
-                  ? "bg-sz-accent-50 font-medium text-sz-accent-600"
-                  : "text-sz-n-600 hover:bg-sz-n-50"
+                SEG_ITEM_CLASS,
+                params.period === preset.value && SEG_ITEM_ON_CLASS
               )}
             >
               {preset.label}
@@ -248,12 +253,12 @@ export default function OrderFilter(props: OrderFilterProps) {
           ))}
         </div>
         {params.period === "CUSTOM" ? (
-          // 날짜 칸은 DS `.inp`(13px · n-900 · 32px) — 같은 줄의 기간 세그먼트(테두리 포함 32px)와 높이를 맞춘다(DS 통일 11-20)
+          // 날짜 칸은 DS `.inp`(13px · n-900 · 32px) — 같은 줄의 기간 세그먼트(테두리 포함 32px)와 높이를 맞춘다(세 앱 합의 11-21)
           <span className="flex items-center gap-1.5 text-[11px] text-sz-n-500">
             <input
               type="date"
               aria-label="결제일 시작"
-              className={cn(INPUT_CLASS, "w-[136px]")}
+              className={cn(DATE_INPUT_CLASS, "w-[136px]")}
               value={params.from}
               max={params.to || undefined}
               onChange={(event) => onChange({ from: event.target.value })}
@@ -262,7 +267,7 @@ export default function OrderFilter(props: OrderFilterProps) {
             <input
               type="date"
               aria-label="결제일 종료"
-              className={cn(INPUT_CLASS, "w-[136px]")}
+              className={cn(DATE_INPUT_CLASS, "w-[136px]")}
               value={params.to}
               min={params.from || undefined}
               onChange={(event) => onChange({ to: event.target.value })}
@@ -315,7 +320,7 @@ export default function OrderFilter(props: OrderFilterProps) {
           <select
             aria-label="브랜드"
             className={cn(SELECT_SM_CLASS, "w-[150px]")}
-            style={SELECT_CHEVRON_STYLE}
+            style={MODAL_SELECT_CHEVRON_STYLE}
             value={params.marketId}
             onChange={(event) =>
               onChange({ marketId: event.target.value, groupBuyId: "" })
@@ -341,7 +346,7 @@ export default function OrderFilter(props: OrderFilterProps) {
               SELECT_SM_CLASS,
               "w-[186px] disabled:cursor-not-allowed disabled:bg-sz-n-100 disabled:text-sz-n-400"
             )}
-            style={SELECT_CHEVRON_STYLE}
+            style={MODAL_SELECT_CHEVRON_STYLE}
             value={params.groupBuyId}
             onChange={(event) => onChange({ groupBuyId: event.target.value })}
           >
@@ -359,7 +364,7 @@ export default function OrderFilter(props: OrderFilterProps) {
           <select
             aria-label="인플루언서"
             className={cn(SELECT_SM_CLASS, "w-[160px]")}
-            style={SELECT_CHEVRON_STYLE}
+            style={MODAL_SELECT_CHEVRON_STYLE}
             value={params.creatorId}
             onChange={(event) => onChange({ creatorId: event.target.value })}
           >
@@ -378,7 +383,7 @@ export default function OrderFilter(props: OrderFilterProps) {
           <select
             aria-label="결제수단"
             className={cn(SELECT_SM_CLASS, "w-[128px]")}
-            style={SELECT_CHEVRON_STYLE}
+            style={MODAL_SELECT_CHEVRON_STYLE}
             value={params.paymentMethod}
             onChange={(event) =>
               onChange({ paymentMethod: event.target.value })

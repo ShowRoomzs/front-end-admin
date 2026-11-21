@@ -192,15 +192,10 @@ export const ISSUE_TYPE_OPTIONS = [
   { value: "ETC", label: "기타" },
 ] as const;
 
-/** 시안 `.sel-sm`/`.msel` — 선으로 그린 갈매기표 */
-export const SELECT_CHEVRON_STYLE = {
+/** 시안 `.msel` — 선으로 그린 갈매기표(10×6 · 오른쪽 10px). 툴바 셀렉트는 공용 `MODAL_SELECT_CHEVRON_STYLE`을 쓴다 */
+export const MODAL_SELECT_CHEVRON_STYLE = {
   backgroundImage:
     "url(\"data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%235B5F68' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
   backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 9px center",
-};
-
-export const MODAL_SELECT_CHEVRON_STYLE = {
-  ...SELECT_CHEVRON_STYLE,
   backgroundPosition: "right 10px center",
 };

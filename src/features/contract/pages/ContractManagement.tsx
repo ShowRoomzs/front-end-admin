@@ -1,5 +1,7 @@
 import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper";
 import Table from "@/common/components/Table/Table";
+import { SELECT_TOOLBAR_CLASS } from "@/common/constants/dsStyle";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
 import Btn from "@/features/contract/components/shared/Btn";
@@ -12,7 +14,6 @@ import {
   CONTRACT_LIST_PATH,
   CONTRACT_PAGE_SIZES,
   CONTRACT_SORT_OPTIONS,
-  SELECT_CHEVRON_STYLE,
 } from "@/features/contract/constants/params";
 import {
   useGetAdminContractList,
@@ -29,9 +30,6 @@ import { contractActionRequiredCount } from "@/features/contract/utils/summary";
 import { cn } from "@/lib/utils";
 import { useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-
-const SELECT_SM_CLASS =
-  "h-7 cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
 
 /**
  * A1·A2 — 어드민 계약 목록.
@@ -166,8 +164,8 @@ export default function ContractManagement() {
           <div className="flex items-center gap-2">
             <select
               aria-label="정렬"
-              className={SELECT_SM_CLASS}
-              style={SELECT_CHEVRON_STYLE}
+              className={SELECT_TOOLBAR_CLASS}
+              style={MODAL_SELECT_CHEVRON_STYLE}
               value={params.sort}
               onChange={(event) =>
                 updateParams({
@@ -184,8 +182,8 @@ export default function ContractManagement() {
             </select>
             <select
               aria-label="표시 건수"
-              className={SELECT_SM_CLASS}
-              style={SELECT_CHEVRON_STYLE}
+              className={SELECT_TOOLBAR_CLASS}
+              style={MODAL_SELECT_CHEVRON_STYLE}
               value={params.size}
               onChange={(event) =>
                 updateParams({ size: Number(event.target.value), page: 1 })

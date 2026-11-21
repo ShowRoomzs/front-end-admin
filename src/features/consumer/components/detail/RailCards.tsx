@@ -3,6 +3,8 @@ import HistoryList, {
   type HistoryItem,
 } from "@/common/components/HistoryList/HistoryList";
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import { POPOVER_CLASS, POPOVER_ITEM_CLASS } from "@/common/constants/dsStyle";
+import { cn } from "@/lib/utils";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import {
   PENDING_CHIP_KINDS,
@@ -189,12 +191,17 @@ function PendingChipButton(props: { chip: ConsumerPendingChip }) {
         {chip.label} <b className="tabular-nums">{chip.count}</b> ↗
       </button>
       {open && chip.links.length > 1 && (
-        <span className="absolute left-0 top-full z-10 mt-1 flex min-w-[160px] flex-col rounded-[6px] border border-sz-n-200 bg-white py-1 shadow-[0_8px_24px_rgba(26,27,31,0.12),0_2px_6px_rgba(26,27,31,0.08)]">
+        <span
+          className={cn(
+            POPOVER_CLASS,
+            "absolute left-0 top-full z-10 mt-1 flex min-w-[160px] flex-col py-1"
+          )}
+        >
           {chip.links.map((link) => (
             <button
               key={link.target}
               type="button"
-              className="flex items-center justify-between gap-3 px-3 py-1.5 text-left text-[12px] text-sz-n-700 hover:bg-sz-n-100"
+              className={cn(POPOVER_ITEM_CLASS, "justify-between gap-3")}
               onClick={() => navigate(pendingLinkHref(link))}
             >
               {PENDING_TARGET_LABELS[link.target]}

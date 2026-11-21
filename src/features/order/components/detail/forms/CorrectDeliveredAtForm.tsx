@@ -115,7 +115,7 @@ export default function CorrectDeliveredAtForm(props: {
         <button
           type="button"
           onClick={onClose}
-          className="cursor-pointer text-[10px] font-normal text-sz-n-500 hover:text-sz-n-700"
+          className="cursor-pointer text-[11px] font-normal text-sz-n-500 hover:text-sz-n-700"
         >
           접기
         </button>

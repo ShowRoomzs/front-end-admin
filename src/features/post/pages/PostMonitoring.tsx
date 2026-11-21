@@ -1,6 +1,12 @@
 import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper";
 import Pagination from "@/common/components/Pagination/Pagination";
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import {
+  SELECT_TOOLBAR_CLASS,
+  TAB_CLASS,
+  TAB_ON_CLASS,
+} from "@/common/constants/dsStyle";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
 import Btn from "@/features/contract/components/shared/Btn";
@@ -20,7 +26,6 @@ import {
   POST_PAGE_SIZES,
   POST_SORT_OPTIONS,
   POST_TABS,
-  SELECT_CHEVRON_STYLE,
   influencerDetailPath,
 } from "@/features/post/constants/params";
 import { POLICY_CHAPTER } from "@/features/post/constants/provisional";
@@ -46,10 +51,9 @@ import { Loader2 } from "lucide-react";
 import { useCallback, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+/** 기준 문서 버튼 — DS secondary 32px(세 앱 합의 11-21) */
 const NAV_BTN_CLASS =
-  "inline-flex h-8 items-center gap-[5px] whitespace-nowrap rounded-[6px] border border-sz-n-300 bg-white px-3 text-[12px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100 hover:text-sz-n-900";
-const SELECT_SM_CLASS =
-  "h-7 cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
+  "inline-flex h-8 items-center gap-[5px] whitespace-nowrap rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100";
 const HEAD_CLASS =
   "whitespace-nowrap border-b border-sz-n-200 bg-sz-n-100 px-5 py-2.5 text-left text-[11px] font-medium text-sz-n-600";
 const CELL_CLASS =
@@ -186,10 +190,9 @@ export default function PostMonitoring() {
                 type="button"
                 onClick={() => updateParams({ tab: item.value, page: 1 })}
                 className={cn(
-                  "mr-5 flex items-center gap-1.5 border-b-2 px-0.5 py-1.5 text-[12px]",
-                  isActive
-                    ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                    : "border-transparent text-sz-n-500 hover:text-sz-n-700"
+                  TAB_CLASS,
+                  "flex items-center gap-1.5",
+                  isActive && TAB_ON_CLASS
                 )}
               >
                 {item.label}
@@ -235,8 +238,8 @@ export default function PostMonitoring() {
           <div className="flex items-center gap-2">
             <select
               aria-label="정렬"
-              className={SELECT_SM_CLASS}
-              style={SELECT_CHEVRON_STYLE}
+              className={SELECT_TOOLBAR_CLASS}
+              style={MODAL_SELECT_CHEVRON_STYLE}
               value={params.sort}
               onChange={(event) =>
                 updateParams({
@@ -253,8 +256,8 @@ export default function PostMonitoring() {
             </select>
             <select
               aria-label="표시 건수"
-              className={SELECT_SM_CLASS}
-              style={SELECT_CHEVRON_STYLE}
+              className={SELECT_TOOLBAR_CLASS}
+              style={MODAL_SELECT_CHEVRON_STYLE}
               value={params.size}
               onChange={(event) =>
                 updateParams({ size: Number(event.target.value), page: 1 })

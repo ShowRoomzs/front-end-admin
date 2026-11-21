@@ -1,4 +1,5 @@
 import Calendar from "@/common/components/Calendar/Calendar";
+import { POPOVER_CLASS } from "@/common/constants/dsStyle";
 import { cn } from "@/lib/utils";
 import dayjs, { Dayjs } from "dayjs";
 import { CalendarIcon } from "lucide-react";
@@ -226,7 +227,10 @@ export function DateRangePicker({
         createPortal(
           <div
             ref={calendarRef}
-            className="absolute bg-white border-[1px] border-sz-n-200 rounded-[8px] shadow-lg z-[9999] p-[12px] flex gap-[20px]"
+            className={cn(
+              POPOVER_CLASS,
+              "absolute z-[9999] flex gap-[20px] p-[12px]"
+            )}
             style={{
               top: `${position.top}px`,
               left: `${position.left}px`,

@@ -1,3 +1,7 @@
+import {
+  CHECK_BOX_CLASS,
+  CHECK_BOX_ON_CLASS,
+} from "@/common/constants/dsStyle";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -9,7 +13,7 @@ interface CheckProps {
   className?: string;
 }
 
-/** 시안 `.chk/.cbox` — 15px 체크박스 + 라벨 */
+/** 시안 `.chk/.cbox` — DS `.fp-box` 15px 체크박스(체크 9px) + 라벨 */
 export default function Check(props: CheckProps) {
   const { checked, onChange, disabled = false, children, className } = props;
 
@@ -31,15 +35,10 @@ export default function Check(props: CheckProps) {
       />
       <span
         aria-hidden
-        className={cn(
-          "flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border-[1.5px]",
-          checked
-            ? "border-sz-accent-500 bg-sz-accent-500"
-            : "border-sz-n-400 bg-white"
-        )}
+        className={cn(CHECK_BOX_CLASS, checked && CHECK_BOX_ON_CLASS)}
       >
         {checked && (
-          <svg viewBox="0 0 10 10" fill="none" className="h-2.5 w-2.5">
+          <svg viewBox="0 0 10 10" fill="none" className="size-[9px]">
             <path
               d="M1.5 5.2L3.9 7.5L8.5 2.6"
               stroke="#fff"

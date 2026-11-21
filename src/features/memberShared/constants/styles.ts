@@ -6,6 +6,7 @@
 */
 
 import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
+import { SELECT_TOOLBAR_CLASS } from "@/common/constants/dsStyle";
 
 /** `.btn` — 32px · 12px/500 · 좌우 14px */
 const BTN_BASE =
@@ -27,9 +28,8 @@ export const BTN_CARD_HEAD = BTN_SM_SECONDARY;
 export const INPUT_CLASS =
   "h-8 rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50 disabled:cursor-not-allowed disabled:bg-sz-n-100 disabled:text-sz-n-500";
 
-/** `.sel-sm` — 툴바 「20건씩」 */
-export const SELECT_SM_CLASS =
-  "h-7 cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white bg-no-repeat py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
+/** 툴바 「20건씩」 — 시안 `.sel-sm` 28px 대신 DS 셀렉트 32px(세 앱 합의(11-21)). 화살표는 `MODAL_SELECT_CHEVRON_STYLE` */
+export const SELECT_SM_CLASS = SELECT_TOOLBAR_CLASS;
 
 /** `.msel` — 모달 셀렉트 */
 export const MODAL_SELECT_CLASS =

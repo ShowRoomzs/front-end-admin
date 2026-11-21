@@ -1,16 +1,18 @@
 import {
+  SELECT_TOOLBAR_CLASS,
+  TAB_CLASS,
+  TAB_ON_CLASS,
+} from "@/common/constants/dsStyle";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
+import {
   CLAIM_SEARCH_FIELDS,
   CLAIM_TABS,
   CLAIM_TYPE_OPTIONS,
-  SELECT_CHEVRON_STYLE,
 } from "@/features/claim/constants/params";
 import type { ClaimListParams, ClaimTab } from "@/features/claim/types";
 import Btn from "@/features/contract/components/shared/Btn";
 import { INPUT_CLASS } from "@/features/contract/components/shared/styles";
 import { cn } from "@/lib/utils";
-
-const SELECT_SM_CLASS =
-  "h-7 cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
 
 interface ClaimFilterBarProps {
   /** 적용된 탭 */
@@ -52,10 +54,9 @@ export default function ClaimFilterBar(props: ClaimFilterBarProps) {
               type="button"
               onClick={() => onTabChange(item.value)}
               className={cn(
-                "mr-5 flex items-center gap-1.5 border-b-2 px-0.5 py-1.5 text-[12px]",
-                isActive
-                  ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                  : "border-transparent text-sz-n-500 hover:text-sz-n-700"
+                TAB_CLASS,
+                "flex items-center gap-1.5",
+                isActive && TAB_ON_CLASS
               )}
             >
               {item.label}
@@ -79,8 +80,8 @@ export default function ClaimFilterBar(props: ClaimFilterBarProps) {
       <div className="ml-auto flex gap-1.5">
         <select
           aria-label="유형"
-          className={cn(SELECT_SM_CLASS, "w-24")}
-          style={SELECT_CHEVRON_STYLE}
+          className={cn(SELECT_TOOLBAR_CLASS, "w-24")}
+          style={MODAL_SELECT_CHEVRON_STYLE}
           value={draft.type}
           onChange={(event) => onDraftChange("type", event.target.value)}
         >
@@ -92,8 +93,8 @@ export default function ClaimFilterBar(props: ClaimFilterBarProps) {
         </select>
         <select
           aria-label="검색 기준"
-          className={cn(SELECT_SM_CLASS, "w-[112px]")}
-          style={SELECT_CHEVRON_STYLE}
+          className={cn(SELECT_TOOLBAR_CLASS, "w-[112px]")}
+          style={MODAL_SELECT_CHEVRON_STYLE}
           value={draft.searchField}
           onChange={(event) => onDraftChange("searchField", event.target.value)}
         >

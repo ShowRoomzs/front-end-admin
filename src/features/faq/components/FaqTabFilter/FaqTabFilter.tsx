@@ -1,8 +1,10 @@
+import { TAB_CLASS, TAB_ON_CLASS } from "@/common/constants/dsStyle";
 import {
   FAQ_CATEGORY_ALL,
   type FaqCategory,
   type FaqCategoryCounts,
 } from "@/features/faq/types/faq";
+import { cn } from "@/lib/utils";
 
 interface FaqTabFilterProps {
   /** `/common/faqs/categories` 응답에서 ALL을 걸러낸 저장용 카테고리 */
@@ -63,11 +65,11 @@ export default function FaqTabFilter(props: FaqTabFilterProps) {
               key={tab.value ?? FAQ_CATEGORY_ALL}
               type="button"
               onClick={() => onCategoryChange(tab.value)}
-              className={`mr-5 flex items-center gap-1.5 border-b-2 px-0.5 py-1.5 text-[12px] ${
-                isActive
-                  ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                  : "border-transparent text-sz-n-500 hover:text-sz-n-700"
-              }`}
+              className={cn(
+                TAB_CLASS,
+                "flex items-center gap-1.5",
+                isActive && TAB_ON_CLASS
+              )}
             >
               {tab.label}
               {tab.count !== undefined && (

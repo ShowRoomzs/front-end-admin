@@ -1,4 +1,6 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import { NOTICE_DANGER_CLASS } from "@/common/constants/dsStyle";
+import { cn } from "@/lib/utils";
 import { HOME_COPY, INTEGRATION_ORDER } from "@/features/home/constants/labels";
 import type { AdminHomeIntegration } from "@/features/home/types";
 import {
@@ -80,7 +82,7 @@ export function IntegrationBanner(props: {
           <div
             key={integration.key}
             role="alert"
-            className="flex items-start gap-2.5 rounded-[8px] bg-sz-danger-bg px-4 py-[9px] text-[12px] leading-[1.6] text-sz-danger-text"
+            className={cn(NOTICE_DANGER_CLASS, "flex items-start gap-2")}
           >
             <span>!</span>
             {integration.key === "DELIVERY_TRACKING" ? (

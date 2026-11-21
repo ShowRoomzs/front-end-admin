@@ -14,6 +14,7 @@ import { ORDER_EXCEPTION_PATH } from "@/features/order/constants/params";
 import { useGetOrderDetail } from "@/features/order/hooks/useOrderQueries";
 import type { AdminOrderDetail } from "@/features/order/types";
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import { DS_BTN_DISABLED } from "@/common/constants/buttonStyle";
 import { X } from "lucide-react";
 import { useEffect, useState, type ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
@@ -26,8 +27,8 @@ interface OrderDetailModalProps {
   onClose: () => void;
 }
 
-const NAV_BTN =
-  "inline-flex h-8 cursor-pointer items-center gap-[5px] whitespace-nowrap rounded-[6px] border border-sz-n-300 bg-white px-3 text-[12px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100 hover:text-sz-n-900";
+// DS `.btn` secondary 32px(세 앱 합의 11-21)
+const NAV_BTN = `inline-flex h-8 cursor-pointer items-center gap-[5px] whitespace-nowrap rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100 ${DS_BTN_DISABLED}`;
 
 /**
  * 시안 B1~B8 — 주문 상세 모달(1040px). 좌측 블록(결제 → 하위주문 → 배송 → 정산 반영 → 취소 요청 →

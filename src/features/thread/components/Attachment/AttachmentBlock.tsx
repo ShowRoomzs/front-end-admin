@@ -1,3 +1,4 @@
+import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
 import { DownloadIcon } from "@/features/thread/components/icons";
 import type { AttachmentSummary } from "@/features/thread/types";
 import { getFileIconLabel } from "@/features/thread/utils/attachment";
@@ -117,7 +118,8 @@ export default function AttachmentBlock(props: AttachmentBlockProps) {
           type="button"
           onClick={() => downloadAttachments(downloadable)}
           className={cn(
-            "inline-flex h-7 w-fit items-center gap-1.5 rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-600 hover:bg-sz-n-100 hover:text-sz-n-900",
+            BTN_SM_SECONDARY,
+            "w-fit gap-1.5",
             alignEnd && "ml-auto"
           )}
         >

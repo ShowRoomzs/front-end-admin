@@ -1,6 +1,10 @@
 import DetailCard from "@/common/components/DetailCard/DetailCard";
 import Editor from "@/common/components/Editor/Editor";
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import {
+  CHECK_BOX_CLASS,
+  CHECK_BOX_ON_CLASS,
+} from "@/common/constants/dsStyle";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import { NOTICE_IMAGE_UPLOAD_TYPE } from "@/features/notice/constants/params";
 import {
@@ -9,6 +13,7 @@ import {
   useUpdateNotice,
 } from "@/features/notice/hooks/useNoticeQueries";
 import type { NoticeFormRequest } from "@/features/notice/types/notice";
+import { cn } from "@/lib/utils";
 import { CheckIcon } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import toast from "react-hot-toast";
@@ -124,7 +129,7 @@ export default function NoticeFormPage() {
         <button
           type="button"
           onClick={goToList}
-          className="inline-flex h-8 items-center rounded-[6px] border border-sz-n-300 bg-white px-3 text-[12px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100 hover:text-sz-n-900"
+          className="inline-flex h-8 items-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100"
         >
           목록
         </button>
@@ -210,14 +215,14 @@ export default function NoticeFormPage() {
               className="mt-3 flex w-full items-start gap-2.5 text-left"
             >
               <span
-                className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-[4px] border-[1.5px] ${
-                  form.pinned
-                    ? "border-sz-accent-500 bg-sz-accent-500 text-white"
-                    : "border-sz-n-300 bg-white"
-                }`}
+                className={cn(
+                  CHECK_BOX_CLASS,
+                  "mt-0.5",
+                  form.pinned && CHECK_BOX_ON_CLASS
+                )}
               >
                 {form.pinned && (
-                  <CheckIcon className="size-3" strokeWidth={3} />
+                  <CheckIcon className="size-[9px]" strokeWidth={3} />
                 )}
               </span>
               <span className="text-[12px] text-sz-n-700">

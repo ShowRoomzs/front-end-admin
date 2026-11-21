@@ -1,13 +1,10 @@
-import {
-  BTN_SM_PRIMARY,
-  BTN_SM_SECONDARY,
-} from "@/common/constants/buttonStyle";
+import { BTN_ACT, BTN_ACT_PRIMARY } from "@/common/constants/buttonStyle";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import type { ButtonHTMLAttributes } from "react";
 
 /*
-  시안 `.btn` — 12px/500 · 32px · 좌우 14px. 표 안 버튼(`small`)은 공용 `BTN_SM_*`(28px · 좌우 12px)를 쓴다.
+  시안 `.btn` — 12px/500 · 32px · 좌우 14px. 표 안 버튼(`small`)은 공용 행 버튼 `BTN_ACT*`(28px · 11px · 좌우 14px)를 쓴다(세 앱 합의 11-21).
   비활성은 시안 `.btn:disabled`(n-100 면 + n-200 테두리 + n-400 글자)를 그대로 쓴다.
   공용 Button(shadcn)은 14px 베이스라 12px 라벨로 짜인 어드민 시안과 어긋난다(계약 관리와 같은 판단).
 */
@@ -19,10 +16,10 @@ const VARIANT_CLASS = {
   secondary: "border border-sz-n-300 bg-white text-sz-n-900 hover:bg-sz-n-100",
 } as const;
 
-/** 표 안 작은 버튼 — 공용 28px 상수(DS 통일 11-20) */
+/** 표 관리 열 행 버튼 — 공용 `.act-btn` 상수(세 앱 합의 11-21) */
 const SMALL_CLASS = {
-  primary: BTN_SM_PRIMARY,
-  secondary: BTN_SM_SECONDARY,
+  primary: BTN_ACT_PRIMARY,
+  secondary: BTN_ACT,
 } as const;
 
 interface BtnProps extends ButtonHTMLAttributes<HTMLButtonElement> {

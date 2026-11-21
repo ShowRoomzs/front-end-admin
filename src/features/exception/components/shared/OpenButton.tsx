@@ -1,4 +1,4 @@
-import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
+import { BTN_ACT } from "@/common/constants/buttonStyle";
 
 /**
  * 관리 열의 [열기] — 이 화면의 유일한 행 버튼이다. 실행 버튼은 없다: 대행은 근거를 읽고 눌러야 해서
@@ -6,7 +6,7 @@ import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
  */
 export default function OpenButton() {
   return (
-    <button type="button" className={BTN_SM_SECONDARY}>
+    <button type="button" className={BTN_ACT}>
       열기
     </button>
   );

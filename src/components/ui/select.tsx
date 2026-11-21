@@ -2,6 +2,7 @@ import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
+import { POPOVER_CLASS } from "@/common/constants/dsStyle";
 import { cn } from "@/lib/utils";
 
 function Select({
@@ -36,8 +37,8 @@ function SelectTrigger({
       data-size={size}
       className={cn(
         // DS v1.2 select(`.inp`와 같은 규격) · 시안 `.msel` — 32px · 13px · n-300 · 모서리 6px · 오른쪽 10px 스트로크 셰브론
-        // sm은 목록 툴바 `.sel-sm`(28px · 12px · n-700)
-        "border border-sz-n-300 bg-white text-sz-n-900 data-[placeholder]:text-sz-n-400 [&_svg:not([class*='text-'])]:text-sz-n-600 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50 aria-invalid:border-sz-danger-text flex w-fit items-center justify-between gap-2 rounded-[6px] py-1.5 pl-2.5 pr-2.5 text-[13px] whitespace-nowrap transition-[color,box-shadow,border-color] outline-none disabled:cursor-not-allowed disabled:bg-sz-n-100 disabled:text-sz-n-500 data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:text-[12px] data-[size=sm]:text-sz-n-700 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        // sm도 같은 32px · 13px · n-900 — 작은 셀렉트는 두지 않는다(세 앱 합의 11-21). size는 호출부 호환용으로만 남긴다
+        "border border-sz-n-300 bg-white text-sz-n-900 data-[placeholder]:text-sz-n-400 [&_svg:not([class*='text-'])]:text-sz-n-600 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50 aria-invalid:border-sz-danger-text flex h-8 w-fit items-center justify-between gap-2 rounded-[6px] py-1.5 pl-2.5 pr-2.5 text-[13px] whitespace-nowrap transition-[color,box-shadow,border-color] outline-none disabled:cursor-not-allowed disabled:bg-sz-n-100 disabled:text-sz-n-500 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className
       )}
       {...props}
@@ -77,7 +78,9 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border shadow-md",
+          // 드롭다운 · 팝오버 공통 값(세 앱 합의 11-21)
+          POPOVER_CLASS,
+          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className
@@ -124,7 +127,8 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "focus:bg-accent focus:text-accent-foreground [&_svg:not([class*='text-'])]:text-muted-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        // 드롭다운 항목 — 32px · 12px · n-700 · focus/hover n-100(세 앱 합의 11-21)
+        "text-sz-n-700 hover:bg-sz-n-100 focus:bg-sz-n-100 [&_svg:not([class*='text-'])]:text-sz-n-600 relative flex h-8 w-full cursor-pointer items-center gap-2 rounded-sm pr-8 pl-2 text-[12px] outline-hidden select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
         className
       )}
       {...props}

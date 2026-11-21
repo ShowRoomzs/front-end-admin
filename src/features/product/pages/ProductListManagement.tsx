@@ -1,5 +1,6 @@
 import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
+import { SELECT_TOOLBAR_CLASS } from "@/common/constants/dsStyle";
 import Table from "@/common/components/Table/Table";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
@@ -18,15 +19,6 @@ import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
-
-// DS `.sel-sm` — 스트로크 셰브론 10×6(n-600), 오른쪽 9px
-const SELECT_CHEVRON_STYLE = {
-  ...MODAL_SELECT_CHEVRON_STYLE,
-  backgroundPosition: "right 9px center",
-};
-
-const TOOLBAR_SELECT_CLASS =
-  "h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
 
 const EMPTY_DISPLAY_COUNTS = {
   all: 0,
@@ -130,8 +122,8 @@ export default function ProductListManagement() {
                   event.target.value as ProductListSortType
                 )
               }
-              style={SELECT_CHEVRON_STYLE}
-              className={TOOLBAR_SELECT_CLASS}
+              style={MODAL_SELECT_CHEVRON_STYLE}
+              className={SELECT_TOOLBAR_CLASS}
             >
               {PRODUCT_SORT_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -144,8 +136,8 @@ export default function ProductListManagement() {
               onChange={(event) =>
                 updateParam("size", Number(event.target.value))
               }
-              style={SELECT_CHEVRON_STYLE}
-              className={TOOLBAR_SELECT_CLASS}
+              style={MODAL_SELECT_CHEVRON_STYLE}
+              className={SELECT_TOOLBAR_CLASS}
             >
               {PAGE_SIZE_OPTIONS.map((size) => (
                 <option key={size} value={size}>

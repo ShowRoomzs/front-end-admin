@@ -1,5 +1,7 @@
 import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper";
 import Table from "@/common/components/Table/Table";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
+import { SELECT_TOOLBAR_CLASS } from "@/common/constants/dsStyle";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
 import ApplicationTabFilter from "@/features/creator/components/ApplicationTabFilter/ApplicationTabFilter";
@@ -14,15 +16,6 @@ import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
-
-// Tailwind 임의값으로는 데이터 URI가 파싱되지 않아 인라인 스타일로 넣는다
-// 여백 · 갈매기 위치는 시안 03 `.sel-sm`(좌 8 · 우 22 · 8px) 대신 DS `.sel-sm`(좌 10 · 우 26 · 9px) — DS 통일(11-20)
-const SELECT_CHEVRON_STYLE = {
-  backgroundImage:
-    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='5'><path d='M0 0L4.5 5L9 0Z' fill='%237B7F89'/></svg>\")",
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 9px center",
-};
 
 const EMPTY_COUNTS = { all: 0, pending: 0, approved: 0, rejected: 0 };
 
@@ -107,8 +100,9 @@ export default function CreatorApplicationManagement() {
             onChange={(event) =>
               updateParam("size", Number(event.target.value))
             }
-            style={SELECT_CHEVRON_STYLE}
-            className="h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+            // 시안 `.sel-sm` 28px 대신 DS 셀렉트 32px — 세 앱 합의(11-21)
+            style={MODAL_SELECT_CHEVRON_STYLE}
+            className={SELECT_TOOLBAR_CLASS}
           >
             {PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>

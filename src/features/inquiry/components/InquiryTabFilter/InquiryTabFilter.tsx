@@ -1,4 +1,10 @@
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
+import {
+  SELECT_TOOLBAR_CLASS,
+  TAB_CLASS,
+  TAB_ON_CLASS,
+} from "@/common/constants/dsStyle";
+import { cn } from "@/lib/utils";
 import type {
   CsCategoryCode,
   InquiryStatusCounts,
@@ -63,11 +69,11 @@ export default function InquiryTabFilter(props: InquiryTabFilterProps) {
               key={tab.value}
               type="button"
               onClick={() => onStatusChange(tab.value)}
-              className={`mr-5 flex items-center gap-1.5 border-b-2 px-0.5 py-1.5 text-[12px] ${
-                isActive
-                  ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                  : "border-transparent text-sz-n-500 hover:text-sz-n-700"
-              }`}
+              className={cn(
+                TAB_CLASS,
+                "flex items-center gap-1.5",
+                isActive && TAB_ON_CLASS
+              )}
             >
               {tab.label}
               <span
@@ -90,7 +96,7 @@ export default function InquiryTabFilter(props: InquiryTabFilterProps) {
           value={type ?? ""}
           onChange={(event) => onTypeChange(event.target.value || null)}
           style={MODAL_SELECT_CHEVRON_STYLE}
-          className="h-8 w-[150px] appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[30px] text-[13px] text-sz-n-900 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+          className={cn(SELECT_TOOLBAR_CLASS, "w-[150px]")}
         >
           <option value="">전체 유형</option>
           {types.map((option) => (

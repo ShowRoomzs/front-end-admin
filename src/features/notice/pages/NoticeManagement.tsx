@@ -1,6 +1,11 @@
 import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper";
 import Table from "@/common/components/Table/Table";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
+import {
+  SELECT_TOOLBAR_CLASS,
+  TAB_CLASS,
+  TAB_ON_CLASS,
+} from "@/common/constants/dsStyle";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
 import NoticeStatusModal from "@/features/notice/components/NoticeStatusModal/NoticeStatusModal";
@@ -18,6 +23,7 @@ import type {
   NoticeListParams,
   NoticeStatusFilter,
 } from "@/features/notice/types/notice";
+import { cn } from "@/lib/utils";
 import { PlusIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import toast from "react-hot-toast";
@@ -185,11 +191,11 @@ export default function NoticeManagement() {
                 key={tab.value}
                 type="button"
                 onClick={() => handleStatusTabChange(tab.value)}
-                className={`mr-5 flex items-center gap-1.5 whitespace-nowrap border-b-2 px-0.5 py-1.5 text-[12px] ${
-                  isActive
-                    ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                    : "border-transparent text-sz-n-500 hover:text-sz-n-700"
-                }`}
+                className={cn(
+                  TAB_CLASS,
+                  "flex items-center gap-1.5 whitespace-nowrap",
+                  isActive && TAB_ON_CLASS
+                )}
               >
                 {tab.label}
                 {/* 집계가 없을 때 0으로 대신 그리면 "정말 0건"과 구분되지 않는다 */}
@@ -250,7 +256,7 @@ export default function NoticeManagement() {
             value={params.size}
             onChange={(event) => handleSizeChange(Number(event.target.value))}
             style={MODAL_SELECT_CHEVRON_STYLE}
-            className="h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+            className={SELECT_TOOLBAR_CLASS}
           >
             {NOTICE_PAGE_SIZES.map((size) => (
               <option key={size} value={size}>

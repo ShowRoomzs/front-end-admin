@@ -1,4 +1,5 @@
 import { ModalShell } from "@/common/components/ModalShell/ModalShell";
+import { NOTE_CLASS } from "@/common/constants/dsStyle";
 import {
   FieldLabel,
   ModalWarn,
@@ -63,9 +64,7 @@ export function WithdrawalApproveModal(props: WithdrawalApproveModalProps) {
     >
       <div className="text-[12px] leading-[1.7] text-sz-n-700">
         {intro}
-        <div className="mt-2.5 rounded-[6px] bg-sz-n-50 px-3 py-2.5 text-[11px] leading-[1.8] text-sz-n-700">
-          {summary}
-        </div>
+        <div className={`${NOTE_CLASS} mt-2.5`}>{summary}</div>
         <ModalWarn>{warning}</ModalWarn>
       </div>
     </ModalShell>

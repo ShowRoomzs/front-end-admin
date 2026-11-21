@@ -14,7 +14,7 @@ import {
   ORDER_PAGE_SIZES,
   ORDER_SORT_LABEL,
   ORDER_SORT_OPTIONS,
-  SELECT_CHEVRON_STYLE,
+  MODAL_SELECT_CHEVRON_STYLE,
 } from "@/features/order/constants/params";
 import {
   useGetOrderBrandOptions,
@@ -223,7 +223,7 @@ export default function OrderManagement() {
             <select
               aria-label="정렬"
               className={SELECT_SM_CLASS}
-              style={SELECT_CHEVRON_STYLE}
+              style={MODAL_SELECT_CHEVRON_STYLE}
               value={params.sort}
               onChange={(event) =>
                 handleChange({ sort: event.target.value as AdminOrderSort })
@@ -238,7 +238,7 @@ export default function OrderManagement() {
             <select
               aria-label="표시 건수"
               className={SELECT_SM_CLASS}
-              style={SELECT_CHEVRON_STYLE}
+              style={MODAL_SELECT_CHEVRON_STYLE}
               value={params.size}
               onChange={(event) =>
                 handleChange({ size: Number(event.target.value) })

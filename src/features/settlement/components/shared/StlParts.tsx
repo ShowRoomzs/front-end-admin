@@ -1,5 +1,9 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
+import {
+  NOTICE_DANGER_CLASS,
+  NOTICE_WARN_CLASS,
+} from "@/common/constants/dsStyle";
 import type { Tone } from "@/features/settlement/types";
 import { toneToVariant } from "@/features/settlement/utils/format";
 import { cn } from "@/lib/utils";
@@ -186,7 +190,10 @@ export function Pb(props: { children: ReactNode }) {
   );
 }
 
-/** 시안 `.mtab` 행 — `sub`(차감) · `mid`(소계) · `tot`(총계) */
+/**
+ * 시안 `.mtab` 행 — `sub`(차감) · `mid`(소계) · `tot`(총계).
+ * 칸 여백 · 행 높이는 시안 07b 그대로 둔다(표 간격은 시안 우선, 11-21). 총계 위 선만 `.calc` 합계 선(1.5px n-300)에 맞췄다.
+ */
 export function MRowTr(props: {
   kind?: "sub" | "mid" | "tot";
   label: ReactNode;
@@ -199,7 +206,7 @@ export function MRowTr(props: {
         kind === "mid" &&
           "bg-sz-n-50 font-semibold [&>td]:border-t [&>td]:border-sz-n-300",
         kind === "tot" &&
-          "bg-sz-n-50 text-[13px] font-semibold text-sz-n-900 [&>td]:border-t-[1.5px] [&>td]:border-sz-n-400"
+          "bg-sz-n-50 text-[13px] font-semibold text-sz-n-900 [&>td]:border-t-[1.5px] [&>td]:border-sz-n-300"
       )}
     >
       <td className={cn("px-3.5 py-1.5", kind === "sub" && "text-sz-n-600")}>
@@ -236,16 +243,13 @@ export function MRow(props: { label: string; value: ReactNode }) {
   );
 }
 
-/** 시안 `.wait` — 레일 안내 박스(경고 배경 · 분배 실패는 위험 배경) */
+/** 시안 `.wait` — 레일 안내 박스(경고 배경 · 분배 실패는 위험 배경). 값은 `.notice`(세 앱 합의 11-21) */
 export function WaitBox(props: { children: ReactNode; danger?: boolean }) {
   return (
     <div
       className={cn(
-        "mb-3 rounded-[6px] px-3 py-2.5 text-[11px] leading-[1.7]",
-        props.danger
-          ? "bg-sz-danger-bg text-sz-danger-text"
-          : "bg-sz-warning-bg text-sz-warning-text",
-        "[&_b]:font-semibold"
+        props.danger ? NOTICE_DANGER_CLASS : NOTICE_WARN_CLASS,
+        "mb-3"
       )}
     >
       {props.children}

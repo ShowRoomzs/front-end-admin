@@ -3,7 +3,7 @@ import type {
   InquiryStatusCounts,
 } from "@/features/inquiry/types/inquiry";
 
-/** 시안 툴바 우측 표시 건수 드롭다운(.sel-sm) */
+/** 툴바 우측 표시 건수 드롭다운(세 앱 합의(11-21) 툴바 셀렉트 32px) */
 export const INQUIRY_PAGE_SIZES = [20, 50, 100];
 
 /**

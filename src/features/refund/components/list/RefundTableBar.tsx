@@ -1,7 +1,8 @@
+import { SELECT_TOOLBAR_CLASS } from "@/common/constants/dsStyle";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
 import {
   REFUND_PAGE_SIZES,
   REFUND_SORT_OPTIONS,
-  SELECT_CHEVRON_STYLE,
 } from "@/features/refund/constants/params";
 import type {
   RefundSort,
@@ -10,9 +11,6 @@ import type {
   RefundTabStat,
 } from "@/features/refund/types";
 import { formatAmount, formatPeriod } from "@/features/refund/utils/format";
-
-const SELECT_SM_CLASS =
-  "h-7 cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
 
 const TAB_LABEL: Record<RefundTab, string> = {
   PENDING: "집행 대기",
@@ -89,8 +87,8 @@ export default function RefundTableBar(props: RefundTableBarProps) {
       <div className="flex items-center gap-2">
         <select
           aria-label="정렬"
-          className={SELECT_SM_CLASS}
-          style={SELECT_CHEVRON_STYLE}
+          className={SELECT_TOOLBAR_CLASS}
+          style={MODAL_SELECT_CHEVRON_STYLE}
           value={sort}
           onChange={(event) => onSortChange(event.target.value as RefundSort)}
         >
@@ -102,8 +100,8 @@ export default function RefundTableBar(props: RefundTableBarProps) {
         </select>
         <select
           aria-label="표시 건수"
-          className={SELECT_SM_CLASS}
-          style={SELECT_CHEVRON_STYLE}
+          className={SELECT_TOOLBAR_CLASS}
+          style={MODAL_SELECT_CHEVRON_STYLE}
           value={size}
           onChange={(event) => onSizeChange(Number(event.target.value))}
         >

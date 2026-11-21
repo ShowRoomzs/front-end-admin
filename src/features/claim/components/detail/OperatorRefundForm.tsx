@@ -85,7 +85,7 @@ export default function OperatorRefundForm(props: OperatorRefundFormProps) {
         <p className="mt-1 text-[10px] text-sz-n-500">{amountNote}</p>
       )}
 
-      <Warn className="mt-[9px] px-[9px] py-2 text-[10px]">{warning}</Warn>
+      <Warn className="mt-[9px]">{warning}</Warn>
 
       <Btn
         variant="primary"

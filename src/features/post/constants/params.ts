@@ -52,16 +52,10 @@ export const POST_INITIAL_PARAMS: AdminPostListParams = {
 export const PHOTO_COLUMNS = 5;
 export const PHOTO_FOLD_LIMIT = 10;
 
-/** 시안 `.sel-sm` 갈매기표 */
-export const SELECT_CHEVRON_STYLE = {
+/** 시안 `.msel` 갈매기표(10×6 · 오른쪽 10px). 툴바 셀렉트는 공용 `MODAL_SELECT_CHEVRON_STYLE`을 쓴다 */
+export const MODAL_SELECT_CHEVRON_STYLE = {
   backgroundImage:
     "url(\"data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%235B5F68' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
   backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 9px center",
-};
-
-/** 시안 `.msel` — 모달 셀렉트는 갈매기표가 1px 안쪽이다 */
-export const MODAL_SELECT_CHEVRON_STYLE = {
-  ...SELECT_CHEVRON_STYLE,
   backgroundPosition: "right 10px center",
 };

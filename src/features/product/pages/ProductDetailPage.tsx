@@ -7,6 +7,11 @@ import HistoryList, {
 import { PreviewModal } from "@/common/components/PreviewModal/PreviewModal";
 import RecordNav from "@/common/components/RecordNav/RecordNav";
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import {
+  NOTE_CLASS,
+  NOTICE_DANGER_CLASS,
+  NOTICE_WARN_CLASS,
+} from "@/common/constants/dsStyle";
 import { queryClient } from "@/common/lib/queryClient";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import RelistModal from "@/features/product/components/RelistModal/RelistModal";
@@ -33,6 +38,7 @@ import {
   getDisplayStatusBadge,
   getGroupBuyStatusBadge,
 } from "@/features/product/utils/statusBadge";
+import { cn } from "@/lib/utils";
 import { useCallback, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate, useParams } from "react-router-dom";
@@ -78,7 +84,7 @@ function StatusBanner(props: {
 
   if (status === "PENDING_REVIEW") {
     return (
-      <div className="flex gap-2 rounded-[6px] bg-sz-warning-bg px-3.5 py-3 text-[11px] leading-relaxed text-[#6b4d16]">
+      <div className={cn(NOTICE_WARN_CLASS, "flex gap-2")}>
         <span>⚠</span>
         <span>
           <b>브랜드가 상품 정보를 수정</b>해 재검토 대기 상태입니다{meta}. 아래
@@ -90,7 +96,7 @@ function StatusBanner(props: {
 
   if (status === "HIDE_REQUEST") {
     return (
-      <div className="flex gap-2 rounded-[6px] bg-sz-n-100 px-3.5 py-3 text-[11px] leading-relaxed text-sz-n-600">
+      <div className={cn(NOTE_CLASS, "flex gap-2")}>
         <span>ⓘ</span>
         <span>
           <b>브랜드 요청</b>으로 미진열 상태입니다{meta}. 정보 오류로 인한
@@ -102,7 +108,7 @@ function StatusBanner(props: {
   }
 
   return (
-    <div className="flex gap-2 rounded-[6px] bg-sz-danger-bg px-3.5 py-3 text-[11px] leading-relaxed text-sz-danger-text">
+    <div className={cn(NOTICE_DANGER_CLASS, "flex gap-2")}>
       <span>⚠</span>
       <span>
         <b>{hideReasonLabel ?? "미진열"}</b>로 미진열 상태입니다{meta}. 브랜드가

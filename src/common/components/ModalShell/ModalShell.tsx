@@ -1,3 +1,5 @@
+import { NOTICE_INFO_CLASS } from "@/common/constants/dsStyle";
+import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import type { ReactNode } from "react";
@@ -90,10 +92,10 @@ export function ModalShell(props: ModalShellProps) {
   );
 }
 
-/** 시안 `.notice` — 모달 최상단 파란 안내 박스 */
+/** 시안 `.notice` — 모달 최상단 파란 안내 박스. 값은 `.notice` 정보(세 앱 합의 11-21) */
 export function ModalNotice({ children }: { children: ReactNode }) {
   return (
-    <div className="mb-4 flex gap-2 rounded-[6px] bg-sz-info-bg p-3.5 text-[11px] leading-[1.65] text-sz-n-700">
+    <div className={cn(NOTICE_INFO_CLASS, "mb-4 flex gap-2")}>
       <span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sz-info-text text-[10px] font-bold text-white">
         i
       </span>

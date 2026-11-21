@@ -1,15 +1,24 @@
+import {
+  NOTE_CLASS,
+  NOTICE_DANGER_CLASS,
+  NOTICE_INFO_CLASS,
+  NOTICE_WARN_CLASS,
+} from "@/common/constants/dsStyle";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 export type NoticeTone = "info" | "warn" | "danger" | "neutral" | "consent";
 
+/*
+  세 앱 합의(11-21). 상태색은 v1.3 `.notice`, 중립은 v1.3 `.sec-note`를 따른다.
+  `consent`(고지 · 확인 체크가 들어가는 자리)도 중립과 같은 모양이고, 글자만 한 단계 진하게 둔다.
+*/
 const TONE_CLASS: Record<NoticeTone, string> = {
-  info: "bg-sz-info-bg text-sz-info-text",
-  warn: "bg-sz-warning-bg text-sz-warning-text",
-  danger: "bg-sz-danger-bg text-sz-danger-text",
-  neutral: "bg-sz-n-100 text-sz-n-600",
-  // 시안 `.notice.consent` — 고지·확인 체크가 들어가는 흰 박스(테두리만)
-  consent: "border border-sz-n-200 bg-sz-n-50 text-sz-n-700",
+  info: NOTICE_INFO_CLASS,
+  warn: NOTICE_WARN_CLASS,
+  danger: NOTICE_DANGER_CLASS,
+  neutral: NOTE_CLASS,
+  consent: `${NOTE_CLASS} text-sz-n-700`,
 };
 
 /**
@@ -28,13 +37,7 @@ export default function Notice(props: {
   const { tone, children, className } = props;
 
   return (
-    <div
-      className={cn(
-        "rounded-[6px] px-[13px] py-[11px] text-[11px] leading-[1.6]",
-        TONE_CLASS[tone],
-        className
-      )}
-    >
+    <div className={cn(TONE_CLASS[tone], className)}>
       {children}
     </div>
   );

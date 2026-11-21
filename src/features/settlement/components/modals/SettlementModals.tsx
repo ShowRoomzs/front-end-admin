@@ -1,3 +1,4 @@
+import { NOTE_CLASS } from "@/common/constants/dsStyle";
 import {
   policyDaysText,
   usePolicyValues,
@@ -46,10 +47,15 @@ import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
 import { useRef, useState, type ReactNode } from "react";
 
-/** 모달 본문의 회색 요약 박스(시안 인라인 스타일 — `--n-50` · 11px · 행간 1.8) */
+/** 모달 본문의 회색 요약 박스 — 중립 안내 상자 `.sec-note`(세 앱 합의 11-21) */
 function SummaryBox(props: { children: ReactNode }) {
   return (
-    <div className="mt-2.5 rounded-[6px] bg-sz-n-50 px-3 py-2.5 text-[11px] leading-[1.8] text-sz-n-700 [&_b]:font-semibold [&_b]:text-sz-n-900">
+    <div
+      className={cn(
+        NOTE_CLASS,
+        "mt-2.5 [&_b]:font-semibold [&_b]:text-sz-n-900"
+      )}
+    >
       {props.children}
     </div>
   );
