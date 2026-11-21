@@ -290,8 +290,8 @@ export default function ProductInquiryDetail() {
               </div>
             ) : (
               <p className="py-3 text-[12px] text-sz-n-500">
-                브랜드가 아직 답변하지 않았습니다. 상품 문의 답변은 브랜드
-                책임이라 운영자가 대신 작성하지 않습니다.
+                브랜드가 아직 답변하지 않았습니다. 상품 문의 답변은 브랜드가
+                작성합니다.
               </p>
             )}
           </DetailCard>
@@ -439,8 +439,8 @@ export default function ProductInquiryDetail() {
                   )}
                 </div>
                 <p className="mb-2 mt-2.5 text-[11px] leading-[1.55] text-sz-n-500">
-                  상품 문의 답변은 브랜드 책임입니다. 운영자는 부적절한 게시물을
-                  내리거나 브랜드의 삭제 요청을 기각하는 판단만 합니다.
+                  상품 문의 답변은 브랜드가 작성합니다. 운영자는 부적절한
+                  게시물을 내리거나 브랜드의 삭제 요청을 기각하는 판단만 합니다.
                 </p>
               </>
             )}
