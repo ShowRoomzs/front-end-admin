@@ -71,4 +71,5 @@ function Button({
   );
 }
 
-export { Button, buttonVariants };
+// buttonVariants는 이 파일 안에서만 쓴다(밖으로 내보내면 fast refresh 규칙에 걸린다)
+export { Button };

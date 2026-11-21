@@ -3,7 +3,7 @@ import type { MenuConfig } from "@/common/types";
 /**
  * 어드민 GNB 정본 (ui-admin-02-onboarding-brand rev.6 사이드바 기준, 10개 대분류)
  * 배열 순서가 곧 사이드바 번호이며, children이 있으면 아코디언으로 렌더링된다.
- * badge/count는 집계 API가 없어 아직 비워둔다(값이 들어오면 사이드바가 자동 노출).
+ * badge/count는 여기서 비워 두고, MainLayout이 서버 배지(`GET /v1/admin/badges`)와 화면별 요약 값으로 채운다.
  */
 export const ADMIN_MENU: MenuConfig = {
   menuType: "ADMIN",

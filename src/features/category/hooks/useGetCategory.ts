@@ -13,9 +13,12 @@ export interface CategoryMap {
   mainCategories: Category[];
 }
 
+/** 카테고리 목록 쿼리 키 — 저장 후 무효화(CategoryManagement)와 같은 값을 써야 한다 */
+export const CATEGORY_QUERY_KEY = ["categories"] as const;
+
 export function useGetCategory() {
   const query = useQuery({
-    queryKey: ["categories"],
+    queryKey: CATEGORY_QUERY_KEY,
     queryFn: categoryService.getCategories,
   });
   const parseFilters = (filters: Array<Filter>): Array<CategoryFilter> => {
