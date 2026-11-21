@@ -20,7 +20,10 @@ import type {
 import { getInquiryStatusBadge } from "@/features/inquiry/utils/statusBadge";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import toast from "react-hot-toast";
+import { consumerDetailPath } from "@/features/consumer/constants/detail";
+import { ORDER_LIST_PATH } from "@/features/order/constants/params";
 import {
+  Link,
   useLocation,
   useNavigate,
   useParams as useRouteParams,
@@ -28,6 +31,10 @@ import {
 } from "react-router-dom";
 
 const LIST_PATH = "/support/inquiry";
+
+/** 시안 `.flink` — 값 옆의 보조 링크(n-600 밑줄 · hover accent-600) */
+const FLINK_CLASS =
+  "ml-1.5 text-sz-n-600 underline underline-offset-2 hover:text-sz-accent-600";
 
 const HISTORY_TONE: Record<
   InquiryHistoryEvent["event"],
@@ -165,15 +172,30 @@ export default function InquiryDetail() {
               </StatusBadge>
             </FieldRow>
             {/*
-              시안의 `회원 상세 보기` · `주문 상세 보기` 링크는 아직 붙이지 않았다 —
-              어드민에 소비자 회원 상세와 주문 상세 라우트가 없어서(각각 목록만 있다)
-              지금 링크를 걸면 없는 화면으로 보낸다. 두 화면이 생기면 여기에 연결한다.
+              시안 `.flink` — 소비자 회원 상세(/member/list/:userId)와
+              주문 조회(`?orderId=`로 들어가면 그 주문 상세가 바로 열린다)로 보낸다.
             */}
-            <FieldRow label="소비자">{detail.userName}</FieldRow>
+            <FieldRow label="소비자">
+              {detail.userName}
+              <Link
+                to={consumerDetailPath(detail.userId)}
+                className={FLINK_CLASS}
+              >
+                회원 상세 보기
+              </Link>
+            </FieldRow>
             <FieldRow label="참조 주문">
               {/* 앱에서 주문 없이도 문의할 수 있어 선택값이다 — `—` 케이스가 정상이다 */}
               {detail.orderId ? (
-                <span className="tabular-nums">#{detail.orderId}</span>
+                <>
+                  <span className="tabular-nums">#{detail.orderId}</span>
+                  <Link
+                    to={`${ORDER_LIST_PATH}?orderId=${detail.orderId}`}
+                    className={FLINK_CLASS}
+                  >
+                    주문 상세 보기
+                  </Link>
+                </>
               ) : (
                 <span className="text-sz-n-500">—</span>
               )}

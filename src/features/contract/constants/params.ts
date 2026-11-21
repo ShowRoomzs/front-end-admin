@@ -86,7 +86,8 @@ export const SELECT_CHEVRON_STYLE = {
   backgroundImage:
     "url(\"data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%235B5F68' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
   backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 9px center",
+  // 다른 모달 셀렉트(`MODAL_SELECT_CHEVRON_STYLE`)와 같은 오른쪽 10px
+  backgroundPosition: "right 10px center",
 } as const;
 
 /** 모두싸인 대시보드 — API 미도입이라 운영자가 직접 열어 확인한다 */

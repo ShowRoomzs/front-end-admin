@@ -1,4 +1,7 @@
-import { useGetCategory } from "@/features/category/hooks/useGetCategory";
+import {
+  CATEGORY_QUERY_KEY,
+  useGetCategory,
+} from "@/features/category/hooks/useGetCategory";
 import CategoryCollapse from "@/features/category/components/CategoryCollapse/CategoryCollapse";
 import { useCallback, useState, useEffect } from "react";
 import type {
@@ -137,7 +140,7 @@ export default function CategoryManagement() {
       setLastIdMapping(result.idMapping);
     }
 
-    queryClient.invalidateQueries({ queryKey: ["categories"] }); // TODO : 쿼리키 상수로 분리
+    queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEY });
     toast.success("정상적으로 저장되었습니다.");
   }, [execute]);
 
