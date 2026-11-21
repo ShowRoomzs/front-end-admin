@@ -1,3 +1,8 @@
+import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
+import {
+  POPOVER_CLASS,
+  SELECT_TOOLBAR_CLASS,
+} from "@/common/constants/dsStyle";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
 import type { Editor } from "@tiptap/react";
 import {
@@ -62,12 +67,6 @@ function Divider() {
   return <span className="mx-0.5 h-[18px] w-px bg-sz-n-300" />;
 }
 
-// DS `.sel-sm` 셰브론 — 모달 셀렉트와 같은 10×6 스트로크(n-600), 위치만 오른쪽 9px
-const BLOCK_SELECT_CHEVRON_STYLE = {
-  ...MODAL_SELECT_CHEVRON_STYLE,
-  backgroundPosition: "right 9px center",
-};
-
 const BLOCK_OPTIONS = [
   { value: "paragraph", label: "본문" },
   { value: "h1", label: "제목 1" },
@@ -125,13 +124,13 @@ export default function EditorToolbar(props: EditorToolbarProps) {
 
   return (
     <div className="relative flex flex-wrap items-center gap-0.5 border-b border-sz-n-200 bg-sz-n-50 px-2 py-1.5">
-      {/* DS 통일(11-20): 시안 `.ed-b`(26px · 테두리 없음) 대신 DS `.sel-sm` — 28px · 12px · n-700 · 스트로크 셰브론 오른쪽 9px */}
+      {/* 시안 `.ed-b`(26px · 테두리 없음) 대신 DS 툴바 셀렉트 — 32px · 13px · n-900 · 셰브론 오른쪽 10px(세 앱 합의 11-21) */}
       <select
         aria-label="본문 스타일"
         value={currentBlock}
         onChange={(event) => handleBlockChange(event.target.value)}
-        style={BLOCK_SELECT_CHEVRON_STYLE}
-        className="mr-1 h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+        style={MODAL_SELECT_CHEVRON_STYLE}
+        className={`mr-1 ${SELECT_TOOLBAR_CLASS}`}
       >
         {BLOCK_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
@@ -232,7 +231,9 @@ export default function EditorToolbar(props: EditorToolbarProps) {
       </ToolbarButton>
 
       {isLinkOpen && (
-        <div className="absolute left-2 top-full z-50 mt-1 flex gap-1.5 rounded-[6px] border border-sz-n-200 bg-white p-2 shadow-[0_8px_24px_rgba(26,27,31,0.12)]">
+        <div
+          className={`absolute left-2 top-full z-50 mt-1 flex gap-1.5 p-2 ${POPOVER_CLASS}`}
+        >
           <input
             type="url"
             value={linkUrl}
@@ -308,8 +309,8 @@ function TableAction(props: TableActionProps) {
     <button
       type="button"
       onClick={onClick}
-      // 어드민 시안 표 안 버튼 `.rbtn` 규격(26px · 6px · 11px/500 · n-700)
-      className="inline-flex h-[26px] items-center rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100"
+      // 에디터 툴바 줄의 작은 버튼 — 공용 28px secondary(세 앱 합의 11-21)
+      className={BTN_SM_SECONDARY}
     >
       {children}
     </button>

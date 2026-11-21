@@ -1,3 +1,4 @@
+import { NOTE_CLASS, NOTICE_DANGER_CLASS } from "@/common/constants/dsStyle";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import type {
   ChangeDiffRow,
@@ -78,12 +79,12 @@ function Note({
   children: ReactNode;
 }) {
   return tone === "warn" ? (
-    <div className="mt-4 flex gap-[7px] rounded-[6px] bg-sz-danger-bg px-3 py-2.5 text-[11px] leading-relaxed text-sz-danger-text">
+    <div className={`${NOTICE_DANGER_CLASS} mt-4 flex gap-[7px]`}>
       <span>!</span>
       <span>{children}</span>
     </div>
   ) : (
-    <div className="mt-4 flex gap-[7px] rounded-[6px] bg-sz-n-100 px-3 py-2.5 text-[11px] leading-relaxed text-sz-n-600">
+    <div className={`${NOTE_CLASS} mt-4 flex gap-[7px]`}>
       <span>ⓘ</span>
       <span>{children}</span>
     </div>

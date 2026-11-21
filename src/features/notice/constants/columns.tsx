@@ -1,6 +1,6 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import type { Columns } from "@/common/components/Table/types";
-import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
+import { BTN_ACT } from "@/common/constants/buttonStyle";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import type { NoticeListItem } from "@/features/notice/types/notice";
 
@@ -103,7 +103,7 @@ export const createNoticeListColumns = (
         <button
           type="button"
           onClick={() => handlers.onEdit(record)}
-          className={BTN_SM_SECONDARY}
+          className={BTN_ACT}
         >
           수정
         </button>
@@ -111,7 +111,7 @@ export const createNoticeListColumns = (
           <button
             type="button"
             onClick={() => handlers.onEnd(record)}
-            className={BTN_SM_SECONDARY}
+            className={BTN_ACT}
           >
             게시 종료
           </button>
@@ -119,7 +119,7 @@ export const createNoticeListColumns = (
           <button
             type="button"
             onClick={() => handlers.onPublish(record)}
-            className={BTN_SM_SECONDARY}
+            className={BTN_ACT}
           >
             게시
           </button>

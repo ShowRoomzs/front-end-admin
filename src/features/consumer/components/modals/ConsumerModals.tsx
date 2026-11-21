@@ -1,6 +1,7 @@
 import { ModalShell } from "@/common/components/ModalShell/ModalShell";
 import { usePolicyValues } from "@/common/hooks/usePolicyValues";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
+import { NOTE_CLASS } from "@/common/constants/dsStyle";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import {
   PENDING_TARGET_PATHS,
@@ -467,7 +468,7 @@ export function ReleaseModal(props: ReleaseModalProps) {
       <b className="font-semibold">{detail.nickname}</b> 계정을{" "}
       <b className="font-semibold">활성</b>으로 되돌립니다.
       {sanction && (
-        <div className="mt-2.5 rounded-[6px] bg-sz-n-50 px-3 py-2.5 text-[11px] leading-[1.8] text-sz-n-700">
+        <div className={`${NOTE_CLASS} mt-2.5`}>
           현재 정지 ·{" "}
           <b className="font-semibold">{sanction.reasonLabel ?? "—"}</b>
           <br />

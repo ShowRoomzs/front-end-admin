@@ -1,12 +1,11 @@
+import { TAB_CLASS, TAB_ON_CLASS } from "@/common/constants/dsStyle";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
 import {
   BTN_SECONDARY,
   INPUT_CLASS,
   SELECT_SM_CLASS,
 } from "@/features/exception/components/shared/styles";
-import {
-  EXCEPTION_TABS,
-  SELECT_CHEVRON_STYLE,
-} from "@/features/exception/constants/params";
+import { EXCEPTION_TABS } from "@/features/exception/constants/params";
 import type {
   ExceptionKind,
   ExceptionKindFilter,
@@ -67,10 +66,9 @@ export default function ExceptionFilter(props: ExceptionFilterProps) {
               aria-selected={isActive}
               onClick={() => onTabChange(item.value)}
               className={cn(
-                "mr-5 flex cursor-pointer items-center gap-1.5 border-b-2 px-0.5 py-1.5 text-[12px] leading-[1.6]",
-                isActive
-                  ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                  : "border-transparent text-sz-n-500"
+                TAB_CLASS,
+                "flex items-center gap-1.5",
+                isActive && TAB_ON_CLASS
               )}
             >
               {item.label}
@@ -91,12 +89,12 @@ export default function ExceptionFilter(props: ExceptionFilterProps) {
         })}
       </div>
 
-      {/* 시안 `.search` — 셀렉트(28px)는 32px 줄의 위쪽에 붙는다(align-items 기본값 stretch + 고정 높이) */}
+      {/* 시안 `.search` — 셀렉트 · 입력 · 버튼 모두 32px(세 앱 합의 11-21) */}
       <div className="flex items-start gap-1.5">
         <select
           aria-label="유형"
           className={cn(SELECT_SM_CLASS, "w-[150px]")}
-          style={SELECT_CHEVRON_STYLE}
+          style={MODAL_SELECT_CHEVRON_STYLE}
           value={typeValue}
           onChange={(event) =>
             onTypeChange(event.target.value as ExceptionKindFilter)

@@ -4,6 +4,10 @@
 */
 
 import { BTN_SM_SECONDARY } from "@/common/constants/buttonStyle";
+import {
+  NOTICE_DANGER_CLASS,
+  NOTICE_INFO_CLASS,
+} from "@/common/constants/dsStyle";
 
 /** `.btn` — 32px · 12px/500 · 좌우 14px */
 const BTN_BASE =
@@ -56,11 +60,9 @@ export const T_SUB_CLASS = "text-[11px] text-sz-n-500";
 /** `.st-hint` */
 export const ST_HINT_CLASS = "mt-2.5 text-[11px] leading-[1.55] text-sz-n-500";
 
-/** `.mwarn` — 모달 경고(위험) · `.mwarn.info` — 안내(정보) */
-export const MWARN_DANGER_CLASS =
-  "mt-4 flex gap-2 rounded-[6px] bg-sz-danger-bg px-3 py-2.5 text-[11px] font-medium leading-[1.6] text-sz-danger-text";
-export const MWARN_INFO_CLASS =
-  "mt-4 flex gap-2 rounded-[6px] bg-sz-info-bg px-3 py-2.5 text-[11px] font-medium leading-[1.6] text-sz-info-text";
+/** `.mwarn` — 모달 경고(위험) · `.mwarn.info` — 안내(정보). 값은 안내 상자 `.notice`(세 앱 합의(11-21)) */
+export const MWARN_DANGER_CLASS = `${NOTICE_DANGER_CLASS} mt-4 flex gap-2`;
+export const MWARN_INFO_CLASS = `${NOTICE_INFO_CLASS} mt-4 flex gap-2`;
 
 /** `.mhint` */
 export const MHINT_CLASS = "mt-1.5 text-[11px] text-sz-n-500";

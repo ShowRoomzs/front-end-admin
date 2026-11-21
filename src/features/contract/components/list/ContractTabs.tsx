@@ -1,3 +1,4 @@
+import { TAB_CLASS, TAB_ON_CLASS } from "@/common/constants/dsStyle";
 import { CONTRACT_TABS } from "@/features/contract/constants/params";
 import type { AdminContractTab } from "@/features/contract/types";
 import { cn } from "@/lib/utils";
@@ -24,10 +25,9 @@ export default function ContractTabs(props: ContractTabsProps) {
             type="button"
             onClick={() => onTabChange(item.value)}
             className={cn(
-              "-mb-px mr-[22px] flex items-center gap-1.5 border-b-2 px-0.5 pb-[9px] pt-2 text-[12px]",
-              isActive
-                ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                : "border-transparent text-sz-n-500 hover:text-sz-n-700"
+              TAB_CLASS,
+              "-mb-px flex items-center gap-1.5",
+              isActive && TAB_ON_CLASS
             )}
           >
             {item.label}

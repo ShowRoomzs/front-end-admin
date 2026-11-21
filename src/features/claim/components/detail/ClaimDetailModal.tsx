@@ -1,3 +1,4 @@
+import { DS_BTN_DISABLED } from "@/common/constants/buttonStyle";
 import ClaimRail from "@/features/claim/components/detail/ClaimRail";
 import ClaimSections from "@/features/claim/components/detail/ClaimSections";
 import { ClaimBadge } from "@/features/claim/components/shared/ClaimParts";
@@ -23,8 +24,8 @@ interface ClaimDetailModalProps {
   onClose: () => void;
 }
 
-const NAV_BTN_CLASS =
-  "inline-flex h-8 items-center gap-[5px] whitespace-nowrap rounded-[6px] border border-sz-n-300 bg-white px-3 text-[12px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100 hover:text-sz-n-900";
+// DS `.btn` secondary 32px(세 앱 합의 11-21)
+const NAV_BTN_CLASS = `inline-flex h-8 items-center gap-[5px] whitespace-nowrap rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100 ${DS_BTN_DISABLED}`;
 
 /**
  * B1~B4 — 반품·교환 상세(`GET /v1/admin/claims/{claimId}`). 목록 위에 뜨는 1040px 모달이다(시안 `.modal.wide`).

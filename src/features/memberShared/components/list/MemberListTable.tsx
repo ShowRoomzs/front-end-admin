@@ -1,10 +1,8 @@
 import Pagination from "@/common/components/Pagination/Pagination";
 import type { PaginationProps } from "@/common/components/Pagination/Pagination";
 import { MEMBER_PAGE_SIZES } from "@/features/memberShared/constants/params";
-import {
-  SELECT_CHEVRON_STYLE,
-  SELECT_SM_CLASS,
-} from "@/features/memberShared/constants/styles";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
+import { SELECT_SM_CLASS } from "@/features/memberShared/constants/styles";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -58,10 +56,7 @@ export default function MemberListTable<T>(props: MemberListTableProps<T>) {
         <select
           aria-label="표시 건수"
           className={SELECT_SM_CLASS}
-          style={{
-            ...SELECT_CHEVRON_STYLE,
-            backgroundPosition: "right 9px center",
-          }}
+          style={MODAL_SELECT_CHEVRON_STYLE}
           value={size}
           onChange={(event) => onSizeChange(Number(event.target.value))}
         >

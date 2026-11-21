@@ -1,3 +1,7 @@
+import {
+  NOTICE_DANGER_CLASS,
+  NOTICE_INFO_CLASS,
+} from "@/common/constants/dsStyle";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -16,10 +20,8 @@ export function WarnBox(props: {
   return (
     <div
       className={cn(
-        "flex gap-2 rounded-[6px] px-3 py-2.5 text-[11px] font-medium leading-[1.6]",
-        tone === "danger"
-          ? "bg-sz-danger-bg text-sz-danger-text"
-          : "bg-sz-info-bg text-sz-info-text",
+        tone === "danger" ? NOTICE_DANGER_CLASS : NOTICE_INFO_CLASS,
+        "flex gap-2",
         className
       )}
     >

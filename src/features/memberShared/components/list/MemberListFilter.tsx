@@ -1,3 +1,4 @@
+import { TAB_CLASS, TAB_ON_CLASS } from "@/common/constants/dsStyle";
 import { MEMBER_TABS } from "@/features/memberShared/constants/params";
 import {
   BTN_SECONDARY,
@@ -45,10 +46,9 @@ export default function MemberListFilter(props: MemberListFilterProps) {
               type="button"
               onClick={() => onTabChange(item.value)}
               className={cn(
-                "mr-5 flex items-center gap-1.5 border-b-2 px-0.5 py-1.5 text-[12px]",
-                isActive
-                  ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                  : "border-transparent text-sz-n-500 hover:text-sz-n-700"
+                TAB_CLASS,
+                "flex items-center gap-1.5",
+                isActive && TAB_ON_CLASS
               )}
             >
               {item.label}

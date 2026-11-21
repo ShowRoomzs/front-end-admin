@@ -1,8 +1,13 @@
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
 import {
+  NOTICE_DANGER_CLASS,
+  NOTICE_INFO_CLASS,
+} from "@/common/constants/dsStyle";
+import {
   REASON_ETC,
   type DecisionReasonOption,
 } from "@/features/productInquiry/constants/params";
+import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 export type DecisionTone = "danger" | "primary";
@@ -145,11 +150,10 @@ export default function DecisionModal(props: DecisionModalProps) {
           <p className="mt-1.5 text-[11px] text-sz-n-500">{hint}</p>
 
           <div
-            className={`mt-4 flex gap-2 rounded-[6px] px-3 py-2.5 text-[11px] font-medium leading-[1.6] ${
-              tone === "danger"
-                ? "bg-sz-danger-bg text-sz-danger-text"
-                : "bg-sz-info-bg text-sz-info-text"
-            }`}
+            className={cn(
+              tone === "danger" ? NOTICE_DANGER_CLASS : NOTICE_INFO_CLASS,
+              "mt-4 flex gap-2"
+            )}
           >
             <span aria-hidden>{tone === "danger" ? "!" : "i"}</span>
             <span>{notice}</span>

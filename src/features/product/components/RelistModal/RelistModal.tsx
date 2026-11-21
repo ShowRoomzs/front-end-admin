@@ -1,3 +1,6 @@
+import { NOTICE_INFO_CLASS } from "@/common/constants/dsStyle";
+import { cn } from "@/lib/utils";
+
 interface RelistModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -47,7 +50,7 @@ export default function RelistModal(props: RelistModalProps) {
         <div className="px-5 py-5 text-[12px] leading-relaxed text-sz-n-700">
           <b className="text-sz-n-900">{productName}</b>을(를) 다시 진열합니다.
           진열 즉시 소비자 화면에 다시 노출됩니다.
-          <div className="mt-3 flex gap-2 rounded-[6px] bg-sz-info-bg px-3 py-2.5 text-[11px] leading-relaxed text-sz-info-text">
+          <div className={cn(NOTICE_INFO_CLASS, "mt-3 flex gap-2")}>
             <span>ⓘ</span>
             <span>
               재검토 대기 사유가 된 상품 정보 수정 내용을 이미 확인하셨는지 다시

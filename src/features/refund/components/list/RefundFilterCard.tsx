@@ -1,8 +1,13 @@
+import {
+  SELECT_TOOLBAR_CLASS,
+  TAB_CLASS,
+  TAB_ON_CLASS,
+} from "@/common/constants/dsStyle";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
 import Btn from "@/features/refund/components/shared/Btn";
 import {
   REFUND_ROUTE_OPTIONS,
   REFUND_TABS,
-  SELECT_CHEVRON_STYLE,
 } from "@/features/refund/constants/params";
 import type {
   RefundRouteFilter,
@@ -53,10 +58,9 @@ export default function RefundFilterCard(props: RefundFilterCardProps) {
               aria-selected={isActive}
               onClick={() => onTabChange(item.value)}
               className={cn(
-                "mr-5 flex cursor-pointer items-center gap-1.5 border-b-2 px-0.5 py-1.5 text-[12px] leading-[1.6]",
-                isActive
-                  ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                  : "border-transparent text-sz-n-500 hover:text-sz-n-700"
+                TAB_CLASS,
+                "flex items-center gap-1.5",
+                isActive && TAB_ON_CLASS
               )}
             >
               {item.label}
@@ -77,7 +81,7 @@ export default function RefundFilterCard(props: RefundFilterCardProps) {
         })}
       </div>
 
-      {/* 시안 `.search` — 셀렉트(28px)는 자기 높이대로 윗줄에 붙고 입력·버튼(32px)이 줄 높이를 정한다 */}
+      {/* 시안 `.search` — 셀렉트 · 입력 · 버튼 모두 32px(세 앱 합의 11-21) */}
       <form
         className="flex items-start gap-1.5"
         onSubmit={(event) => {
@@ -87,8 +91,8 @@ export default function RefundFilterCard(props: RefundFilterCardProps) {
       >
         <select
           aria-label="경로"
-          className="h-7 w-[104px] cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
-          style={SELECT_CHEVRON_STYLE}
+          className={cn(SELECT_TOOLBAR_CLASS, "w-[104px]")}
+          style={MODAL_SELECT_CHEVRON_STYLE}
           value={route}
           onChange={(event) =>
             onRouteChange(event.target.value as RefundRouteFilter)

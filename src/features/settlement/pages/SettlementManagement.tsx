@@ -7,8 +7,13 @@ import {
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
 import type { PageInfo } from "@/common/types/page";
+import {
+  SELECT_TOOLBAR_CLASS,
+  TAB_CLASS,
+  TAB_ON_CLASS,
+} from "@/common/constants/dsStyle";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
 import Btn from "@/features/contract/components/shared/Btn";
-import { SELECT_CHEVRON_STYLE } from "@/features/groupBuy/constants/params";
 import {
   ClawbackTable,
   EvidenceTable,
@@ -51,10 +56,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 /** 시안 `.inp` — 32px · 13px · 6px 10px */
 const INPUT_CLASS =
   "h-8 w-[300px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 py-1.5 text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50 disabled:cursor-not-allowed disabled:bg-sz-n-50";
-
-/** 시안 `.sel-sm` — 28px */
-const SELECT_SM_CLASS =
-  "h-7 cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
 
 /** 빈 상태 문구 — 확인 기간 영업일은 서버 정책값(`settlementReviewBusinessDays` · 없으면 「N영업일」) */
 const emptyText = (
@@ -297,10 +298,9 @@ export default function SettlementManagement() {
                 onClick={() => changeTab(item.value)}
                 aria-pressed={isActive}
                 className={cn(
-                  "mr-5 flex items-center gap-1.5 border-b-2 px-0.5 py-1.5 text-[12px]",
-                  isActive
-                    ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                    : "border-transparent text-sz-n-500 hover:text-sz-n-700"
+                  TAB_CLASS,
+                  "flex items-center gap-1.5",
+                  isActive && TAB_ON_CLASS
                 )}
               >
                 {item.label}
@@ -375,8 +375,8 @@ export default function SettlementManagement() {
             )}
             <select
               aria-label="정렬"
-              className={SELECT_SM_CLASS}
-              style={SELECT_CHEVRON_STYLE}
+              className={SELECT_TOOLBAR_CLASS}
+              style={MODAL_SELECT_CHEVRON_STYLE}
               value={params.sort}
               onChange={(event) =>
                 updateParams({
@@ -398,8 +398,8 @@ export default function SettlementManagement() {
             {showSizeSelect && (
               <select
                 aria-label="표시 건수"
-                className={SELECT_SM_CLASS}
-                style={SELECT_CHEVRON_STYLE}
+                className={SELECT_TOOLBAR_CLASS}
+                style={MODAL_SELECT_CHEVRON_STYLE}
                 value={params.size}
                 onChange={(event) =>
                   updateParams({ size: Number(event.target.value), page: 1 })

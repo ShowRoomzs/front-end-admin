@@ -7,6 +7,7 @@ import HistoryList, {
 } from "@/common/components/HistoryList/HistoryList";
 import RecordNav from "@/common/components/RecordNav/RecordNav";
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import { NOTE_CLASS, NOTICE_DANGER_CLASS } from "@/common/constants/dsStyle";
 import { queryClient } from "@/common/lib/queryClient";
 import { formatDateTimeShort } from "@/common/utils/formatDate";
 import ApplicationApprovalModal from "@/features/seller/components/ApplicationApprovalModal/ApplicationApprovalModal";
@@ -299,7 +300,7 @@ export default function SellerRegistrationDetail() {
             note={isRejected ? "파기됨" : undefined}
           >
             {isRejected && (
-              <div className="my-2 flex gap-2 rounded-[6px] bg-sz-n-100 px-3.5 py-3 text-[11px] leading-relaxed text-sz-n-600">
+              <div className={`${NOTE_CLASS} my-2 flex gap-2`}>
                 <span>ⓘ</span>
                 <span>
                   반려 처리 시 <b>계정·제출 정보가 파기</b>되어 조회할 수
@@ -425,7 +426,7 @@ export default function SellerRegistrationDetail() {
             </div>
 
             {isRejected && detail.rejectionReason && (
-              <div className="mt-2.5 rounded-[6px] bg-sz-danger-bg px-3.5 py-3">
+              <div className={`${NOTICE_DANGER_CLASS} mt-2.5`}>
                 {/* 시안 B3 — 제목 줄에 정형 사유, 다음 줄에 상세 사유 */}
                 <div className="mb-1 text-[11px] font-semibold text-sz-danger-text">
                   반려 사유 ·{" "}

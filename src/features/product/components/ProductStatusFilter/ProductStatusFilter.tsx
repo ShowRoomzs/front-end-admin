@@ -1,4 +1,8 @@
 import {
+  CHECK_BOX_CLASS,
+  CHECK_BOX_ON_CLASS,
+} from "@/common/constants/dsStyle";
+import {
   PRODUCT_DISPLAY_STATUS,
   PRODUCT_GROUP_BUY_STATUS,
 } from "@/features/product/constants/params";
@@ -8,6 +12,7 @@ import type {
   ProductDisplayStatus,
   ProductGroupBuyStatus,
 } from "@/features/product/services/productService";
+import { cn } from "@/lib/utils";
 
 /**
  * 진열 상태 필터 — 시안 그대로 **3종만** 노출한다.
@@ -74,13 +79,7 @@ function CheckItem(props: {
         checked ? "font-medium text-sz-n-900" : "text-sz-n-600"
       }`}
     >
-      <span
-        className={`flex h-[15px] w-[15px] shrink-0 items-center justify-center rounded-[4px] border-[1.5px] ${
-          checked
-            ? "border-sz-accent-500 bg-sz-accent-500"
-            : "border-sz-n-300 bg-white"
-        }`}
-      >
+      <span className={cn(CHECK_BOX_CLASS, checked && CHECK_BOX_ON_CLASS)}>
         {checked && (
           <svg viewBox="0 0 9 9" className="h-[9px] w-[9px]">
             <path
@@ -168,7 +167,7 @@ export default function ProductStatusFilter(props: ProductStatusFilterProps) {
       <button
         type="button"
         onClick={onReset}
-        className="absolute right-3.5 top-[17px] inline-flex h-[26px] items-center gap-[5px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100"
+        className="absolute right-3.5 top-[17px] inline-flex h-[26px] items-center gap-[5px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[11px] font-medium text-sz-n-500 transition-colors hover:border-sz-n-400 hover:bg-sz-n-100 hover:text-sz-n-700"
       >
         <svg
           viewBox="0 0 24 24"

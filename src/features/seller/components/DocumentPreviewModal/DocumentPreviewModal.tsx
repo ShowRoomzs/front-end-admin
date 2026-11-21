@@ -1,4 +1,5 @@
 import { DS_BTN_DISABLED } from "@/common/constants/buttonStyle";
+import { NOTE_CLASS } from "@/common/constants/dsStyle";
 import { formatFileSize } from "@/common/utils/formatFileSize";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -298,7 +299,7 @@ export default function DocumentPreviewModal(props: DocumentPreviewModalProps) {
               </div>
             ))}
 
-            <div className="mt-4 flex gap-[7px] rounded-[6px] bg-sz-n-100 px-3 py-2.5 text-[11px] leading-relaxed text-sz-n-600">
+            <div className={`${NOTE_CLASS} mt-4 flex gap-[7px]`}>
               <span>ⓘ</span>
               <span>
                 표시되는 항목은 <b>선택한 서류에 따라 바뀝니다.</b>

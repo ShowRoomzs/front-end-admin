@@ -1,6 +1,7 @@
 import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper";
 import Table from "@/common/components/Table/Table";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
+import { SELECT_TOOLBAR_CLASS } from "@/common/constants/dsStyle";
 import { usePaginationInfo } from "@/common/hooks/usePaginationInfo";
 import { useParams } from "@/common/hooks/useParams";
 import { useReorderList } from "@/common/hooks/useReorderList";
@@ -238,7 +239,7 @@ export default function FaqManagement() {
             value={params.size}
             onChange={(event) => handleSizeChange(Number(event.target.value))}
             style={MODAL_SELECT_CHEVRON_STYLE}
-            className="h-7 appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50"
+            className={SELECT_TOOLBAR_CLASS}
           >
             {FAQ_PAGE_SIZES.map((size) => (
               <option key={size} value={size}>

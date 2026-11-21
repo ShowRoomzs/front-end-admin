@@ -1,15 +1,17 @@
 /*
   시안 ui-admin-06a-orders의 원자 클래스 — 이 화면 안에서만 쓴다.
-  버튼 · 입력 · 셀렉트는 시안 DS 규격(12px/500 · 32px, `.sel-sm` 28px)을 그대로 옮겼다.
+  버튼 · 입력 · 셀렉트는 시안 DS 규격(12px/500 · 32px)을 그대로 옮겼다.
+  툴바 셀렉트는 시안 `.sel-sm` 28px 대신 DS 32px · 13px(세 앱 합의 11-21).
 */
+
+import { SELECT_TOOLBAR_CLASS } from "@/common/constants/dsStyle";
 
 /** 시안 `.inp` — 13px · 32px · 포커스 링 */
 export const INPUT_CLASS =
   "h-8 rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
 
-/** 시안 `.sel-sm` — 28px · 12px · 화살표는 배경 이미지 */
-export const SELECT_SM_CLASS =
-  "h-7 cursor-pointer appearance-none rounded-[6px] border border-sz-n-300 bg-white py-0 pl-2.5 pr-[26px] text-[12px] text-sz-n-700 outline-none focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
+/** 툴바 셀렉트 — DS 32px · 13px · n-900. 화살표는 `MODAL_SELECT_CHEVRON_STYLE`(세 앱 합의 11-21) */
+export const SELECT_SM_CLASS = SELECT_TOOLBAR_CLASS;
 
 /** 레일 인라인 폼 입력 — 시안 `.ifm .inp`는 28px · 11px지만 DS `.inp`(32px · 13px · 6/10)로 통일(11-20) */
 export const FORM_INPUT_CLASS =

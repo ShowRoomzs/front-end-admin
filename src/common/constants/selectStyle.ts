@@ -11,8 +11,8 @@
  * [DS v1.2] 채워진 삼각형 → **스트로크 셰브론**으로 교체하고 높이를 36 → 32px로 낮췄다.
  * 파트너센터가 rev.8에서 먼저 옮겨간 규격이고, 어드민도 여기에 맞춘다.
  *
- * ⚠️ 목록 화면의 페이지 크기 셀렉트는 규격이 다르다(시안 `.sel-sm` — 9×5 아이콘,
- * `right 8px center`). 그쪽은 각 목록 페이지가 자체 상수로 갖고 있으니 섞지 말 것.
+ * 목록 툴바 셀렉트도 이 화살표를 쓴다(세 앱 합의 11-21 — 시안 `.sel-sm` 28px 대신
+ * DS 32px · 13px, `dsStyle.ts`의 `SELECT_TOOLBAR_CLASS`와 함께).
  */
 export const MODAL_SELECT_CHEVRON_STYLE = {
   backgroundImage:

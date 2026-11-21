@@ -53,7 +53,7 @@ export default function TermsDocumentDetail() {
         <button
           type="button"
           onClick={() => navigate(TERMS_LIST_PATH)}
-          className="inline-flex h-8 items-center rounded-[6px] border border-sz-n-300 bg-white px-3 text-[12px] font-medium text-sz-n-700 hover:border-sz-n-400 hover:bg-sz-n-100 hover:text-sz-n-900"
+          className="inline-flex h-8 items-center rounded-[6px] border border-sz-n-300 bg-white px-3.5 text-[12px] font-medium text-sz-n-900 hover:bg-sz-n-100"
         >
           목록
         </button>

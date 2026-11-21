@@ -1,8 +1,15 @@
+import {
+  CHECK_BOX_CLASS,
+  CHECK_BOX_ON_CLASS,
+  NOTICE_DANGER_CLASS,
+  NOTICE_INFO_CLASS,
+} from "@/common/constants/dsStyle";
 import { FORM_SELECT_CLASS } from "@/features/order/components/shared/styles";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/features/order/constants/params";
 import type { AdminOrderGroupDetail } from "@/features/order/types";
 import { subOrderSuffix } from "@/features/order/utils/format";
 import { cn } from "@/lib/utils";
+import { Check } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 /*
@@ -36,7 +43,7 @@ export function FormLabel(props: {
   );
 }
 
-/** 시안 `.mwarn` — 되돌릴 수 없는 영향을 버튼 바로 위에 적는다(info는 안내) */
+/** 시안 `.mwarn` — 되돌릴 수 없는 영향을 버튼 바로 위에 적는다(info는 안내). 값은 `.notice`(세 앱 합의 11-21) */
 export function FormWarn(props: {
   tone?: "danger" | "info";
   children: ReactNode;
@@ -45,10 +52,8 @@ export function FormWarn(props: {
   return (
     <div
       className={cn(
-        "mt-[9px] flex gap-2 rounded-[6px] px-[9px] py-2 text-[10px] font-medium leading-[1.6]",
-        tone === "info"
-          ? "bg-sz-info-bg text-sz-info-text"
-          : "bg-sz-danger-bg text-sz-danger-text"
+        tone === "info" ? NOTICE_INFO_CLASS : NOTICE_DANGER_CLASS,
+        "mt-[9px] flex gap-2"
       )}
     >
       <span>{tone === "info" ? "i" : "!"}</span>
@@ -100,12 +105,13 @@ export function CheckRow(props: {
         aria-label={label}
         onClick={onToggle}
         className={cn(
-          "size-[13px] shrink-0 cursor-pointer rounded-[3px] border",
-          checked
-            ? "border-sz-accent-500 bg-sz-accent-500"
-            : "border-sz-n-400 bg-white"
+          CHECK_BOX_CLASS,
+          "cursor-pointer",
+          checked && CHECK_BOX_ON_CLASS
         )}
-      />
+      >
+        {checked && <Check className="size-[9px]" strokeWidth={3} />}
+      </button>
       <span className={cn(!checked && "text-[11px] text-sz-n-500")}>
         {label}
       </span>

@@ -2,6 +2,7 @@ import {
   policyDaysText,
   usePolicyValues,
 } from "@/common/hooks/usePolicyValues";
+import { NOTE_CLASS } from "@/common/constants/dsStyle";
 import Btn from "@/features/contract/components/shared/Btn";
 import { INPUT_CLASS } from "@/features/contract/components/shared/styles";
 import {
@@ -325,7 +326,7 @@ export function UnhidePostModal(props: ModalBase & { onConfirm: () => void }) {
     >
       <B>{detail.groupBuy.title}</B>의 게시물을 <B>다시 노출</B>합니다.
       {hidden && (
-        <div className="mt-2.5 rounded-[6px] bg-sz-n-50 px-3 py-2.5 text-[11px] leading-[1.8] text-sz-n-700">
+        <div className={cn(NOTE_CLASS, "mt-2.5")}>
           노출 중지 사유 · <B>{hidden.label ?? hidden.code}</B>
           <br />
           {md(hidden.hiddenAt)} 노출 중지 · {hidden.hiddenDays}일 경과 · 노출
@@ -667,7 +668,7 @@ export function ExecuteModal(
       {objectParticle(detail.groupBuy.title)} <B>중단</B>합니다 —{" "}
       {dt(suspension?.noticedAt)} 사전 통지(
       {suspension?.clauseLabel ?? "직권 중단"})의 집행입니다.
-      <div className="mt-2.5 rounded-[6px] bg-sz-n-50 px-3 py-2.5 text-[11px] leading-[1.8] text-sz-n-700">
+      <div className={cn(NOTE_CLASS, "mt-2.5")}>
         소명 ·{" "}
         {suspension?.appeal ? (
           <>
@@ -925,7 +926,7 @@ export function DecideRequestModal(
           {isEarly ? "조기 마감합니다" : "중단합니다"} —{" "}
           {actorText(request.requesterType, request.requesterName)}의 요청을
           승인하는 처리입니다.
-          <div className="mt-2.5 rounded-[6px] bg-sz-n-50 px-3 py-2.5 text-[11px] leading-[1.8] text-sz-n-700">
+          <div className={cn(NOTE_CLASS, "mt-2.5")}>
             요청 사유 · <B>{request.reasonLabel ?? request.reasonCode}</B>
             <br />
             {actorText(request.requesterType, request.requesterName)} ·{" "}

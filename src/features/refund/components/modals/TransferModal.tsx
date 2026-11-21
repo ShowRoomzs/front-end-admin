@@ -12,7 +12,8 @@ import {
 } from "@/features/refund/components/modals/DialogParts";
 import Btn from "@/features/refund/components/shared/Btn";
 import { STATUS_VARIANT } from "@/features/refund/constants/columns";
-import { SELECT_CHEVRON_STYLE } from "@/features/refund/constants/params";
+import { NOTICE_INFO_CLASS } from "@/common/constants/dsStyle";
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
 import { REFUND_QUERY_KEYS } from "@/features/refund/constants/queryKeys";
 import { useGetRefundDetail } from "@/features/refund/hooks/useAdminRefund";
 import type {
@@ -208,8 +209,8 @@ export default function TransferModal(props: TransferModalProps) {
               <div className="flex gap-2">
                 <select
                   aria-label="은행"
-                  className={cn(FIELD_CLASS, "w-[130px] appearance-none pr-7")}
-                  style={SELECT_CHEVRON_STYLE}
+                  className={cn(FIELD_CLASS, "w-[130px] appearance-none pr-8")}
+                  style={MODAL_SELECT_CHEVRON_STYLE}
                   value={values.bankCode}
                   onChange={(event) => change({ bankCode: event.target.value })}
                 >
@@ -286,7 +287,7 @@ export default function TransferModal(props: TransferModalProps) {
             </>
           )}
 
-          <div className="mt-3 flex gap-2 rounded-[6px] bg-sz-info-bg px-3 py-2.5 text-[11px] leading-[1.6] text-sz-info-text">
+          <div className={cn(NOTICE_INFO_CLASS, "mt-3 flex gap-2")}>
             <span>i</span>
             <span>
               송금은 운영자가 은행에서 직접 합니다 — 이 화면은 <b>기록</b>만

@@ -8,15 +8,21 @@ import type {
   MetricsTab,
   MetricsTabBadge,
 } from "@/features/metrics/types";
+import {
+  DATE_INPUT_CLASS,
+  SEG_CLASS,
+  SEG_ITEM_CLASS,
+  SEG_ITEM_ON_CLASS,
+  TAB_CLASS,
+  TAB_ON_CLASS,
+} from "@/common/constants/dsStyle";
 import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
 
 /**
- * 직접 선택 날짜 칸 — DS 입력 13px · n-900 · 6px · n-300 테두리 · DS 포커스 링(DS 통일 11-20).
- * 높이는 같은 줄의 기간 세그먼트(28px 칸)에 맞춰 28px(`.sel-sm` 높이)로 둔다.
+ * 직접 선택 날짜 칸 — DS 입력 32px · 13px · n-900. 같은 줄의 기간 세그먼트(바깥 32px)와 높이가 같다(세 앱 합의 11-21).
  */
-const DATE_INPUT =
-  "h-7 w-[136px] rounded-[6px] border border-sz-n-300 bg-white px-2.5 text-[13px] text-sz-n-900 outline-none placeholder:text-sz-n-400 focus:border-sz-accent-500 focus:ring-[3px] focus:ring-sz-accent-50";
+const DATE_INPUT = cn(DATE_INPUT_CLASS, "w-[136px]");
 
 /**
  * 기간 세그먼트(시안 `.seg`) — 오늘 · 7일 · 한 달(기본) · 6개월 · 직접 선택.
@@ -84,17 +90,15 @@ export function PeriodSegment(props: {
           />
         </span>
       )}
-      <div className="inline-flex overflow-hidden rounded-[6px] border border-sz-n-300 bg-white">
+      <div className={SEG_CLASS}>
         {PRESET_OPTIONS.map((option) => (
           <button
             key={option.value}
             type="button"
             onClick={() => select(option.value)}
             className={cn(
-              "flex h-7 cursor-pointer items-center border-r border-sz-n-200 px-3 text-[11px] font-medium whitespace-nowrap last:border-r-0",
-              value.preset === option.value
-                ? "bg-sz-accent-50 text-sz-accent-600"
-                : "text-sz-n-600 hover:bg-sz-n-50"
+              SEG_ITEM_CLASS,
+              value.preset === option.value && SEG_ITEM_ON_CLASS
             )}
           >
             {option.label}
@@ -131,10 +135,9 @@ export function MetricsTabs(props: {
             type="button"
             onClick={() => onChange(option.value)}
             className={cn(
-              "mr-5 flex cursor-pointer items-center gap-1.5 border-b-2 px-0.5 py-1.5 text-[12px]",
-              active
-                ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                : "border-transparent text-sz-n-500"
+              TAB_CLASS,
+              "flex items-center gap-1.5",
+              active && TAB_ON_CLASS
             )}
           >
             {option.label}

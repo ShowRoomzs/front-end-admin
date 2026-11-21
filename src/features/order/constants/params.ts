@@ -140,15 +140,5 @@ export const ORDER_INITIAL_PARAMS: OrderListParams = {
   size: 20,
 };
 
-export const SELECT_CHEVRON_STYLE = {
-  backgroundImage:
-    "url(\"data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6' fill='none'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%235B5F68' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")",
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "right 9px center",
-} as const;
-
-/** 모달 폼 셀렉트(.msel) — 화살표가 10px 안쪽 */
-export const MODAL_SELECT_CHEVRON_STYLE = {
-  ...SELECT_CHEVRON_STYLE,
-  backgroundPosition: "right 10px center",
-} as const;
+/** 셀렉트 화살표(10×6 · 오른쪽 10px) — 모달 폼 셀렉트와 툴바 셀렉트가 함께 쓴다(세 앱 합의 11-21) */
+export { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";

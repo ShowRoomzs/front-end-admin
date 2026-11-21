@@ -1,4 +1,5 @@
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
+import { NOTICE_DANGER_CLASS } from "@/common/constants/dsStyle";
 import { CREATOR_REJECTION_REASONS } from "@/features/creator/constants/params";
 import { useGetRejectionNoticePreview } from "@/features/creator/hooks/useGetRejectionNoticePreview";
 import type { CreatorRejectionReasonType } from "@/features/creator/services/creatorService";
@@ -188,7 +189,7 @@ export default function ApplicationRejectionModal(
             </span>
             부터 새로 신청할 수 있습니다.
           </div>
-          <div className="mt-4 flex gap-2 rounded-[6px] bg-sz-danger-bg px-3 py-2.5 text-[11px] font-medium leading-relaxed text-sz-danger-text">
+          <div className={`${NOTICE_DANGER_CLASS} mt-4 flex gap-2`}>
             <span>⚠</span>
             <span>
               반려 즉시 <b>제출 정보가 파기</b>되며, 이번 신청 건은 종료됩니다.

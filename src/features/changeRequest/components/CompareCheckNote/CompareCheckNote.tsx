@@ -1,3 +1,7 @@
+import {
+  NOTICE_DANGER_CLASS,
+  NOTICE_WARN_CLASS,
+} from "@/common/constants/dsStyle";
 import type {
   ChangeRequestCompareItem,
   ChangeRequestHolderCheck,
@@ -29,11 +33,7 @@ export default function CompareCheckNote(props: CompareCheckNoteProps) {
 
   return (
     <div
-      className={`flex gap-[9px] rounded-[6px] px-3.5 py-3 text-[11px] leading-relaxed ${
-        isDanger
-          ? "bg-sz-danger-bg text-sz-n-700"
-          : "bg-sz-warning-bg text-sz-n-700"
-      }`}
+      className={`${isDanger ? NOTICE_DANGER_CLASS : NOTICE_WARN_CLASS} flex gap-[9px]`}
     >
       <span
         className={`mt-px inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${
@@ -49,8 +49,9 @@ export default function CompareCheckNote(props: CompareCheckNoteProps) {
   );
 }
 
+/** 굵게 — 안내 상자 `.notice` 규칙대로 상자 글자색 · 600(세 앱 합의(11-21)) */
 function B({ children }: { children: ReactNode }) {
-  return <b className="text-sz-n-900">{children}</b>;
+  return <b>{children}</b>;
 }
 
 function renderBody(

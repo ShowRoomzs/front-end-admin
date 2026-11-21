@@ -1,7 +1,7 @@
+import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants/selectStyle";
 import {
   EXCEPTION_PAGE_SIZES,
   EXCEPTION_SORT_LABEL,
-  SELECT_CHEVRON_STYLE,
 } from "@/features/exception/constants/params";
 import { SELECT_SM_CLASS } from "@/features/exception/components/shared/styles";
 import type { ExceptionTab } from "@/features/exception/types";
@@ -53,7 +53,7 @@ export default function ExceptionToolbar(props: ExceptionToolbarProps) {
         <select
           aria-label="정렬"
           className={SELECT_SM_CLASS}
-          style={SELECT_CHEVRON_STYLE}
+          style={MODAL_SELECT_CHEVRON_STYLE}
           defaultValue="ELAPSED"
         >
           <option value="ELAPSED">{EXCEPTION_SORT_LABEL}</option>
@@ -61,7 +61,7 @@ export default function ExceptionToolbar(props: ExceptionToolbarProps) {
         <select
           aria-label="표시 건수"
           className={SELECT_SM_CLASS}
-          style={SELECT_CHEVRON_STYLE}
+          style={MODAL_SELECT_CHEVRON_STYLE}
           value={size}
           onChange={(event) => onSizeChange(Number(event.target.value))}
         >

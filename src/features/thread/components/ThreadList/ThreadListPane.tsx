@@ -1,3 +1,10 @@
+import {
+  SUBTAB_CLASS,
+  SUBTAB_COUNT_CLASS,
+  SUBTAB_ON_CLASS,
+  TAB_CLASS,
+  TAB_ON_CLASS,
+} from "@/common/constants/dsStyle";
 import { INPUT_CLASS } from "@/features/thread/components/styles";
 import ThreadListItem from "@/features/thread/components/ThreadList/ThreadListItem";
 import {
@@ -118,10 +125,9 @@ export default function ThreadListPane(props: ThreadListPaneProps) {
                 type="button"
                 onClick={() => onTabChange(item.value)}
                 className={cn(
-                  "-mb-px flex flex-1 items-center justify-center gap-1 whitespace-nowrap border-b-2 px-0.5 py-1.5 text-[12px]",
-                  isActive
-                    ? "border-sz-accent-500 font-medium text-sz-accent-500"
-                    : "border-transparent text-sz-n-500 hover:text-sz-n-700"
+                  TAB_CLASS,
+                  "-mb-px mr-0 flex flex-1 items-center justify-center gap-1 whitespace-nowrap",
+                  isActive && TAB_ON_CLASS
                 )}
               >
                 {item.label}
@@ -153,14 +159,10 @@ export default function ThreadListPane(props: ThreadListPaneProps) {
                   key={item.value}
                   type="button"
                   onClick={() => onStateChange(item.value)}
-                  className={cn(
-                    "whitespace-nowrap rounded-[10px] border px-2.5 py-0.5 text-[11px]",
-                    isOn
-                      ? "border-sz-accent-500 bg-sz-accent-50 font-semibold text-sz-accent-600"
-                      : "border-sz-n-300 text-sz-n-600 hover:bg-sz-n-50"
-                  )}
+                  className={cn(SUBTAB_CLASS, isOn && SUBTAB_ON_CLASS)}
                 >
-                  {item.label} {count ?? 0}
+                  {item.label}
+                  <span className={SUBTAB_COUNT_CLASS}>{count ?? 0}</span>
                 </button>
               );
             })}

@@ -1,4 +1,5 @@
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import { NOTICE_WARN_CLASS } from "@/common/constants/dsStyle";
 import { ELINK_CLASS } from "@/features/memberShared/constants/styles";
 import {
   displayUrl,
@@ -172,11 +173,7 @@ export function MetaRow(props: { label: string; children: ReactNode }) {
 
 /** `.wait` — 경고 배경 안내(「탈퇴 사유 — …」) */
 export function WaitBox(props: { children: ReactNode }) {
-  return (
-    <div className="mb-3 rounded-[6px] bg-sz-warning-bg px-3 py-2.5 text-[11px] leading-[1.7] text-sz-warning-text">
-      {props.children}
-    </div>
-  );
+  return <div className={cn(NOTICE_WARN_CLASS, "mb-3")}>{props.children}</div>;
 }
 
 /** `.gone` — 「— 파기됨」 · 「해당 없음」 · 「· 비공개」 */
