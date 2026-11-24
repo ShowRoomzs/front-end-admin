@@ -217,7 +217,6 @@ export default function RefundManagement() {
               emptyState={emptyState}
               fitWidth
               autoHeight
-              maxRows={14}
               bodyClassName="whitespace-nowrap"
               headerClassName="whitespace-nowrap"
             />

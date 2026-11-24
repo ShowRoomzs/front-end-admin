@@ -230,7 +230,7 @@ export default function PostMonitoring() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-[8px] border border-sz-n-200 bg-white">
+      <div className="flex flex-col overflow-hidden rounded-[8px] border border-sz-n-200 bg-white">
         <div className="flex shrink-0 items-center justify-between border-b border-sz-n-200 px-4 py-2.5">
           <span className="text-[12px] text-sz-n-600">
             {summaryLine(summary, params.tab)}
@@ -291,7 +291,7 @@ export default function PostMonitoring() {
           </div>
         ) : (
           <>
-            <div className="min-h-0 overflow-auto">
+            <div className="overflow-x-auto">
               <table className="w-full min-w-[960px] table-fixed border-collapse">
                 <colgroup>
                   <col />

@@ -223,7 +223,6 @@ export default function TermsManagement() {
           emptyState={emptyState}
           fitWidth
           autoHeight
-          maxRows={14}
           bodyClassName="overflow-hidden whitespace-nowrap"
           headerClassName="whitespace-nowrap"
         />

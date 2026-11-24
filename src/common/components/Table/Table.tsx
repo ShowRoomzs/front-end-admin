@@ -14,9 +14,6 @@ import { DragDropContext } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 
 const MAX_TABLE_WIDTH = 1880; // 최대 테이블 너비
-// 본문 행 1개 높이: 상하 패딩 14px + 12px 본문 줄높이 + 구분선 1px
-/** 본문 행 높이 — `TableBody`의 `h-[50px]`과 반드시 같아야 maxRows 스크롤 지점이 맞는다 */
-const ROW_HEIGHT = 50;
 
 export default function Table<T, K extends keyof T = keyof T>(
   props: TableProps<T, K>
@@ -40,13 +37,13 @@ export default function Table<T, K extends keyof T = keyof T>(
     emptyState,
     fitWidth = false,
     autoHeight = false,
-    maxRows,
   } = props;
 
-  // autoHeight 모드에서 행이 maxRows를 넘으면 본문만 내부 스크롤한다
-  const bodyMaxHeight =
-    autoHeight && maxRows ? maxRows * ROW_HEIGHT : undefined;
-  const isBodyScrollable = !autoHeight || bodyMaxHeight !== undefined;
+  /*
+    autoHeight 표는 세로로 스크롤하지 않는다 — 세로 스크롤은 본문(MainLayout main) 하나만 둔다(11-24).
+    예전 maxRows(14행 넘으면 본문만 내부 스크롤)는 페이지 스크롤과 겹쳐 세로 스크롤바가 둘이 돼 없앴다.
+  */
+  const isBodyScrollable = !autoHeight;
   const [checkedKeys, setCheckedKeys] = useState<Array<T[K]>>(
     originCheckedKeys as Array<T[K]>
   );
@@ -461,9 +458,10 @@ export default function Table<T, K extends keyof T = keyof T>(
           ref={bodyScrollRef}
           className={cn(
             "flex-1 scrollbar-hidden",
-            isBodyScrollable && "overflow-auto"
+            isBodyScrollable
+              ? "overflow-auto"
+              : "overflow-x-auto overflow-y-hidden"
           )}
-          style={{ maxHeight: bodyMaxHeight }}
         >
           {renderContent()}
         </div>

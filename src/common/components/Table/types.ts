@@ -71,12 +71,8 @@ export interface TableProps<T, K extends keyof T = keyof T> {
   fitWidth?: boolean;
   /**
    * 남은 높이를 채우지 않고 내용 높이에 맞춘다(마지막 행 바로 아래에 페이지네이션이 붙는다).
-   * 내부 세로 스크롤 대신 페이지 전체가 스크롤된다.
+   * 내부 세로 스크롤 대신 페이지 전체가 스크롤된다(세로 스크롤바는 본문 하나 · 11-24).
+   * 표는 가로로만 넘친다.
    */
   autoHeight?: boolean;
-  /**
-   * autoHeight 모드에서 스크롤 없이 보여줄 최대 행 수.
-   * 이 수를 넘으면 본문만 내부 스크롤되고 페이지네이션은 그 아래에 고정된다.
-   */
-  maxRows?: number;
 }

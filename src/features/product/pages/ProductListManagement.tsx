@@ -157,7 +157,6 @@ export default function ProductListManagement() {
           emptyState={emptyState}
           fitWidth
           autoHeight
-          maxRows={14}
           bodyClassName="overflow-hidden whitespace-nowrap"
           headerClassName="whitespace-nowrap"
         />

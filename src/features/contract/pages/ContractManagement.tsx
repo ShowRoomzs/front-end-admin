@@ -214,7 +214,6 @@ export default function ContractManagement() {
               fitWidth
               // 카드 높이를 행 수에 맞춘다 — 없으면 0건일 때 카드가 헤더 높이로 접혀 빈 상태가 잘린다
               autoHeight
-              maxRows={14}
               bodyClassName="overflow-hidden whitespace-nowrap"
               headerClassName="whitespace-nowrap"
             />

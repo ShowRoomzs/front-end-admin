@@ -42,6 +42,7 @@ export default function CouponManagement() {
 
       <Table
         columns={COUPON_LIST_COLUMNS}
+        autoHeight
         data={couponList?.content ?? []}
         pageInfo={pageInfo}
         isLoading={isLoading}

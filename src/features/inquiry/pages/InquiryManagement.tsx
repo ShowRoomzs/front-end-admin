@@ -186,7 +186,6 @@ export default function InquiryManagement() {
           emptyState={emptyState}
           fitWidth
           autoHeight
-          maxRows={14}
           // 행 높이를 50px로 고정하려면 셀이 줄바꿈되지 않아야 한다(시안 tbody td)
           bodyClassName="overflow-hidden whitespace-nowrap"
           headerClassName="whitespace-nowrap"
