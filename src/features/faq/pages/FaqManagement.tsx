@@ -257,7 +257,6 @@ export default function FaqManagement() {
           emptyState={emptyState}
           fitWidth
           autoHeight
-          maxRows={14}
           bodyClassName="overflow-hidden whitespace-nowrap"
           headerClassName="whitespace-nowrap"
           rowDrag={{

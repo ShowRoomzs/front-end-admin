@@ -40,6 +40,7 @@ export default function LoginHistoryManagement() {
       />
       <Table
         columns={LOGIN_HISTORY_COLUMNS}
+        autoHeight
         data={loginHistoryList?.content ?? []}
         isLoading={isLoading}
         pageInfo={pageInfo}
