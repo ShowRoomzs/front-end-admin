@@ -4,11 +4,11 @@ import DetailCard, {
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
 import { formatDateOnly } from "@/common/utils/formatDate";
+import { getApiErrorMessage } from "@/features/contract/utils/apiError";
 import EffectiveDateField from "@/features/terms/components/EffectiveDateField/EffectiveDateField";
 import RegisterConfirmModal from "@/features/terms/components/RegisterConfirmModal/RegisterConfirmModal";
 import {
   TERMS_FIRST_VERSION,
-  TERMS_NOTICE_PERIOD_DAYS,
   TERMS_TARGET_OPTIONS,
   TERMS_TYPE_OPTIONS,
 } from "@/features/terms/constants/params";
@@ -73,11 +73,15 @@ export default function TermsDocumentRegister() {
         content: form.content,
       });
       setIsConfirmOpen(false);
-      toast.success("문서를 등록했습니다. 시행일 00:00에 시행됩니다.");
+      // 등록 즉시 노출이 아니다 — 「등록했는데 앱에 안 보인다」를 오류로 오해하지 않게 노출 시점을 적는다(11-26)
+      toast.success(
+        `문서를 등록했습니다. ${formatDateOnly(form.effectiveDate)} 00:00부터 앱·웹에 노출됩니다.`,
+        { duration: 6000 }
+      );
       navigate(TERMS_LIST_PATH);
-    } catch {
-      // 모달은 닫지 않는다 — 서버가 시행일·중복을 되짚어 줄 수 있어 재시도가 가능해야 한다
-      toast.error("문서 등록에 실패했습니다.");
+    } catch (error) {
+      // 모달은 닫지 않는다 — 서버 문구(시행일 · 같은 대상 중복 문서명)를 그대로 보여 고쳐 다시 낼 수 있게 한다
+      toast.error(getApiErrorMessage(error) ?? "문서 등록에 실패했습니다.");
     }
   };
 
@@ -212,8 +216,12 @@ export default function TermsDocumentRegister() {
                 }
               />
               <MetaRow
-                label="사전 고지"
-                value={`${TERMS_NOTICE_PERIOD_DAYS}일`}
+                label="앱·웹 노출"
+                value={
+                  form.effectiveDate
+                    ? `${formatDateOnly(form.effectiveDate)} 00:00부터`
+                    : "시행일 00:00부터"
+                }
               />
             </div>
 
@@ -229,8 +237,9 @@ export default function TermsDocumentRegister() {
               </button>
             </div>
             <p className="mb-2 mt-2.5 text-[11px] leading-[1.55] text-sz-n-500">
-              사전 고지 기간은 임시값입니다(법률 검토 대기). 시행일 00:00에
-              시스템이 자동으로 시행합니다.
+              등록 즉시 노출되지 않습니다. 시행 예정으로 있다가 시행일
+              00:00(한국 시간)에 시스템이 자동으로 시행하고, 그때부터 앱·웹에
+              보입니다. 시행일은 내일부터 고를 수 있습니다.
             </p>
           </DetailCard>
         </div>

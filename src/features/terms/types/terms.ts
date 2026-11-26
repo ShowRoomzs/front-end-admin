@@ -1,8 +1,11 @@
 import type { BaseParams, PageInfo } from "@/common/types";
 
-/** 유형 3종 — **등록 후 문서 속성으로 고정**된다(§21-2) */
+/** 유형 4종 — 서버 `TermsType`(운영정책은 백엔드 58 4단계에서 추가). **등록 후 문서 속성으로 고정**된다(§21-2) */
 export type TermsType =
-  "TERMS_OF_SERVICE" | "PRIVACY_POLICY" | "MARKETING_CONSENT";
+  | "TERMS_OF_SERVICE"
+  | "PRIVACY_POLICY"
+  | "MARKETING_CONSENT"
+  | "OPERATION_POLICY";
 
 export type TermsTypeFilter = "ALL" | TermsType;
 
@@ -133,6 +136,10 @@ export interface TermsVersionDetail {
   previousVersionId: number | null;
   /** 더 최신 버전 */
   nextVersionId: number | null;
+  /** 이용자에게 불리한 변경(30일 전 고지 대상) — 2026-11-10 이전 등록 버전은 false */
+  unfavorableChange: boolean;
+  /** 고지일(등록일 · KST `YYYY-MM-DD`) — 2026-11-10 이전 등록 버전은 null */
+  noticedOn: string | null;
 }
 
 /** 신규 문서 등록 — 버전 번호를 받지 않는다(v1.0 자동 부여) */
@@ -149,6 +156,9 @@ export interface TermsDocumentRegisterRequest {
 export interface TermsVersionRegisterRequest {
   /** 접두 `v` 없이 숫자와 점만. 중복·역행은 서버가 검증한다 */
   versionNumber: string;
+  /** 등록일 + 7일 이후(불리한 변경이면 + 30일 이후) — 서버가 다시 검사한다 */
   effectiveDate: string;
+  /** 서버 필수값(@NotNull) — 빠지면 등록이 400으로 실패한다 */
+  unfavorableChange: boolean;
   content: string;
 }

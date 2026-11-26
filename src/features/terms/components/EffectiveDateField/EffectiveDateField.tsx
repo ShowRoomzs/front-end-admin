@@ -1,4 +1,5 @@
 import Calendar from "@/common/components/Calendar/Calendar";
+import { addDays, kstToday } from "@/features/terms/constants/params";
 import dayjs, { type Dayjs } from "dayjs";
 import { useEffect, useState } from "react";
 
@@ -6,6 +7,13 @@ interface EffectiveDateFieldProps {
   /** `YYYY-MM-DD` — 비어 있으면 미선택 */
   value: string;
   onChange: (value: string) => void;
+  /**
+   * 고를 수 있는 가장 이른 날(`YYYY-MM-DD` · KST). 기본은 내일 — 서버가 오늘 이전과 **오늘**을 받지 않는다
+   * (시행일 00:00이 이미 지났다). 개정은 고지 기간만큼 더 뒤로 넘긴다.
+   */
+  minDate?: string;
+  /** 달력 아래 안내 — 없으면 기본 문구 */
+  note?: string;
 }
 
 /**
@@ -17,15 +25,15 @@ interface EffectiveDateFieldProps {
  * 어긋난다.
  *
  * 달력은 공용 `Calendar`를 그대로 쓴다. 그 컴포넌트의 `type="end" + startDate`는
- * "startDate 이전은 선택 불가"로 동작하므로, startDate에 오늘을 넣으면 원하는 하한이
- * 정확히 걸린다 — 하한만 필요해 별도 달력을 새로 만들지 않았다.
+ * "startDate 이전은 선택 불가"로 동작하므로, startDate에 `minDate`(기본 내일 · KST)를 넣으면 원하는 하한이
+ * 정확히 걸린다 — 하한만 필요해 별도 달력을 새로 만들지 않았다. 서버는 오늘도 받지 않는다(11-26 확인).
  */
 export default function EffectiveDateField(props: EffectiveDateFieldProps) {
-  const { value, onChange } = props;
+  const { value, onChange, minDate = addDays(kstToday(), 1), note } = props;
   const [isOpen, setIsOpen] = useState(false);
-  const today = dayjs().startOf("day");
+  const earliest = dayjs(minDate);
   const selected = value ? dayjs(value) : null;
-  const [currentMonth, setCurrentMonth] = useState<Dayjs>(selected ?? today);
+  const [currentMonth, setCurrentMonth] = useState<Dayjs>(selected ?? earliest);
 
   // 값이 바뀐 뒤 다시 열면 그 달부터 보여준다(늘 이번 달로 되돌아가면 다시 넘겨야 한다)
   useEffect(() => {
@@ -100,7 +108,7 @@ export default function EffectiveDateField(props: EffectiveDateFieldProps) {
                 currentMonth={currentMonth}
                 onMonthChange={setCurrentMonth}
                 selectedDate={selected}
-                startDate={today}
+                startDate={earliest}
                 endDate={null}
                 type="end"
                 onDateClick={(date) => {
@@ -109,8 +117,8 @@ export default function EffectiveDateField(props: EffectiveDateFieldProps) {
                 }}
               />
               <p className="mt-3 text-[11px] leading-[1.6] text-sz-n-500">
-                오늘 이전 날짜는 선택할 수 없습니다. 시행일 00:00에 시스템이
-                자동 으로 새 버전을 시행합니다.
+                {note ??
+                  `${earliest.format("YYYY.MM.DD")}부터 고를 수 있습니다. 시행일 00:00(한국 시간)에 시스템이 자동으로 시행하고, 그때부터 앱·웹에 노출됩니다.`}
               </p>
             </div>
           </div>

@@ -5,7 +5,15 @@ import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
 import { formatDateOnly, formatDateTimeShort } from "@/common/utils/formatDate";
 import EffectiveDateField from "@/features/terms/components/EffectiveDateField/EffectiveDateField";
 import RegisterConfirmModal from "@/features/terms/components/RegisterConfirmModal/RegisterConfirmModal";
-import { TERMS_NOTICE_PERIOD_DAYS } from "@/features/terms/constants/params";
+import Check from "@/features/contract/components/shared/CheckRow";
+import { getApiErrorMessage } from "@/features/contract/utils/apiError";
+import {
+  addDays,
+  kstToday,
+  TERMS_NOTICE_DAYS,
+  TERMS_UNFAVORABLE_NOTICE_DAYS,
+} from "@/features/terms/constants/params";
+import type { TermsDocumentDetail } from "@/features/terms/types/terms";
 import {
   useGetTermsDocument,
   useRegisterTermsVersion,
@@ -18,6 +26,28 @@ import { useNavigate, useParams as useRouteParams } from "react-router-dom";
 /** 숫자와 점만 남긴다 — 공백·`v`·문자를 입력 단계에서 흘려버린다 */
 function sanitizeVersionNumber(value: string) {
   return value.replace(/[^0-9.]/g, "");
+}
+
+/**
+ * 고를 수 있는 가장 이른 시행일 — 서버 검사 두 가지를 화면에서 미리 건다.
+ * ① 고지 기간: 등록일(KST) + 7일, 불리한 변경이면 + 30일(확정 정책 2026-11-10)
+ * ② 기존 버전 시행일보다 뒤(같은 날 두 버전이 시행될 수 없다)
+ */
+function earliestEffectiveDate(
+  document: TermsDocumentDetail,
+  unfavorable: boolean
+) {
+  const byNotice = addDays(
+    kstToday(),
+    unfavorable ? TERMS_UNFAVORABLE_NOTICE_DAYS : TERMS_NOTICE_DAYS
+  );
+  const latest = document.versions.reduce(
+    (max, version) =>
+      version.effectiveDate > max ? version.effectiveDate : max,
+    ""
+  );
+  const afterLatest = latest ? addDays(latest, 1) : "";
+  return afterLatest > byNotice ? afterLatest : byNotice;
 }
 
 /**
@@ -40,6 +70,8 @@ export default function TermsVersionRegister() {
 
   const [versionNumber, setVersionNumber] = useState("");
   const [effectiveDate, setEffectiveDate] = useState("");
+  // 서버 필수값 — 기본은 불리하지 않은 변경(7일 전 고지)
+  const [unfavorable, setUnfavorable] = useState(false);
   const [content, setContent] = useState("");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -59,15 +91,19 @@ export default function TermsVersionRegister() {
         data: {
           versionNumber: versionNumber.trim(),
           effectiveDate,
+          unfavorableChange: unfavorable,
           content,
         },
       });
       setIsConfirmOpen(false);
-      toast.success("새 버전을 등록했습니다. 시행일 00:00에 교체됩니다.");
+      toast.success(
+        `새 버전을 등록했습니다. ${formatDateOnly(effectiveDate)} 00:00에 교체되고 그때부터 앱·웹에 노출됩니다.`,
+        { duration: 6000 }
+      );
       navigate(`${TERMS_LIST_PATH}/${documentId}`);
-    } catch {
-      // 중복·역행 번호는 서버가 잡는다 — 모달을 닫지 않아 번호만 고쳐 다시 낼 수 있다
-      toast.error("새 버전 등록에 실패했습니다.");
+    } catch (error) {
+      // 서버 문구(중복·역행 번호 · 시행일 · 고지 기간)를 그대로 보인다 — 모달을 닫지 않아 고쳐 다시 낼 수 있다
+      toast.error(getApiErrorMessage(error) ?? "새 버전 등록에 실패했습니다.");
     }
   };
 
@@ -78,6 +114,25 @@ export default function TermsVersionRegister() {
       </div>
     );
   }
+
+  const minDate = earliestEffectiveDate(document, unfavorable);
+  const noticeDays = unfavorable
+    ? TERMS_UNFAVORABLE_NOTICE_DAYS
+    : TERMS_NOTICE_DAYS;
+  // 소비자 대상 문서의 개정은 등록 즉시 전 소비자 알림함에 공지된다(서버 registerVersion)
+  const notifiesConsumers =
+    document.target === "ALL" || document.target === "USER";
+
+  const handleUnfavorableChange = (checked: boolean) => {
+    setUnfavorable(checked);
+    // 고지 기간이 늘어 이미 고른 날이 너무 이르면 비운다 — 그대로 내면 서버가 거절한다
+    if (
+      effectiveDate &&
+      effectiveDate < earliestEffectiveDate(document, checked)
+    ) {
+      setEffectiveDate("");
+    }
+  };
 
   return (
     <>
@@ -150,10 +205,30 @@ export default function TermsVersionRegister() {
                 />
               </span>
             </FieldRow>
+            <FieldRow label="고지 기간">
+              {/* 서버 필수값 `unfavorableChange` — 불리한 변경이면 시행 30일 전, 아니면 7일 전까지 고지 */}
+              <Check
+                checked={unfavorable}
+                onChange={handleUnfavorableChange}
+                className="text-[12px] text-sz-n-900"
+              >
+                이용자에게 불리한 변경입니다(시행{" "}
+                {TERMS_UNFAVORABLE_NOTICE_DAYS}일 전 고지)
+              </Check>
+              <p className="mt-1.5 text-[11px] text-sz-n-500">
+                고지일은 등록일입니다. 시행일은 {formatDateOnly(minDate)}부터
+                고를 수 있습니다(고지 기간 {noticeDays}일 · 기존 버전 시행일
+                이후).
+                {notifiesConsumers &&
+                  " 소비자 대상 문서라 등록 즉시 소비자 알림함에 개정 공지가 나갑니다."}
+              </p>
+            </FieldRow>
             <FieldRow label="시행일 *">
               <EffectiveDateField
                 value={effectiveDate}
                 onChange={setEffectiveDate}
+                minDate={minDate}
+                note={`고지 기간(${noticeDays}일)과 기존 버전 시행일 때문에 ${formatDateOnly(minDate)}부터 고를 수 있습니다. 시행일 00:00(한국 시간)에 교체되고 그때부터 앱·웹에 노출됩니다.`}
               />
             </FieldRow>
             <FieldRow label="본문 *">
@@ -190,7 +265,7 @@ export default function TermsVersionRegister() {
               <MetaRow label="교체 대상" value={document.version ?? "—"} />
               <MetaRow
                 label="사전 고지"
-                value={`${TERMS_NOTICE_PERIOD_DAYS}일`}
+                value={`시행 ${noticeDays}일 전${unfavorable ? " · 불리한 변경" : ""}`}
               />
             </div>
 
@@ -205,8 +280,9 @@ export default function TermsVersionRegister() {
               </button>
             </div>
             <p className="mb-2 mt-2.5 text-[11px] leading-[1.55] text-sz-n-500">
-              버전 번호 중복·역행은 서버에서 검증합니다. 시행일 00:00에 시스템이
-              자동으로 교체합니다.
+              버전 번호 중복·역행과 고지 기간은 서버에서 다시 검증합니다. 시행일
+              00:00(한국 시간)에 시스템이 자동으로 교체하고, 그때부터 앱·웹에 새
+              버전이 보입니다.
             </p>
           </DetailCard>
         </div>
