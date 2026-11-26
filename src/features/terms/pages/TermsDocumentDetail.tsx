@@ -2,6 +2,8 @@ import DetailCard, {
   FieldRow,
 } from "@/common/components/DetailCard/DetailCard";
 import StatusBadge from "@/common/components/StatusBadge/StatusBadge";
+import { NOTICE_INFO_CLASS } from "@/common/constants/dsStyle";
+import { cn } from "@/lib/utils";
 import { formatDateOnly, formatDateTimeShort } from "@/common/utils/formatDate";
 import { TERMS_LIST_PATH } from "@/features/terms/pages/TermsManagement";
 import { useGetTermsDocument } from "@/features/terms/hooks/useTermsQueries";
@@ -74,7 +76,9 @@ export default function TermsDocumentDetail() {
                 <>
                   <b className="font-semibold tabular-nums">{detail.version}</b>
                   {detail.effectiveDate
-                    ? ` · ${formatDateOnly(detail.effectiveDate)} 시행`
+                    ? ` · ${formatDateOnly(detail.effectiveDate)} ${
+                        detail.status === "SCHEDULED" ? "시행 예정" : "시행"
+                      }`
                     : ""}
                 </>
               ) : (
@@ -183,6 +187,18 @@ export default function TermsDocumentDetail() {
               />
               <MetaRow label="등록자" value={detail.registrantName ?? "—"} />
             </div>
+
+            {/*
+              시행 예정 문서는 공개 약관 조회(GET /v1/common/terms)에 아직 나오지 않는다 — 시행일 00:00(KST)에
+              서버 배치가 시행중으로 바꾼다. 「등록했는데 앱에 안 보인다」를 오류로 오해하지 않게 적는다(11-26).
+            */}
+            {detail.status === "SCHEDULED" && detail.effectiveDate && (
+              <p className={cn(NOTICE_INFO_CLASS, "mt-3")}>
+                <b>{formatDateOnly(detail.effectiveDate)} 00:00</b>(한국 시간)에
+                시행되고, 그때부터 앱·웹에 노출됩니다. 지금은 등록만 된
+                상태입니다.
+              </p>
+            )}
 
             {/* 구버전 문서에는 버튼을 두지 않는다 — 새 버전을 붙일 대상이 아니다 */}
             {detail.canRegisterNewVersion ? (

@@ -76,14 +76,30 @@ export default function TermsVersionDetail() {
               <span className="tabular-nums">{detail.version}</span>
             </FieldRow>
             <FieldRow label="시행 기간">
-              {/* 종료일이 없으면 아직 교체되지 않은 버전이다(시행중·시행 예정) */}
+              {/*
+                종료일이 없으면 아직 교체되지 않은 버전이다(시행중·시행 예정).
+                시행 예정은 「~ 현재」가 아니라 노출 시작 시점을 적는다 — 등록했는데 앱에 안 보인다는 오해를 막는다(11-26)
+              */}
               <span className="tabular-nums">
-                {formatDateOnly(detail.effectiveStartDate)} ~{" "}
-                {detail.effectiveEndDate
-                  ? formatDateOnly(detail.effectiveEndDate)
-                  : "현재"}
+                {detail.status === "SCHEDULED"
+                  ? `${formatDateOnly(detail.effectiveStartDate)} 00:00부터 시행 예정 · 그 전에는 앱·웹에 노출되지 않음`
+                  : `${formatDateOnly(detail.effectiveStartDate)} ~ ${
+                      detail.effectiveEndDate
+                        ? formatDateOnly(detail.effectiveEndDate)
+                        : "현재"
+                    }`}
               </span>
             </FieldRow>
+            {detail.noticedOn && (
+              <FieldRow label="고지">
+                <span className="tabular-nums">
+                  {formatDateOnly(detail.noticedOn)} 고지
+                </span>
+                {detail.unfavorableChange
+                  ? " · 이용자에게 불리한 변경(30일 전 고지)"
+                  : " · 7일 전 고지"}
+              </FieldRow>
+            )}
             <FieldRow label="등록자">
               {detail.registrantName} ·{" "}
               <span className="tabular-nums">

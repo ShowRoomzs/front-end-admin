@@ -2,6 +2,7 @@ import ListViewWrapper from "@/common/components/ListViewWrapper/ListViewWrapper
 import Table from "@/common/components/Table/Table";
 import { MODAL_SELECT_CHEVRON_STYLE } from "@/common/constants";
 import {
+  NOTICE_INFO_CLASS,
   SELECT_TOOLBAR_CLASS,
   TAB_CLASS,
   TAB_ON_CLASS,
@@ -178,6 +179,18 @@ export default function TermsManagement() {
           </button>
         </div>
       </div>
+
+      {/*
+        시행 예정 문서는 시행일 00:00(KST)까지 공개 약관 조회에 나오지 않는다 — 「등록했는데 앱에 안 보인다」를
+        오류로 오해하지 않게 목록에서도 알린다(11-26 대표 등록 건).
+      */}
+      {!!termsList?.scheduledCount && (
+        <p className={cn(NOTICE_INFO_CLASS, "mb-4 shrink-0")}>
+          시행 예정 문서 <b>{termsList.scheduledCount}건</b>은 아직 앱·웹에
+          노출되지 않습니다. 각 문서의 시행일 00:00(한국 시간)에 시스템이
+          자동으로 시행하고, 그때부터 노출됩니다.
+        </p>
+      )}
 
       <div className="flex flex-col overflow-hidden rounded-[8px] border border-sz-n-200 bg-white">
         <div className="flex shrink-0 items-center justify-between border-b border-sz-n-200 px-4 py-2.5">
